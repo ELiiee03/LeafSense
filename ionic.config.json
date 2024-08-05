@@ -1,0 +1,8 @@
+{
+  "name": "Leafify",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite",
+  "id": "8c085700"
+}
