@@ -4,7 +4,7 @@
       <ion-menu content-id="main-content" type="overlay">
         <ion-content>
           <ion-list id="inbox-list">
-            <ion-list-header>Inbox</ion-list-header>
+            <ion-list-header>Leafify</ion-list-header>
             <ion-note>hi@ionicframework.com</ion-note>
 
             <ion-menu-toggle :auto-hide="false" v-for="(p, i) in appPages" :key="i">
@@ -66,7 +66,7 @@ import {
 const selectedIndex = ref(0);
 const appPages = [
   {
-    title: 'Inbox',
+    title: 'Leafify',
     url: '/folder/Inbox',
     iosIcon: mailOutline,
     mdIcon: mailSharp,
@@ -110,6 +110,7 @@ if (path !== undefined) {
 }
 </script>
 
+<!-- css -->
 <style scoped>
 ion-menu ion-content {
   --background: var(--ion-item-background, var(--ion-background-color, #fff));

@@ -1,3 +1,5 @@
+// Creating the router instance
+
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 
