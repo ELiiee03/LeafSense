@@ -1,4 +1,4 @@
-<template>
+<!-- <template>
   <ion-app>
     <ion-split-pane content-id="main-content">
       <ion-menu content-id="main-content" type="overlay">
@@ -111,7 +111,7 @@ if (path !== undefined) {
 </script>
 
 <!-- css -->
-<style scoped>
+<!-- <style scoped>
 ion-menu ion-content {
   --background: var(--ion-item-background, var(--ion-background-color, #fff));
 }
@@ -231,4 +231,88 @@ ion-note {
 ion-item.selected {
   --color: var(--ion-color-primary);
 }
-</style>
+</style> -->
+
+<template>
+  <ion-menu side="end" content-id="main-content">
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Leafify</ion-title>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding">This is the menu content.</ion-content>
+  </ion-menu>
+  <ion-page id="main-content">
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Leafify</ion-title>
+        <ion-buttons slot="end">
+          <ion-menu-button></ion-menu-button>
+        </ion-buttons>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="ion-padding"> Tap the button in the toolbar to open the menu. 
+      <ion-button @click="takePhoto">Take Photo</ion-button>
+    </ion-content>
+  </ion-page>
+</template>
+
+
+
+
+<script lang="ts">
+  import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar } from '@ionic/vue';
+  import { defineComponent } from 'vue';
+  import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+  import { playCircle, radio, library, search } from 'ionicons/icons';
+  // import Tabs from './components/Tabs.vue';
+
+
+
+  export default defineComponent({
+    components: {
+      IonApp,
+      IonButtons,
+      IonContent,
+      IonHeader,
+      IonMenu,
+      IonMenuButton,
+      IonPage,
+      IonTitle,
+      IonToolbar,
+      IonTabs,
+      IonTabBar,
+      IonLabel,
+      IonTabButton,
+      IonIcon,
+      IonRouterOutlet
+    },
+    data() {
+      return {
+        playCircle,
+        radio,
+        library,
+        search,
+      };
+    },
+    methods: {
+      async takePhoto() {
+        console.log('Button clicked!');
+        try {
+          const image = await Camera.getPhoto({
+            quality: 90,
+            allowEditing: false,
+            resultType: CameraResultType.Uri,
+            source: CameraSource.Camera,
+          });
+
+          const imageUrl = image.webPath;
+          console.log('Image URL:', imageUrl);
+          // Do something with the image, e.g., display it or upload it
+        } catch (error) {
+          console.error('Error taking photo:', error);
+        }
+      },
+    },
+  });
+</script>
