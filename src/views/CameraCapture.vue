@@ -25,6 +25,6 @@
       resultType: CameraResultType.Uri,
     });
 
-    imageSrc.value = image.webPath;
+    imageSrc.value = image.webPath || '';
   };
 </script>

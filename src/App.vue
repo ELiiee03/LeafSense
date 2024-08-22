@@ -240,7 +240,7 @@ ion-item.selected {
         <ion-title>Leafify</ion-title>
       </ion-toolbar>
     </ion-header>
-    <ion-content class="ion-padding">This is the menu content.</ion-content>
+    <ion-content class="ion-padding">This is where the menu happens.</ion-content>
   </ion-menu>
   <ion-page id="main-content">
     <ion-header>
