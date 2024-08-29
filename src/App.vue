@@ -234,27 +234,33 @@ ion-item.selected {
 </style> -->
 
 <template>
-  <ion-menu side="end" content-id="main-content">
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Leafify</ion-title>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content class="ion-padding">This is where the menu happens.</ion-content>
-  </ion-menu>
-  <ion-page id="main-content">
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Leafify</ion-title>
-        <ion-buttons slot="end">
-          <ion-menu-button></ion-menu-button>
-        </ion-buttons>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content class="ion-padding"> Tap the button in the toolbar to open the menu. 
-      <ion-button @click="takePhoto">Take Photo</ion-button>
-    </ion-content>
-  </ion-page>
+  <ion-app>
+    <ion-menu side="end" content-id="main-content">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Leafify</ion-title>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content class="ion-padding">This is where the menu happens.</ion-content>
+
+    </ion-menu>
+    <ion-page id="main-content">
+      <ion-header>
+        <ion-toolbar>
+          <ion-title>Leafify</ion-title>
+          <ion-buttons slot="end">
+            <ion-menu-button></ion-menu-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <!-- <ion-content class="ion-padding"> Tap the button in the toolbar to open the menu. 
+        <ion-button @click="takePhoto">Take Photo</ion-button>
+      </ion-content> -->
+      <!-- Router Outlet -->
+      <ion-router-outlet></ion-router-outlet>
+    </ion-page>
+
+  </ion-app>
 </template>
 
 
@@ -264,8 +270,8 @@ ion-item.selected {
   import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar } from '@ionic/vue';
   import { defineComponent } from 'vue';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
-  import { playCircle, radio, library, search } from 'ionicons/icons';
-  // import Tabs from './components/Tabs.vue';
+  // import { playCircle, radio, library, search } from 'ionicons/icons';
+  import Tabs from './components/Tabs.vue';
 
 
 
@@ -287,14 +293,14 @@ ion-item.selected {
       IonIcon,
       IonRouterOutlet
     },
-    data() {
-      return {
-        playCircle,
-        radio,
-        library,
-        search,
-      };
-    },
+    // data() {
+    //   return {
+    //     playCircle,
+    //     radio,
+    //     library,
+    //     search,
+    //   };
+    // },
     methods: {
       async takePhoto() {
         console.log('Button clicked!');
