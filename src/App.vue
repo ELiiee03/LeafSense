@@ -235,10 +235,10 @@ ion-item.selected {
 
 <template>
   <ion-app>
-    <ion-menu side="end" content-id="main-content">
+    <ion-menu v-if="!isLoginPage" side="end" content-id="main-content">
       <ion-header>
         <ion-toolbar>
-          <ion-title>Leafify</ion-title>
+          <ion-title>LeafSense</ion-title>
         </ion-toolbar>
       </ion-header>
       <ion-content class="ion-padding">This is where the menu happens.</ion-content>
@@ -247,7 +247,7 @@ ion-item.selected {
     <ion-page id="main-content">
       <ion-header>
         <ion-toolbar>
-          <ion-title>Leafify</ion-title>
+          <ion-title>LeafSense</ion-title>
           <ion-buttons slot="end">
             <ion-menu-button></ion-menu-button>
           </ion-buttons>
@@ -270,12 +270,14 @@ ion-item.selected {
   import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar } from '@ionic/vue';
   import { defineComponent } from 'vue';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+  import { useRoute } from 'vue-router';
   // import { playCircle, radio, library, search } from 'ionicons/icons';
-  import Tabs from './components/Tabs.vue';
+  import Tabs from '../src/components/Tabs.vue';
 
 
 
-  export default defineComponent({
+export default defineComponent({
+    name: 'App',
     components: {
       IonApp,
       IonButtons,
@@ -300,7 +302,17 @@ ion-item.selected {
     //     library,
     //     search,
     //   };
-    // },
+  // },
+  setup() {
+    const route = useRoute();
+
+    // Check if the current page is the login page
+    const isLoginPage = route.name === 'login';  // Adjust the route name to match your login route
+
+    return {
+      isLoginPage,
+    };
+  },
     methods: {
       async takePhoto() {
         console.log('Button clicked!');

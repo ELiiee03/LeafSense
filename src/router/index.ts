@@ -3,8 +3,14 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 import Tabs from '../components/Tabs.vue';
+// import Login from '../views/Login.vue';
+import Signup from '../views/SIgnup.vue';
 
 const routes: Array<RouteRecordRaw> = [
+  {
+    path: '/login',
+    component: () => import ('@/views/Login.vue')
+  },
   {
     path: '',
     redirect: '/folder/Home'
@@ -19,18 +25,18 @@ const routes: Array<RouteRecordRaw> = [
     children: [
       {
         path: '',
-        redirect: '/home',
+        redirect: '/Home',
       },
-      {
-        path: 'signup',
-        component: () => import('../views/SIgnup.vue'),
-      },
+      // {
+      //   path: 'login',
+      //   component: () => import('../views/Login.vue'),
+      // },
       {
         path: 'camera',
         component: () => import('../views/CameraCapture.vue'),
       },
       {
-        path: 'library',
+        path: 'login',
         component: () => import('../views/Login.vue'),
       },
       {
@@ -39,6 +45,7 @@ const routes: Array<RouteRecordRaw> = [
       },
     ],
   },
+
 ]
 
 const router = createRouter({
