@@ -27,24 +27,37 @@
         </ion-toolbar>
       </ion-header> -->
       <ion-content class="ion-padding">
+        <h4><b>LeafSense.</b></h4>
         <div class="login-container">
-          <h1>Login</h1>
+          <h1><b>Log In</b></h1>
           <br>
           <ion-input label="Email" label-placement="floating" fill="outline" placeholder="email@example.com"></ion-input>
           <ion-input label="Password" label-placement="floating" fill="outline" placeholder="password" type="password" >
             <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
           </ion-input>
-
-          <ion-button shape="round" expand="full" class="ion-margin-top">Login</ion-button>
+          <br>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
+          <br>
+          <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
+            <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
+          </ion-button>
         </div>
-
+        <ion-grid>
+          <ion-row>
+            <ion-col></ion-col>
+            <ion-col size="10">Don't have an account? <b>Sign Up</b></ion-col>
+            <ion-col></ion-col>
+          </ion-row>
+        </ion-grid>
+        
       </ion-content>
   </ion-page>
 </template>
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar } from '@ionic/vue';
+import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
+import { logoIonic } from 'ionicons/icons';
 // import { supabase } from '@/supabase';
 import { useRouter } from 'vue-router';
 
@@ -58,7 +71,8 @@ export default defineComponent({
     IonHeader,
     IonPage,
     IonTitle,
-    IonToolbar
+    IonToolbar,
+    IonIcon
   },
   // setup() {
   //   const email = ref('');
@@ -88,7 +102,7 @@ export default defineComponent({
 <style scoped>
 /* Center the form */
 .login-container {
-  margin-top: 65px;
+  margin-top: 120px;
 }
 
 ion-input {
@@ -97,7 +111,20 @@ ion-input {
 }
 
 h1 {
-  margin-bottom: 30px;
+  margin-bottom: 80px;
   text-align: center;
+}
+ion-icon {
+  color: green;
+}
+.custom-button {
+  color: green;
+}
+ion-col {
+  color: #fff;
+  text-align: center;
+}
+ion-grid {
+  margin-top: 50px;
 }
 </style>

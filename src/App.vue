@@ -236,23 +236,26 @@ ion-item.selected {
 <template>
   <ion-app>
     <ion-menu v-if="!isLoginPage" side="end" content-id="main-content">
-      <ion-header>
+      <!-- <ion-header>
         <ion-toolbar>
           <ion-title>LeafSense</ion-title>
         </ion-toolbar>
       </ion-header>
-      <ion-content class="ion-padding">This is where the menu happens.</ion-content>
+      <ion-content class="ion-padding">This is where the menu happens.</ion-content> -->
 
     </ion-menu>
     <ion-page id="main-content">
-      <ion-header>
+      <!-- <ion-header>
         <ion-toolbar>
           <ion-title>LeafSense</ion-title>
           <ion-buttons slot="end">
-            <ion-menu-button></ion-menu-button>
-          </ion-buttons>
+            <ion-menu-button></ion-menu-button> -->
+          <!-- </ion-buttons>
         </ion-toolbar>
-      </ion-header>
+      </ion-header> -->
+      <ion-content class="ion-padding">
+        <h1>LeafSense.</h1>
+      </ion-content>
       <!-- <ion-content class="ion-padding"> Tap the button in the toolbar to open the menu. 
         <ion-button @click="takePhoto">Take Photo</ion-button>
       </ion-content> -->
