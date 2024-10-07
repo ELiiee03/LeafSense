@@ -254,15 +254,11 @@ ion-item.selected {
         </ion-toolbar>
       </ion-header> -->
       <ion-content class="ion-padding">
-        <h1>LeafSense.</h1>
+        <!-- <h1>LeafSense.</h1> -->
+       
       </ion-content>
-      <!-- <ion-content class="ion-padding"> Tap the button in the toolbar to open the menu. 
-        <ion-button @click="takePhoto">Take Photo</ion-button>
-      </ion-content> -->
-      <!-- Router Outlet -->
       <ion-router-outlet></ion-router-outlet>
     </ion-page>
-
   </ion-app>
 </template>
 
@@ -270,14 +266,14 @@ ion-item.selected {
 
 
 <script lang="ts">
-  import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar } from '@ionic/vue';
-  import { defineComponent } from 'vue';
+  import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar, IonFab } from '@ionic/vue';
+  import { defineComponent, ref } from 'vue';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { useRoute } from 'vue-router';
+  import CameraComponent from './views/CameraCapture.vue';
+  import Tabs from '@/components/Tabs.vue';
   // import { playCircle, radio, library, search } from 'ionicons/icons';
-  import Tabs from '../src/components/Tabs.vue';
-
-
+  
 
 export default defineComponent({
     name: 'App',
@@ -296,7 +292,8 @@ export default defineComponent({
       IonLabel,
       IonTabButton,
       IonIcon,
-      IonRouterOutlet
+      IonRouterOutlet,
+      CameraComponent
     },
     // data() {
     //   return {

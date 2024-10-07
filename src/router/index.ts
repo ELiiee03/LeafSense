@@ -16,40 +16,35 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import ('@/views/SIgnup.vue')
   },
   {
+    path: '/logs',
+    component: () => import ('@/views/Logs.vue')
+  },
+  {
     path: '',
-    redirect: '/folder/Home'
+    redirect: '/home' // Redirect to /home when no path is provided
   },
   {
-    path: '/folder/:id',
-    component: () => import ('../components/Tabs.vue')
-  },
-  {
-    path: '/',
-    component: Tabs,
+    path: '/home',
+    component: Tabs, // Show Tabs.vue on the /home route
     children: [
       {
         path: '',
-        redirect: '/Home',
+        redirect: '/home/camera', // Default tab for the home route (can be adjusted)
       },
-      // {
-      //   path: 'login',
-      //   component: () => import('../views/Login.vue'),
-      // },
       {
         path: 'camera',
-        component: () => import('../views/CameraCapture.vue'),
+        component: () => import('@/views/CameraCapture.vue'), // Camera tab
       },
       {
-        path: 'login',
-        component: () => import('../views/Login.vue'),
+        path: 'logs',
+        component: () => import('@/views/Logs.vue'), // Search tab
       },
       {
-        path: 'search',
-        component: () => import('../views/FolderPage.vue'),
+        path: 'signup',
+        component: () => import('@/views/SIgnup.vue'), // Folder tab
       },
     ],
   },
-
 ]
 
 const router = createRouter({

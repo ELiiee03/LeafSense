@@ -3,9 +3,9 @@
       <ion-tabs>
         <ion-router-outlet></ion-router-outlet>
         <ion-tab-bar slot="bottom">
-          <ion-tab-button tab="home" href="folder/Home">
+          <ion-tab-button tab="home" href="/camera">
             <ion-icon :icon="playCircle" />
-            <ion-label>Listen now</ion-label>
+            <ion-label>Home</ion-label>
           </ion-tab-button>
   
           <!-- <ion-tab-button tab="login" href="/login">
@@ -13,14 +13,14 @@
             <ion-label>Radio</ion-label>
           </ion-tab-button> -->
   
-          <ion-tab-button tab="camera" href="/camera">
+          <ion-tab-button tab="logs" href="/logs">
             <ion-icon :icon="library" />
-            <ion-label>Library</ion-label>
+            <ion-label>Logs</ion-label>
           </ion-tab-button>
   
-          <ion-tab-button tab="search" href="/search">
+          <ion-tab-button tab="search" href="/signup">
             <ion-icon :icon="search" />
-            <ion-label>Search</ion-label>
+            <ion-label>Geolocation</ion-label>
           </ion-tab-button>
         </ion-tab-bar>
       </ion-tabs>

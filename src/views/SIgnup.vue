@@ -1,10 +1,5 @@
 <template>
     <ion-page>
-      <!-- <ion-header>
-        <ion-toolbar>
-          <ion-title></ion-title>
-          </ion-toolbar>
-        </ion-header> -->
         <ion-content class="ion-padding">
           <h4><b>LeafSense.</b></h4>
           <div class="login-container">

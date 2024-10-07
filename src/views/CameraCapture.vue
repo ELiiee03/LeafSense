@@ -1,30 +1,31 @@
-<!-- <template>
-  <ion-page>
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Ionic Blank</ion-title>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content class="ion-padding">
-      <img :src="imageSrc" />
-      <ion-button @click="takePhoto()">Take Photo</ion-button>
-    </ion-content>
-  </ion-page>
-</template> -->
 <template>
-  <ion-content>
+  <ion-header>
+    <ion-toolbar>
+      <ion-title>LeafSense.</ion-title>
+    </ion-toolbar>
+  </ion-header>
+  <ion-page>
+  <ion-content class="ion-padding">
+    <!-- <h4><b>LeafSense.</b></h4> -->
+    <ion-grid>
+      <ion-row>
+        <ion-col></ion-col>
+        <ion-col size="8">Tap Camera button to scan</ion-col>
+        <ion-col></ion-col>
+      </ion-row>
+    </ion-grid>
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
-        <ion-icon :icon="add"></ion-icon>
+        <ion-icon src="/resources/camera-outline.svg" name="camera-outline"></ion-icon>
       </ion-fab-button>
     </ion-fab>
   </ion-content>
-
+  </ion-page>
 </template>
 
 
 <script setup lang="ts">
-  import { IonButton, IonContent, IonHeader, IonPage, IonTitle, IonFab } from '@ionic/vue';
+  import { IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
   import { add } from 'ionicons/icons';
@@ -56,5 +57,12 @@
   ion-fab {
     margin-top: var(--ion-safe-area-top, 0);
     margin-bottom: var(--ion-safe-area-bottom, 0);
+  }
+  ion-col {
+    color: #fff;
+    text-align: center;
+  }
+  ion-grid {
+    margin-top: 95%;
   }
 </style>

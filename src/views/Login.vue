@@ -72,7 +72,10 @@ export default defineComponent({
     IonPage,
     IonTitle,
     IonToolbar,
-    IonIcon
+    IonIcon,
+    IonCol,
+    IonGrid,
+    IonRow
   },
   // setup() {
   //   const email = ref('');
