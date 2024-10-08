@@ -21,7 +21,7 @@
                     </ion-item-option>
                   </ion-item-options>
             
-                  <ion-item>
+                  <ion-item button @click="setOpen(true)">
                     <ion-label>Sliding Item with Icons Only</ion-label>
                   </ion-item>
             
@@ -35,6 +35,26 @@
                   </ion-item-options>
                 </ion-item-sliding>
             
+                <!-- Modal -->
+                <ion-modal :is-open="isOpen">
+                  <ion-header>
+                    <ion-toolbar>
+                      <ion-title>Modal</ion-title>
+                      <ion-buttons slot="end">
+                        <ion-button @click="setOpen(false)">Close</ion-button>
+                      </ion-buttons>
+                    </ion-toolbar>
+                  </ion-header>
+                  <ion-content class="ion-padding">
+                    <p>
+                      Lorem ipsum dolor sit amet consectetur adipisicing elit. Magni illum quidem recusandae ducimus quos
+                      reprehenderit. Veniam, molestias quos, dolorum consequuntur nisi deserunt omnis id illo sit cum qui. Eaque,
+                      dicta.
+                    </p>
+                  </ion-content>
+                </ion-modal>
+                <!-- End of Modal -->
+
                 <ion-item-sliding>
                   <ion-item-options side="start">
                     <ion-item-option color="success">
@@ -110,17 +130,15 @@
    
   </template>
   
-  <script lang="ts">
-    import { IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList } from '@ionic/vue';
+  <script setup lang="ts">
+    import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList } from '@ionic/vue';
     import { archive, heart, trash } from 'ionicons/icons';
-    import { defineComponent } from 'vue';
+    import { ref } from 'vue';
   
-    export default defineComponent({
-      components: { IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonContent, IonPage, IonIcon, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList },
-      setup() {
-        return { archive, heart, trash };
-      },
-    });
+
+      const isOpen = ref(false);
+  
+      const setOpen = (open: boolean) => (isOpen.value = open);
   </script>
 
 <style scoped>

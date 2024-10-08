@@ -268,7 +268,7 @@ ion-item.selected {
 <script lang="ts">
   import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar, IonFab } from '@ionic/vue';
   import { defineComponent, ref } from 'vue';
-  import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
+  // import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { useRoute } from 'vue-router';
   import CameraComponent from './views/CameraCapture.vue';
   import Tabs from '@/components/Tabs.vue';
@@ -313,24 +313,24 @@ export default defineComponent({
       isLoginPage,
     };
   },
-    methods: {
-      async takePhoto() {
-        console.log('Button clicked!');
-        try {
-          const image = await Camera.getPhoto({
-            quality: 90,
-            allowEditing: false,
-            resultType: CameraResultType.Uri,
-            source: CameraSource.Camera,
-          });
-
-          const imageUrl = image.webPath;
-          console.log('Image URL:', imageUrl);
-          // Do something with the image, e.g., display it or upload it
-        } catch (error) {
-          console.error('Error taking photo:', error);
-        }
-      },
-    },
+    // methods: {
+    //   async takePhoto() {
+    //     console.log('Button clicked!');
+    //     try {
+    //       const image = await Camera.getPhoto({
+    //         quality: 90,
+    //         allowEditing: false,
+    //         resultType: CameraResultType.Uri,
+    //         source: CameraSource.Camera,
+    //       });
+ 
+    //       const imageUrl = image.webPath;
+    //       console.log('Image URL:', imageUrl);
+    //       // Do something with the image, e.g., display it or upload it
+    //     } catch (error) {
+    //       console.error('Error taking photo:', error);
+    //     }
+    //   },
+    // },
   });
 </script>

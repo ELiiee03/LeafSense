@@ -20,6 +20,10 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import ('@/views/Logs.vue')
   },
   {
+    path: '/leafinfo',
+    component: () => import ('@/components/LeafInfo.vue')
+  },
+  {
     path: '',
     redirect: '/home' // Redirect to /home when no path is provided
   },
