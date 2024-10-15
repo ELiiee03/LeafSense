@@ -1,9 +1,4 @@
 <template>
-    <ion-header>
-        <ion-toolbar>
-          <ion-title>LeafSense.</ion-title>
-        </ion-toolbar>
-      </ion-header>
     <ion-page>
         <ion-content>
         <ion-grid>
@@ -146,7 +141,6 @@ ion-list {
     margin-top: 15%;
 }
 ion-col {
-    color: #fff;
     text-align: center;
 }
 ion-grid {

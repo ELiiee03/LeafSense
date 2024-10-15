@@ -235,15 +235,6 @@ ion-item.selected {
 
 <template>
   <ion-app>
-    <ion-menu v-if="!isLoginPage" side="end" content-id="main-content">
-      <!-- <ion-header>
-        <ion-toolbar>
-          <ion-title>LeafSense</ion-title>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content class="ion-padding">This is where the menu happens.</ion-content> -->
-
-    </ion-menu>
     <ion-page id="main-content">
       <!-- <ion-header>
         <ion-toolbar>
@@ -270,7 +261,7 @@ ion-item.selected {
   import { defineComponent, ref } from 'vue';
   // import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { useRoute } from 'vue-router';
-  import CameraComponent from './views/CameraCapture.vue';
+  // import CameraComponent from './views/CameraCapture.vue';
   import Tabs from '@/components/Tabs.vue';
   // import { playCircle, radio, library, search } from 'ionicons/icons';
   
@@ -293,7 +284,7 @@ export default defineComponent({
       IonTabButton,
       IonIcon,
       IonRouterOutlet,
-      CameraComponent
+      // CameraComponent
     },
     // data() {
     //   return {

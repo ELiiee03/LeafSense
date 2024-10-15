@@ -1,7 +1,7 @@
 <template>
-  <ion-header>
+  <ion-header class="ion-no-border">
     <ion-toolbar>
-      <ion-title>LeafSense.</ion-title>
+      <ion-title><b>LeafSense.</b></ion-title>
     </ion-toolbar>
   </ion-header>
   <ion-page>
@@ -32,6 +32,7 @@
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
+      <!-- Content display -->
       <ion-content class="ion-padding">
         <!-- Display the captured image -->
         <div v-if="imageSrc">
@@ -40,6 +41,14 @@
         <div v-else>
           <p>No image captured</p>
         </div>
+      <!-- Iterate over the posts and display them -->
+      <div v-if="posts.length" v-for="post in posts" :key="post.id">
+        <h2>{{ post.title }}</h2>
+        <p>{{ post.body }}</p>
+      </div>
+      <div v-else>
+        <p>No posts available</p>
+      </div>
       </ion-content>
     </ion-modal>
 
@@ -50,8 +59,9 @@
 
 <script setup lang="ts">
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
-  import { ref } from 'vue';
+  import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
+  import axios from 'axios';
 // import { add } from 'ionicons/icons';
 
 // Modal state
@@ -76,6 +86,29 @@
       // Open the modal to display the captured image
     setOpen(true);
 };
+// Http requests
+// Define the interface for a Post
+interface Post {
+  id: number;
+  title: string;
+  body: string;
+}
+
+// Create a reactive reference with the correct type
+const posts = ref<Post[]>([]); // Array of Post objects
+
+// const posts = ref([]);
+
+onMounted(() => {
+  axios.get('https://jsonplaceholder.typicode.com/posts/2')
+    .then(response => {
+      posts.value = [response.data]; // Store the response data in the reactive variable
+    })
+    .catch(error => {
+      console.error('Error fetching photos:', error);
+    });
+});
+
 </script>
 
 <style>
@@ -95,10 +128,9 @@
     margin-bottom: var(--ion-safe-area-bottom, 0);
   }
   ion-col {
-    color: #fff;
     text-align: center;
   }
   ion-grid {
-    margin-top: 95%;
+    margin-top: 75%;
   }
 </style>

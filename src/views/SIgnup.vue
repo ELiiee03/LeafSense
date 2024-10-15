@@ -90,9 +90,6 @@ h1 {
 ion-icon {
   color: green;
 }
-.custom-button {
-  color: green;
-}
 ion-col {
   color: #fff;
   text-align: center;
