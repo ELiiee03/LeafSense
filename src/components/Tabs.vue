@@ -3,22 +3,17 @@
       <ion-tabs>
         <ion-router-outlet></ion-router-outlet>
         <ion-tab-bar slot="bottom">
-          <ion-tab-button tab="home" href="/home">
+          <ion-tab-button tab="home" href="/home/camera">
             <ion-icon :icon="playCircle" />
             <ion-label>Home</ion-label>
           </ion-tab-button>
   
-          <!-- <ion-tab-button tab="login" href="/login">
-            <ion-icon :icon="radio" />
-            <ion-label>Radio</ion-label>
-          </ion-tab-button> -->
-  
-          <ion-tab-button tab="logs" href="/logs">
+          <ion-tab-button tab="logs" href="/home/logs">
             <ion-icon :icon="library" />
             <ion-label>Logs</ion-label>
           </ion-tab-button>
   
-          <ion-tab-button tab="search" href="/signup">
+          <ion-tab-button tab="signup" href="/home/signup">
             <ion-icon :icon="search" />
             <ion-label>Geolocation</ion-label>
           </ion-tab-button>
@@ -44,3 +39,5 @@
       },
     };
   </script>
+
+  

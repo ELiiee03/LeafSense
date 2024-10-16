@@ -1,0 +1,15 @@
+{
+    "maple": {
+      "common_name": "Maple",
+      "scientific_name": "Acer",
+      "description": "A species of trees or shrubs.",
+      "habitat": "Widely distributed in temperate zones."
+    },
+    "oak": {
+      "common_name": "Oak",
+      "scientific_name": "Quercus",
+      "description": "A large tree species.",
+      "habitat": "Found in temperate regions worldwide."
+    }
+  }
+  
