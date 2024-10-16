@@ -42,9 +42,9 @@
           <p>No image captured</p>
         </div>
       <!-- Iterate over the posts and display them -->
-      <div v-if="posts.length" v-for="post in posts" :key="post.id">
-        <h2>{{ post.title }}</h2>
-        <p>{{ post.body }}</p>
+      <div v-if="leaf">
+        <h2>{{ leaf.name }}</h2>
+        <p>{{ leaf.description }}</p>
       </div>
       <div v-else>
         <p>No posts available</p>
@@ -62,6 +62,7 @@
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
   import axios from 'axios';
+  
 // import { add } from 'ionicons/icons';
 
 // Modal state
@@ -88,21 +89,22 @@
 };
 // Http requests
 // Define the interface for a Post
-interface Post {
+interface Leaf {
   id: number;
-  title: string;
-  body: string;
+  name: string;
+  description: string;
 }
 
 // Create a reactive reference with the correct type
-const posts = ref<Post[]>([]); // Array of Post objects
+const leaf = ref<Leaf | null>(null); // Single Post object
 
+const leafId = 1;
 // const posts = ref([]);
 
 onMounted(() => {
-  axios.get('https://jsonplaceholder.typicode.com/posts/2')
+  axios.get('')
     .then(response => {
-      posts.value = [response.data]; // Store the response data in the reactive variable
+      leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
     })
     .catch(error => {
       console.error('Error fetching photos:', error);
