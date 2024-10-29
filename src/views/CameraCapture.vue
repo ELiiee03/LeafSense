@@ -24,9 +24,9 @@
 
     <!-- Model to display the image -->
     <ion-modal :is-open="isOpen">
-      <ion-header>
+      <ion-header class="ion-no-border">
         <ion-toolbar>
-          <ion-title>Photo Preview</ion-title>
+          <ion-title><b>LeafSense.</b></ion-title>
           <ion-buttons slot="end">
             <ion-button @click="setOpen(false)">Close</ion-button>
           </ion-buttons>
@@ -43,11 +43,14 @@
         </div>
       <!-- Iterate over the posts and display them -->
       <div v-if="leaf">
-        <h2>{{ leaf.name }}</h2>
-        <p>{{ leaf.description }}</p>
+        <h2><b>{{ leaf.name }}</b></h2>
+        <p><b>Scientific Name: </b> {{ leaf.scientificName }}</p>
+        <p><b>Description: </b> {{ leaf.description }}</p>
+        <p><b>Uses: </b> {{ leaf.uses }}</p>
+        <p><b>Habitat: </b> {{ leaf.habitat }}</p>
       </div>
       <div v-else>
-        <p>No posts available</p>
+        <p>Loading data...</p>
       </div>
       </ion-content>
     </ion-modal>
@@ -92,23 +95,28 @@
 interface Leaf {
   id: number;
   name: string;
+  scientificName: string;
   description: string;
+  uses: string;
+  habitat: string;
 }
 
 // Create a reactive reference with the correct type
 const leaf = ref<Leaf | null>(null); // Single Post object
 
-const leafId = 1;
+const leafId = 3;
 // const posts = ref([]);
 
 onMounted(() => {
-  axios.get('')
+  setTimeout(() => {
+  axios.get('/data.json')
     .then(response => {
       leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
     })
     .catch(error => {
       console.error('Error fetching photos:', error);
     });
+  }, 3000);
 });
 
 </script>
