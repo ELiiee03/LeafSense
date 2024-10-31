@@ -1,11 +1,11 @@
 <template>
-    <ion-header>
+    <!-- <ion-header>
       <ion-toolbar>
         <ion-title>Inline Modal</ion-title>
       </ion-toolbar>
-    </ion-header>
+    </ion-header> -->
     <ion-content class="ion-padding">
-      <ion-button expand="block" @click="setOpen(true)">Open</ion-button>
+      <!-- <ion-button expand="block" @click="setOpen(true)">Open</ion-button> -->
   
       <ion-modal :is-open="isOpen">
         <ion-header>

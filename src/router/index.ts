@@ -9,6 +9,10 @@ import Tabs from '../components/Tabs.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
+    path: '/preview',
+    component: () => import ('@/views/Preview.vue')
+  },
+  {
     path: '/login',
     component: () => import ('@/views/Login.vue')
   },
@@ -22,7 +26,7 @@ const routes: Array<RouteRecordRaw> = [
   // },
   {
     path: '/leafinfo',
-    component: () => import ('@/components/LeafInfo.vue')
+    component: () => import ('@/components/LeafInfoModal.vue')
   },
   {
     path: '/',

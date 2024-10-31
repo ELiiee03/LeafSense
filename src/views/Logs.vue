@@ -17,7 +17,7 @@
                   </ion-item-options>
             
                   <ion-item button @click="setOpen(true)">
-                    <ion-label>Sliding Item with Icons Only</ion-label>
+                    <ion-label>Pine Needles</ion-label>
                   </ion-item>
             
                   <ion-item-options side="end">
@@ -68,7 +68,7 @@
                     </ion-item-options>
                     
                     <ion-item>
-                      <ion-label>Sliding Item with Icons Only</ion-label>
+                      <ion-label>Maple Laaves</ion-label>
                     </ion-item>
               
                     <ion-item-options side="end">
@@ -98,7 +98,7 @@
                     </ion-item-options>
               
                     <ion-item>
-                      <ion-label>Sliding Item with Icons Only</ion-label>
+                      <ion-label>Oak Tree</ion-label>
                     </ion-item>
               
                     <ion-item-options side="end">
@@ -129,6 +129,7 @@
     import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList } from '@ionic/vue';
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
+    import LeafInfoModal from '@/components/LeafInfoModal.vue';
   
 
       const isOpen = ref(false);
