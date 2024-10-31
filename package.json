@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vue-tsc && vite build",
     "preview": "vite preview",
+    "ionic:build": "npm run build",
+    "ionic:serve": "vite dev --host",
     "test:e2e": "cypress run",
     "test:unit": "vitest",
     "lint": "eslint ."
@@ -14,13 +16,17 @@
   "dependencies": {
     "@capacitor/android": "6.1.1",
     "@capacitor/app": "6.0.0",
-    "@capacitor/camera": "^6.0.1",
+    "@capacitor/camera": "^6.0.2",
     "@capacitor/core": "6.1.1",
     "@capacitor/haptics": "6.0.0",
     "@capacitor/keyboard": "6.0.1",
     "@capacitor/status-bar": "6.0.0",
+    "@ionic/pwa-elements": "^3.3.0",
     "@ionic/vue": "^8.0.0",
     "@ionic/vue-router": "^8.0.0",
+    "@supabase/supabase-js": "^2.46.1",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5",
     "ionicons": "^7.0.0",
     "vue": "^3.3.0",
     "vue-router": "^4.2.0"

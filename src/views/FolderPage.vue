@@ -1,3 +1,5 @@
+<!-- kato ning first page nga makita nato once iparun ang app -->
+
 <template>
   <ion-page>
     <ion-header :translucent="true">
