@@ -26,7 +26,7 @@ const routes: Array<RouteRecordRaw> = [
   // },
   {
     path: '/leafinfo',
-    component: () => import ('@/components/LeafInfo.vue')
+    component: () => import ('@/components/LeafInfoModal.vue')
   },
   {
     path: '/',

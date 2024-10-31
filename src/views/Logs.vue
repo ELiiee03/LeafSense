@@ -129,6 +129,7 @@
     import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList } from '@ionic/vue';
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
+    import LeafInfoModal from '@/components/LeafInfoModal.vue';
   
 
       const isOpen = ref(false);
