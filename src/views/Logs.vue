@@ -30,25 +30,8 @@
                   </ion-item-options>
                 </ion-item-sliding>
             
-                <!-- Modal -->
-                <ion-modal :is-open="isOpen">
-                  <ion-header>
-                    <ion-toolbar>
-                      <ion-title>Modal</ion-title>
-                      <ion-buttons slot="end">
-                        <ion-button @click="setOpen(false)">Close</ion-button>
-                      </ion-buttons>
-                    </ion-toolbar>
-                  </ion-header>
-                  <ion-content class="ion-padding">
-                    <p>
-                      Lorem ipsum dolor sit amet consectetur adipisicing elit. Magni illum quidem recusandae ducimus quos
-                      reprehenderit. Veniam, molestias quos, dolorum consequuntur nisi deserunt omnis id illo sit cum qui. Eaque,
-                      dicta.
-                    </p>
-                  </ion-content>
-                </ion-modal>
-                <!-- End of Modal -->
+                <!-- Use LeafInfoModal as a reusable component -->
+              <LeafInfoModal :isOpen="isOpen" :onClose="() => setOpen(false)" />
 
                 <ion-item-sliding>
                   <ion-item-options side="start">
@@ -59,6 +42,7 @@
                   </ion-item-options>
                 </ion-item-sliding>
                 <br>
+
                 <!-- New Slide -->
                 <ion-item-sliding>
                     <ion-item-options side="start">
@@ -67,7 +51,7 @@
                       </ion-item-option>
                     </ion-item-options>
                     
-                    <ion-item>
+                    <ion-item button @click="setOpen(true)">
                       <ion-label>Maple Laaves</ion-label>
                     </ion-item>
               
@@ -79,8 +63,12 @@
                         <ion-icon slot="icon-only" :icon="trash"></ion-icon>
                       </ion-item-option>
                     </ion-item-options>
-                </ion-item-sliding>
-                <br>
+                   </ion-item-sliding>
+
+                <!-- Use LeafInfoModal as a reusable component -->
+              <LeafInfoModal :isOpen="isOpen" :onClose="() => setOpen(false)" />
+
+                  <br>
                   <ion-item-sliding>
                     <ion-item-options side="start">
                       <ion-item-option color="success">
@@ -97,7 +85,7 @@
                       </ion-item-option>
                     </ion-item-options>
               
-                    <ion-item>
+                    <ion-item button @click="setOpen(true)">
                       <ion-label>Oak Tree</ion-label>
                     </ion-item>
               
@@ -110,7 +98,8 @@
                       </ion-item-option>
                     </ion-item-options>
                   </ion-item-sliding>
-              
+              <!-- Use LeafInfoModal as a reusable component -->
+              <LeafInfoModal :isOpen="isOpen" :onClose="() => setOpen(false)" />
                   <ion-item-sliding>
                     <ion-item-options side="start">
                       <ion-item-option color="success">
@@ -130,11 +119,18 @@
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
     import LeafInfoModal from '@/components/LeafInfoModal.vue';
-  
+    import CameraCapture from './CameraCapture.vue';
+      
 
-      const isOpen = ref(false);
+  const isOpen = ref(false);
+  const capturedImage = ref('');
   
-      const setOpen = (open: boolean) => (isOpen.value = open);
+  const setOpen = (open: boolean) => (isOpen.value = open);
+
+  // Function to set captured image
+  const setCapturedImage = (image: string) => {
+    capturedImage.value = image;
+  }
   </script>
 
 <style scoped>
