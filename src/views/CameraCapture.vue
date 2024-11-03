@@ -32,6 +32,7 @@
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
+
       <!-- Content display -->
       <ion-content class="ion-padding">
         <!-- Display the captured image -->
@@ -64,6 +65,7 @@
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
+  // import { defineEmits } from 'vue';
   import axios from 'axios';
   
 // import { add } from 'ionicons/icons';
@@ -71,6 +73,8 @@
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
+  // const emit = defineEmits(['captureImage']);
+
 
   // Function to open or close the modal
   const setOpen = (open: boolean) => {
@@ -86,9 +90,11 @@
     });
 
     imageSrc.value = image.webPath || '';
+    // Emit the captured image to the parent component
 
       // Open the modal to display the captured image
     setOpen(true);
+
 };
 // Http requests
 // Define the interface for a Post
