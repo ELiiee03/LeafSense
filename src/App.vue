@@ -11,9 +11,9 @@
       </ion-header> -->
       <ion-content class="ion-padding">
         <!-- <h1>LeafSense.</h1> -->
-       
+        <ion-router-outlet></ion-router-outlet>
       </ion-content>
-      <ion-router-outlet></ion-router-outlet>
+      <!-- <ion-router-outlet></ion-router-outlet> -->
     </ion-page>
   </ion-app>
 </template>
@@ -24,11 +24,8 @@
 <script lang="ts">
   import { IonApp, IonButtons, IonContent, IonHeader, IonIcon, IonLabel, IonMenu, IonMenuButton, IonPage, IonRouterOutlet, IonTabBar, IonTabButton, IonTabs, IonTitle, IonToolbar, IonFab } from '@ionic/vue';
   import { defineComponent, ref } from 'vue';
-  // import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { useRoute } from 'vue-router';
-  // import CameraComponent from './views/CameraCapture.vue';
-  import Tabs from '@/components/Tabs.vue';
-  // import { playCircle, radio, library, search } from 'ionicons/icons';
+  // import Tabs from './components/Tabs.vue';
   
 
 export default defineComponent({
@@ -59,16 +56,7 @@ export default defineComponent({
     //     search,
     //   };
   // },
-  setup() {
-    const route = useRoute();
 
-    // Check if the current page is the login page
-    const isLoginPage = route.name === 'login';  // Adjust the route name to match your login route
-
-    return {
-      isLoginPage,
-    };
-  },
     // methods: {
     //   async takePhoto() {
     //     console.log('Button clicked!');

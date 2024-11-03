@@ -17,7 +17,7 @@
           <ion-grid>
             <ion-row>
               <ion-col></ion-col>
-              <ion-col size="10">Already have an account? <b>Sign Up</b></ion-col>
+              <ion-col size="5">Already have an account? <b>Sign Up</b></ion-col>
               <ion-col></ion-col>
             </ion-row>
           </ion-grid>
@@ -89,10 +89,6 @@ h1 {
 }
 ion-icon {
   color: green;
-}
-ion-col {
-  color: #fff;
-  text-align: center;
 }
 ion-grid {
   margin-top: 50px;

@@ -101,7 +101,6 @@ ion-icon {
 }
 
 ion-col {
-  color: #fff;
   text-align: center;
 }
 ion-grid {

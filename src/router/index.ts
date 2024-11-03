@@ -3,9 +3,7 @@
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
 import Tabs from '../components/Tabs.vue';
-// import Camera from '@/views/CameraCapture.vue'
-// import Login from '../views/Login.vue';
-// import Signup from '../views/SIgnup.vue';
+
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -42,10 +40,10 @@ const routes: Array<RouteRecordRaw> = [
     children: [
       {
         path: '',
-        redirect: '/home/camera', // Default tab for the home route (can be adjusted)
+        redirect: '/home/home', // Default tab for the home route (can be adjusted)
       },
       {
-        path: 'camera',
+        path: 'home',
         component: () => import('@/views/CameraCapture.vue'), // Camera tab
       },
       {
@@ -63,6 +61,7 @@ const routes: Array<RouteRecordRaw> = [
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  // history: createWebHistory(process.env.BASE_URL),
   routes
 })
 

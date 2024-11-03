@@ -3,7 +3,7 @@
       <ion-tabs>
         <ion-router-outlet></ion-router-outlet>
         <ion-tab-bar slot="bottom">
-          <ion-tab-button tab="home" href="/home/camera">
+          <ion-tab-button tab="home" href="/home/home">
             <ion-icon :icon="playCircle" />
             <ion-label>Home</ion-label>
           </ion-tab-button>
@@ -19,6 +19,7 @@
           </ion-tab-button>
         </ion-tab-bar>
       </ion-tabs>
+      
     </ion-page>
   </template>
   
@@ -32,7 +33,6 @@
       data() {
         return {
           playCircle,
-          radio,
           library,
           search,
         };
