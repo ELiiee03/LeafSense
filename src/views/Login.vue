@@ -1,24 +1,3 @@
-<!-- <template>
-  <ion-page>
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Login</ion-title>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content>
-      <ion-item>
-        <ion-label position="floating">Email</ion-label>
-        <ion-input v-model="email" type="email" placeholder="Email" fill="outline"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Password</ion-label>
-        <ion-input v-model="password" type="password" placeholder="Password" fill="outline"></ion-input>
-      </ion-item>
-      <ion-button expand="full" @click="login">Login</ion-button>
-    </ion-content>
-  </ion-page>
-</template> -->
-
 <template>
   <ion-page>
     <!-- <ion-header>
@@ -120,9 +99,7 @@ h1 {
 ion-icon {
   color: green;
 }
-.custom-button {
-  color: green;
-}
+
 ion-col {
   color: #fff;
   text-align: center;
