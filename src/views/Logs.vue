@@ -1,10 +1,11 @@
 <template>
     <ion-page>
+      <GlobalHeader />
         <ion-content>
         <ion-grid>
             <ion-row>
                 <ion-col></ion-col>
-                <ion-col size="8">Recent Identifications</ion-col>
+                <ion-col size="auto">Recent Identifications</ion-col>
                 <ion-col>
 
                 </ion-col>
@@ -21,7 +22,8 @@
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
     import LogsComponent from '@/components/LogsComponent.vue';
-    // import LeafInfoModal from '@/components/LeafInfoModal.vue';
+    import GlobalHeader from '@/components/GlobalHeader.vue';
+  // import LeafInfoModal from '@/components/LeafInfoModal.vue';
   
 
       const isOpen = ref(false);
@@ -37,6 +39,6 @@ ion-col {
   text-align: center;
 }
 ion-grid {
-  margin-top: 25%;
+  margin-top: 5%;
 }
 </style>

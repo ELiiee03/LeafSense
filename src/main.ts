@@ -7,10 +7,11 @@ if (typeof window !== 'undefined') {
   defineCustomElements(window);
 }
 import { createApp } from 'vue'
-import App from './App.vue'
+import { IonicVue } from '@ionic/vue';
+
+import App from './App.vue';
 import router from './router';
 
-import { IonicVue } from '@ionic/vue';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css';

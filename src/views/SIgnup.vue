@@ -1,8 +1,9 @@
 <template>
     <ion-page>
-        <ion-content class="ion-padding">
-          <h4><b>LeafSense.</b></h4>
-          <div class="login-container">
+      <GlobalHeader />
+        <ion-content class="ion-padding" fullscreen>
+          <!-- <h4><b>LeafSense.</b></h4> -->
+          <div class="signup-container">
             <h1><b>Sign Up</b></h1>
             <br>
             <ion-input label="Email" label-placement="floating" fill="outline" placeholder="email@example.com"></ion-input>
@@ -17,7 +18,7 @@
           <ion-grid>
             <ion-row>
               <ion-col></ion-col>
-              <ion-col size="5">Already have an account? <b>Sign Up</b></ion-col>
+              <ion-col size="auto">Already have an account? <b>Sign Up</b></ion-col>
               <ion-col></ion-col>
             </ion-row>
           </ion-grid>
@@ -31,6 +32,7 @@
 import { defineComponent, ref } from 'vue';
 import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
 import { logoIonic } from 'ionicons/icons';
+import GlobalHeader from '@/components/GlobalHeader.vue';
 // import { supabase } from '@/supabase';
 import { useRouter } from 'vue-router';
 
@@ -45,7 +47,8 @@ export default defineComponent({
     IonPage,
     IonTitle,
     IonToolbar,
-    IonIcon
+    IonIcon,
+    GlobalHeader
   },
   // setup() {
   //   const email = ref('');
@@ -74,23 +77,35 @@ export default defineComponent({
 
 <style scoped>
 /* Center the form */
-.login-container {
-  margin-top: 120px;
+.signup-container {
+  margin-top: 20px;
+  border: solid red;
 }
 
 ion-input {
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   width: 100%;
 }
 
 h1 {
-  margin-bottom: 80px;
+  margin-bottom: 40px;
   text-align: center;
+  
 }
 ion-icon {
   color: green;
 }
 ion-grid {
-  margin-top: 50px;
+  margin-top: 10px;
+  border: solid red;
+}
+ion-page {
+  height: 100%;
+}
+
+ion-content {
+  height: 100%;
+  overflow: hidden;
+  border: solid red;
 }
 </style>

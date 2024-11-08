@@ -5,8 +5,8 @@
         <ion-title></ion-title>
         </ion-toolbar>
       </ion-header> -->
-      <ion-content class="ion-padding">
-        <h4><b>LeafSense.</b></h4>
+      <ion-content class="ion-padding" fullscreen>
+        <!-- <h4><b>LeafSense.</b></h4> -->
         <div class="login-container">
           <h1><b>Log In</b></h1>
           <br>
@@ -16,7 +16,6 @@
           </ion-input>
           <br>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
-          <br>
           <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
             <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
           </ion-button>
@@ -24,7 +23,7 @@
         <ion-grid>
           <ion-row>
             <ion-col></ion-col>
-            <ion-col size="10">Don't have an account? <b>Sign Up</b></ion-col>
+            <ion-col size="auto">Don't have an account? <b>Sign Up</b></ion-col>
             <ion-col></ion-col>
           </ion-row>
         </ion-grid>
@@ -84,16 +83,16 @@ export default defineComponent({
 <style scoped>
 /* Center the form */
 .login-container {
-  margin-top: 120px;
+  margin-top: 115px;
 }
 
 ion-input {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   width: 100%;
 }
 
 h1 {
-  margin-bottom: 80px;
+  margin-bottom: 60px;
   text-align: center;
 }
 ion-icon {
@@ -104,6 +103,15 @@ ion-col {
   text-align: center;
 }
 ion-grid {
-  margin-top: 50px;
+  margin-top: 40px;
+}
+/* Ensure the content takes full height */
+.ion-page {
+  height: 100%;
+}
+
+.ion-content {
+  height: 100%;
+  overflow: hidden;
 }
 </style>

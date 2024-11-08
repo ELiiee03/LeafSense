@@ -26,8 +26,10 @@
     "@ionic/vue-router": "^8.0.0",
     "@supabase/supabase-js": "^2.46.1",
     "axios": "^1.7.7",
+    "dexie": "^4.0.9",
     "dotenv": "^16.4.5",
     "ionicons": "^7.0.0",
+    "sqlite3": "^5.1.7",
     "vue": "^3.0.6",
     "vue-router": "^4.4.5"
   },

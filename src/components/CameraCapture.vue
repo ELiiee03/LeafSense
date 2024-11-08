@@ -1,12 +1,8 @@
 <template>
-  <ion-header class="ion-no-border">
-    <ion-toolbar>
-      <ion-title><b>LeafSense.</b></ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <GlobalHeader />
   <ion-page>
   <ion-content class="ion-padding">
-    <h4><b>LeafSense.</b></h4>
+    <!-- <h4><b>LeafSense.</b></h4> -->
     <ion-grid>
       <ion-row>
         <ion-col></ion-col>
@@ -18,7 +14,8 @@
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
-        <ion-icon src="/resources/camera-outline.svg" name="camera-outline"></ion-icon>
+        <ion-icon size="large" :icon="aperture" />
+        <!-- <ion-icon src="/resources/camera-outline.svg" name="camera-outline"></ion-icon> -->
       </ion-fab-button>
     </ion-fab>
 
@@ -62,10 +59,12 @@
 
 
 <script setup lang="ts">
-  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
+  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
-  // import { defineEmits } from 'vue';
+  import { aperture } from 'ionicons/icons';
+  import GlobalHeader from '@/components/GlobalHeader.vue';
+// import { defineEmits } from 'vue';
   import axios from 'axios';
   
 // import { add } from 'ionicons/icons';
@@ -148,5 +147,8 @@ onMounted(() => {
   }
   ion-grid {
     margin-top: 75%;
+  }
+  ion-fab-button {
+    --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
 </style>
