@@ -20,7 +20,7 @@
 
         <ion-tab-button tab="search" href="/geo">
           <ion-icon :icon="location" />
-          <ion-label>Geolocation</ion-label>
+          <ion-label>Analytics</ion-label>
         </ion-tab-button>
       </ion-tab-bar>
     </ion-tabs>
