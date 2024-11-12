@@ -1,12 +1,8 @@
 <template>
-  <ion-header class="ion-no-border">
-    <ion-toolbar>
-      <ion-title><b>LeafSense.</b></ion-title>
-    </ion-toolbar>
-  </ion-header>
+  <!-- <GlobalHeader /> -->
   <ion-page>
   <ion-content class="ion-padding">
-    <h4><b>LeafSense.</b></h4>
+    <!-- <h4><b>LeafSense.</b></h4> -->
     <ion-grid>
       <ion-row>
         <ion-col></ion-col>
@@ -65,7 +61,8 @@
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
-  // import { defineEmits } from 'vue';
+  // import GlobalHeader from '@/components/GlobalHeader.vue';
+// import { defineEmits } from 'vue';
   import axios from 'axios';
   
 // import { add } from 'ionicons/icons';

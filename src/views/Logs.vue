@@ -1,5 +1,6 @@
 <template>
     <ion-page>
+      <GlobalHeader />
         <ion-content>
         <ion-grid>
             <ion-row>
@@ -119,7 +120,7 @@
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
     import LeafInfoModal from '@/components/LeafInfoModal.vue';
-    import CameraCapture from './CameraCapture.vue';
+    import GlobalHeader from '@/components/GlobalHeader.vue';
       
 
   const isOpen = ref(false);
@@ -141,6 +142,6 @@ ion-col {
     text-align: center;
 }
 ion-grid {
-    margin-top: 25%;
+    margin-top: 9%;
   }
 </style>
