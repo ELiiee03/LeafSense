@@ -11,7 +11,9 @@
               <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
             </ion-input>
             <br>
-            <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Sign In</b></ion-button>
+            <ion-button shape="round" expand="full" class="ion-margin-top custom-button">
+              <a href="#" class="no-blue"><b>Sign In</b></a>
+            </ion-button>
             <br>
           </div>
           <ion-grid>
@@ -79,7 +81,7 @@ export default defineComponent({
 }
 
 ion-input {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   width: 100%;
 }
 
@@ -91,10 +93,13 @@ ion-icon {
   color: green;
 }
 ion-col {
-  color: #fff;
   text-align: center;
 }
 ion-grid {
-  margin-top: 50px;
+  margin-top: 15px;
+}
+.no-blue {
+  color: inherit; /* Inherit the color from the parent element */
+  text-decoration: none; /* Remove underline */
 }
 </style>

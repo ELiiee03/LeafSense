@@ -24,7 +24,8 @@
         <ion-toolbar>
           <ion-title><b>LeafSense.</b></ion-title>
           <ion-buttons slot="end">
-            <ion-button @click="setOpen(false)">Close</ion-button>
+            <ion-button @click="setOpen(false)"><ion-icon size="large" :icon="closeOutline" slot="start"></ion-icon>
+            </ion-button>
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
@@ -61,6 +62,7 @@
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
+  import { closeOutline } from 'ionicons/icons';
   // import GlobalHeader from '@/components/GlobalHeader.vue';
 // import { defineEmits } from 'vue';
   import axios from 'axios';

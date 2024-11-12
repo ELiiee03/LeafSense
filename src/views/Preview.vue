@@ -20,7 +20,7 @@
     
                 </ion-col>
                   <ion-col size="auto" class="button">
-                    <ion-button class="custom-button">Sign In</ion-button>
+                    <ion-button class="custom-button" href="/login">Sign In</ion-button>
                     <!-- <p>Don't have an acount? Sign Up</p> -->
                   </ion-col>
                   <ion-col>

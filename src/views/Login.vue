@@ -36,16 +36,15 @@
             <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
           </ion-input>
           <br>
-          <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
-          <br>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><a href="#" class="no-blue"><b>Log In</b></a></ion-button>
           <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
-            <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
+            <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon><b>Login with Google</b>
           </ion-button>
         </div>
         <ion-grid>
           <ion-row>
             <ion-col></ion-col>
-            <ion-col size="10">Don't have an account? <b>Sign Up</b></ion-col>
+            <ion-col size="10">Don't have an account?<a href="/signup"><b>Sign Up</b></a></ion-col>
             <ion-col></ion-col>
           </ion-row>
         </ion-grid>
@@ -105,7 +104,7 @@ export default defineComponent({
 <style scoped>
 /* Center the form */
 .login-container {
-  margin-top: 120px;
+  margin-top: 75px;
 }
 
 ion-input {
@@ -120,14 +119,11 @@ h1 {
 ion-icon {
   color: green;
 }
-.custom-button {
-  color: green;
-}
-ion-col {
-  color: #fff;
-  text-align: center;
-}
 ion-grid {
   margin-top: 50px;
+}
+.no-blue {
+  color: inherit; /* Inherit the color from the parent element */
+  text-decoration: none; /* Remove underline */
 }
 </style>

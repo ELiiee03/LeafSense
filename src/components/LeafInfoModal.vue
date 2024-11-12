@@ -12,7 +12,9 @@
         <ion-toolbar>
           <ion-title><b>LeafSense.</b></ion-title>
           <ion-buttons slot="end">
-            <ion-button @click="onClose">Close</ion-button>
+            <ion-button @click="onClose">
+              <ion-icon size="large" :icon="closeOutline" slot="start"></ion-icon>
+            </ion-button>
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
@@ -40,10 +42,11 @@
 </template>
 
 <script lang="ts" setup>
-  import { IonButtons, IonButton, IonModal, IonHeader, IonToolbar, IonContent, IonTitle } from '@ionic/vue';
+  import { IonIcon, IonButtons, IonButton, IonModal, IonHeader, IonToolbar, IonContent, IonTitle } from '@ionic/vue';
   import { watch, ref } from 'vue';
   import { defineProps } from 'vue';
-import axios from 'axios';
+  import axios from 'axios';
+  import { closeOutline } from 'ionicons/icons';
   
 // Define props
 const props = defineProps<{
