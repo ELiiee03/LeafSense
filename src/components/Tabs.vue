@@ -4,7 +4,7 @@
       <ion-router-outlet></ion-router-outlet>
       <ion-tab-bar slot="bottom">
         <ion-tab-button tab="home" href="/home">
-          <ion-icon :icon="home" />
+          <ion-icon size="large" :icon="home" />
           <ion-label>Home</ion-label>
         </ion-tab-button>
 
@@ -14,12 +14,12 @@
         </ion-tab-button> -->
 
         <ion-tab-button tab="library" href="/logs">
-          <ion-icon :icon="albums" />
+          <ion-icon size="large" :icon="albums" />
           <ion-label>Logs</ion-label>
         </ion-tab-button>
 
         <ion-tab-button tab="search" href="/geo">
-          <ion-icon :icon="location" />
+          <ion-icon size="large" :icon="location" />
           <ion-label>Analytics</ion-label>
         </ion-tab-button>
       </ion-tab-bar>

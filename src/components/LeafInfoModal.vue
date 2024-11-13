@@ -36,6 +36,8 @@
     <div v-else>
       <p>Loading data...</p>
     </div>
+
+    <Geotagging />
       </ion-content>
     </ion-modal>
   </ion-content>
@@ -47,6 +49,7 @@
   import { defineProps } from 'vue';
   import axios from 'axios';
   import { closeOutline } from 'ionicons/icons';
+import Geotagging from './Geotagging.vue';
   
 // Define props
 const props = defineProps<{

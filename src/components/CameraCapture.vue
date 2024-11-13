@@ -14,7 +14,7 @@
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
-        <ion-icon src="/resources/camera-outline.svg" name="camera-outline"></ion-icon>
+        <ion-icon size="large" :icon="cameraReverse"></ion-icon>
       </ion-fab-button>
     </ion-fab>
 
@@ -33,8 +33,12 @@
       <!-- Content display -->
       <ion-content class="ion-padding">
         <!-- Display the captured image -->
+        <!-- <div v-if="imageSrc">
+          <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
+        </div> -->
         <div v-if="imageSrc">
           <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
+          
         </div>
         <div v-else>
           <p>No image captured</p>
@@ -50,6 +54,8 @@
       <div v-else>
         <p>Loading data...</p>
       </div>
+
+      <Geotagging />
       </ion-content>
     </ion-modal>
 
@@ -62,17 +68,17 @@
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
-  import { closeOutline } from 'ionicons/icons';
-  // import GlobalHeader from '@/components/GlobalHeader.vue';
+  import { closeOutline, cameraReverse } from 'ionicons/icons';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
+import Geotagging from '@/components/Geotagging.vue';
   
 // import { add } from 'ionicons/icons';
 
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
-  // const emit = defineEmits(['captureImage']);
+  // const location = ref<{ latitude: number; longitude: number } | null>(null);
 
 
   // Function to open or close the modal
@@ -89,14 +95,11 @@
     });
 
     imageSrc.value = image.webPath || '';
-    // Emit the captured image to the parent component
 
-      // Open the modal to display the captured image
     setOpen(true);
 
 };
 // Http requests
-// Define the interface for a Post
 interface Leaf {
   id: number;
   name: string;
