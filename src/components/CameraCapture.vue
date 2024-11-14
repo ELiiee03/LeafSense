@@ -54,8 +54,8 @@
       <div v-else>
         <p>Loading data...</p>
       </div>
-
-      <Geotagging />
+          <!-- Geotagging slot -->
+      <Geotagging :identifiedLeaf="leaf" />
       </ion-content>
     </ion-modal>
 
