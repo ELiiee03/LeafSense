@@ -36,7 +36,7 @@
             <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
           </ion-input>
           <br>
-          <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><a href="#" class="no-blue"><b>Log In</b></a></ion-button>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><a href="/home" class="no-blue"><b>Log In</b></a></ion-button>
           <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
             <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon><b>Login with Google</b>
           </ion-button>
@@ -44,7 +44,7 @@
         <ion-grid>
           <ion-row>
             <ion-col></ion-col>
-            <ion-col size="10">Don't have an account?<a href="/signup"><b>Sign Up</b></a></ion-col>
+            <ion-col size="9">Don't have an account?<a href="/signup"><b>Sign Up</b></a></ion-col>
             <ion-col></ion-col>
           </ion-row>
         </ion-grid>

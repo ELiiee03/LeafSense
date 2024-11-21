@@ -12,7 +12,7 @@
             </ion-input>
             <br>
             <ion-button shape="round" expand="full" class="ion-margin-top custom-button">
-              <a href="#" class="no-blue"><b>Sign In</b></a>
+              <a href="/home" class="no-blue"><b>Sign In</b></a>
             </ion-button>
             <br>
           </div>

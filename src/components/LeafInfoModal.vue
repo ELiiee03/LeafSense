@@ -37,7 +37,7 @@
       <p>Loading data...</p>
     </div>
 
-    <Geotagging />
+    <!-- <Geotagging /> -->
       </ion-content>
     </ion-modal>
   </ion-content>

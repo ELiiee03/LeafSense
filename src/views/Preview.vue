@@ -28,7 +28,7 @@
                   </ion-col>
                 </ion-row>
               </ion-grid>
-              <p class="signuptext">Don't have an account?<a href="#">Sign Up</a></p>
+              <p class="signuptext">Don't have an account?<a href="/signup">Sign Up</a></p>
           </ion-grid>
 
     </ion-content>
@@ -54,21 +54,15 @@
   .center-content h1, p {
     text-align: center;
     margin: auto;
-    border: 3px solid red;
     display: flex;
     align-items: center;
     justify-content: center;
   }
   .center-content {
-    border: 3px solid red;
     margin-top: 65%;
-  }
-  .ion-padding {
-    border: 3px solid red;
   }
   .center-content1 {
     margin-top: 55%;
-    border: 3px solid red;
   }
   .custom-button {
     width: 250px; /* Set the width to your preference */

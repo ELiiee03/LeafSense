@@ -28,8 +28,8 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/Logs.vue'),
       },
       {
-        path: 'geo',
-        component: () => import('../views/SIgnup.vue'),
+        path: 'pins',
+        component: () => import('../views/PInViews.vue')
       },
     ],
   },
@@ -44,6 +44,10 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/login',
     component: () => import('../views/Login.vue'),
+  },
+  {
+    path: '/pinviews',
+    component: () => import('../views/PInViews.vue'),
   },
 ];
 

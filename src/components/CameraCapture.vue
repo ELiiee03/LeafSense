@@ -12,13 +12,15 @@
     </ion-grid>
 
     <!-- Camera button -->
-    <ion-fab slot="fixed" vertical="bottom" horizontal="center">
-      <ion-fab-button @click="takePhoto">
+    <ion-fab slot="fixed" vertical="bottom" horizontal="center" >
+      <ion-fab-button @click="takePhoto" >
+        <!-- <ion-loading trigger="open-loading" message="Loading..." duration="3000" spinner="circles"></ion-loading> -->
         <ion-icon size="large" :icon="cameraReverse"></ion-icon>
       </ion-fab-button>
     </ion-fab>
 
     <!-- Model to display the image -->
+    
     <ion-modal :is-open="isOpen">
       <ion-header class="ion-no-border">
         <ion-toolbar>
@@ -32,6 +34,8 @@
 
       <!-- Content display -->
       <ion-content class="ion-padding">
+        
+        <!-- <ion-loading trigger="open-loading" message="Loading..." duration="3000" spinner="circles"></ion-loading> -->
         <!-- Display the captured image -->
         <!-- <div v-if="imageSrc">
           <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
@@ -55,7 +59,10 @@
         <p>Loading data...</p>
       </div>
           <!-- Geotagging slot -->
-      <Geotagging :identifiedLeaf="leaf" />
+      <!-- <Geotagging :identifiedLeaf="leaf" /> -->
+      <!-- <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="identifiedLeaf" /> -->
+      <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" />
+      <!-- <Pins :taggedLocations="taggedLocations" /> -->
       </ion-content>
     </ion-modal>
 
@@ -65,13 +72,14 @@
 
 
 <script setup lang="ts">
-  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
+  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol, IonFabButton, IonLoading} from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
   import { closeOutline, cameraReverse } from 'ionicons/icons';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
-import Geotagging from '@/components/Geotagging.vue';
+  import Geotagging from '@/components/Geotagging.vue';
+  // import Pins from '@/components/Pins.vue';
   
 // import { add } from 'ionicons/icons';
 
@@ -99,6 +107,14 @@ import Geotagging from '@/components/Geotagging.vue';
     setOpen(true);
 
 };
+
+
+const taggedLocations = ref([]);
+
+  const updateTaggedLocations = (newTaggedLocations: any) => {
+    taggedLocations.value = newTaggedLocations;
+  };
+
 // Http requests
 interface Leaf {
   id: number;

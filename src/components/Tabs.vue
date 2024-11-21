@@ -18,7 +18,7 @@
           <!-- <ion-label>Logs</ion-label> -->
         </ion-tab-button>
 
-        <ion-tab-button tab="search" href="/geo">
+        <ion-tab-button tab="search" href="/pins">
           <ion-icon size="large" :icon="location" />
           <!-- <ion-label>Analytics</ion-label> -->
         </ion-tab-button>
