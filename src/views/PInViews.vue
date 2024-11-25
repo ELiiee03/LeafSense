@@ -3,8 +3,8 @@
         <GlobalHeader />
         <ion-content>
             <ion-searchbar show-clear-button="focus" placeholder="Search pins"></ion-searchbar>
-            <!-- <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" /> -->
-            <Pins :taggedLocations="taggedLocations" />
+            <!-- <Geotagging /> -->
+            <Pins />
         </ion-content>
     </ion-page>
 </template>
@@ -30,18 +30,18 @@ export default {
     }
 };
 
-const leaf = ref(null); // Assuming you have a way to set this
-const taggedLocations = ref([]);
+// const leaf = ref(null); // Assuming you have a way to set this
+// const taggedLocations = ref([]);
 
-const updateTaggedLocations = (newTaggedLocations) => {
-  taggedLocations.value = newTaggedLocations;
-};
+// const updateTaggedLocations = (newTaggedLocations) => {
+//   taggedLocations.value = newTaggedLocations;
+// };
 </script>
 
 <style scoped>
 /* Add your styles here */
 ion-searchbar {
-    margin-bottom: 15px;
-    margin-top: 15px;
+    margin-bottom: 50px;
+    margin-top: 20px;
 }
 </style>

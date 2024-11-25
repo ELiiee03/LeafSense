@@ -1,15 +1,12 @@
-<template>
+<!-- <template>
   <ion-page>
     <ion-content class="map-content">
       <!-- <div class="map-container"> -->
-        <div id="map"></div>
-      <!-- </div> -->
-      <!-- <ion-button @click="openMapInBrowser">Open Map in Browser</ion-button> -->
-    </ion-content>
+        <!-- <div id="map"></div>
   </ion-page>
-</template>
+</template>  -->
 
-<script setup lang="ts">
+<!-- <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import mapboxgl from 'mapbox-gl';
 import { defineProps } from 'vue';
@@ -99,15 +96,133 @@ watch(() => props.taggedLocations, (newTaggedLocations) => {
     });
   }
 });
+</script> -->
+
+<!-- <script setup lang="ts">
+import { onMounted } from 'vue';
+import { useTaggedLocationsStore } from '@/stores/taggedLocations';
+import mapboxgl from 'mapbox-gl';
+
+const store = useTaggedLocationsStore();
+
+let map: mapboxgl.Map;
+
+const initializeMap = () => {
+  if (!store.taggedLocations || store.taggedLocations.length === 0) {
+    console.error("No tagged locations provided!");
+    return;
+  }
+  mapboxgl.accessToken = 'pk.eyJ1IjoiZWxlY2Npb25saWVjYTAzIiwiYSI6ImNtM2c0cnlvMDAwc2oybXBzYm1oa255NGwifQ.dLRAV2QLeEQxQorFeKONYA';
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v11',
+    center: [store.taggedLocations[0].longitude, store.taggedLocations[0].latitude],
+    zoom: 13
+  });
+  map.on('load', () => {
+    store.taggedLocations.forEach(tag => {
+      addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounts);
+    });
+  });
+};
+
+const addMarker = (latitude: number, longitude: number, placeName: string, leafCounts: Record<string, number>) => {
+  const leafCountsHtml = Object.entries(leafCounts).map(([leafName, count]) => `<p>${leafName}: ${count} leaves found</p>`).join('');
+  new mapboxgl.Marker()
+    .setLngLat([longitude, latitude])
+    .setPopup(new mapboxgl.Popup().setHTML(`<h3>${placeName}</h3>${leafCountsHtml}`))
+    .addTo(map);
+};
+
+onMounted(() => {
+  initializeMap();
+});
+</script> -->
+
+<template>
+  <ion-page>
+    <ion-content class="map-content">
+      <div id="map"></div>
+    </ion-content>
+  </ion-page>
+</template>
+
+<script setup lang="ts">
+import { onMounted, watch } from 'vue';
+import { useTaggedLocationsStore } from '@/stores/taggedLocations';
+import mapboxgl from 'mapbox-gl';
+
+const store = useTaggedLocationsStore();
+
+let map: mapboxgl.Map;
+
+const initializeMap = () => {
+  if (!store.taggedLocations || store.taggedLocations.length === 0) {
+    console.error("No tagged locations provided!");
+    return;
+  }
+  mapboxgl.accessToken = 'pk.eyJ1IjoiZWxlY2Npb25saWVjYTAzIiwiYSI6ImNtM2c0cnlvMDAwc2oybXBzYm1oa255NGwifQ.dLRAV2QLeEQxQorFeKONYA';
+  map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v11',
+    center: [store.taggedLocations[0].longitude, store.taggedLocations[0].latitude],
+    zoom: 13
+  });
+  map.on('load', () => {
+    console.log('Map loaded');
+    store.taggedLocations.forEach(tag => {
+      console.log('Adding marker:', tag);
+      addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounts);
+    });
+  });
+};
+
+const addMarker = (latitude: number, longitude: number, placeName: string, leafCounts: Record<string, number>) => {
+  const leafCountsHtml = Object.entries(leafCounts).map(([leafName, count]) => `<h5>${leafName}: ${count} leaves found</h5>`).join('');
+  new mapboxgl.Marker()
+    .setLngLat([longitude, latitude])
+    .setPopup(new mapboxgl.Popup().setHTML(`<h4>${placeName}</h4>${leafCountsHtml}`))
+    .addTo(map);
+};
+
+onMounted(() => {
+  initializeMap();
+});
+
+watch(
+  () => store.taggedLocations,
+  (newTaggedLocations) => {
+    if (map) {
+      // Clear existing markers
+      const style = map.getStyle();
+      if (style && style.layers) {
+        style.layers.forEach((layer) => {
+          if (layer.type === 'symbol' && map.getLayer(layer.id)) {
+            map.removeLayer(layer.id);
+          }
+          if (map.getSource(layer.id)) {
+            map.removeSource(layer.id);
+          }
+        });
+      }
+
+      // Add new markers
+      newTaggedLocations.forEach(tag => {
+        console.log('Adding marker:', tag);
+        addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounts);
+      });
+    } else {
+      // Re-initialize the map if it was not initialized
+      initializeMap();
+    }
+  },
+  { deep: true }
+);
 </script>
 
 <style scoped>
-.map-content {
-  height: 100%; /* Full height of the parent container */
-}
 
 #map {
-  height: 300px
-
+  height: 300px;
 }
 </style>

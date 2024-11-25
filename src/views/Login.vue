@@ -37,7 +37,7 @@
           </ion-input>
           <br>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><a href="/home" class="no-blue"><b>Log In</b></a></ion-button>
-          <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button1" fill="outline">
             <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon><b>Login with Google</b>
           </ion-button>
         </div>
@@ -125,5 +125,12 @@ ion-grid {
 .no-blue {
   color: inherit; /* Inherit the color from the parent element */
   text-decoration: none; /* Remove underline */
+}
+.custom-button {
+  --background: #034e28;
+}
+.custom-button1 {
+  --border-color: #034e28;
+  --background-hover: #9ce0be;
 }
 </style>

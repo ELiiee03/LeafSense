@@ -29,6 +29,7 @@ const routes: Array<RouteRecordRaw> = [
       },
       {
         path: 'pins',
+        name: 'pins',
         component: () => import('../views/PInViews.vue')
       },
     ],

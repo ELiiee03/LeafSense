@@ -32,12 +32,13 @@
       <p><b>Description: </b> {{ leaf.description }}</p>
       <p><b>Uses: </b> {{ leaf.uses }}</p>
       <p><b>Habitat: </b> {{ leaf.habitat }}</p>
+      <p><b>Medicinal values: </b> {{ leaf.medicinalValues }}</p>
     </div>
     <div v-else>
       <p>Loading data...</p>
     </div>
-
     <!-- <Geotagging /> -->
+     <!-- <Pins /> -->
       </ion-content>
     </ion-modal>
   </ion-content>
@@ -49,7 +50,9 @@
   import { defineProps } from 'vue';
   import axios from 'axios';
   import { closeOutline } from 'ionicons/icons';
-import Geotagging from './Geotagging.vue';
+  // import Pins from '@/components/Pins.vue';
+  // import Geotagging from './Geotagging.vue';
+// import Pins from './Pins.vue';
   
 // Define props
 const props = defineProps<{
@@ -66,6 +69,7 @@ scientificName: string;
 description: string;
 uses: string;
 habitat: string;
+medicinalValues: string;
 }
 
 const leaf = ref<Leaf | null>(null); // Leaf data object
@@ -96,3 +100,6 @@ axios.get('/data.json')
   });
 };
 </script>
+<style scoped>
+
+</style>

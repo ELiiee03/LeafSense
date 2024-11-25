@@ -55,5 +55,9 @@
   padding: 0;
   margin: 0;
 }
+ion-tab-button {
+  --background: #edeeed;
+  --color-selected: #034e28;
+}
 </style>
     

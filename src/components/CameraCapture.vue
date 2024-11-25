@@ -13,7 +13,7 @@
 
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center" >
-      <ion-fab-button @click="takePhoto" >
+      <ion-fab-button class="pulse-animation" @click="takePhoto" >
         <!-- <ion-loading trigger="open-loading" message="Loading..." duration="3000" spinner="circles"></ion-loading> -->
         <ion-icon size="large" :icon="cameraReverse"></ion-icon>
       </ion-fab-button>
@@ -21,7 +21,7 @@
 
     <!-- Model to display the image -->
     
-    <ion-modal :is-open="isOpen">
+    <ion-modal :is-open="isOpen"  @didDismiss="resetModal">
       <ion-header class="ion-no-border">
         <ion-toolbar>
           <ion-title><b>LeafSense.</b></ion-title>
@@ -54,6 +54,7 @@
         <p><b>Description: </b> {{ leaf.description }}</p>
         <p><b>Uses: </b> {{ leaf.uses }}</p>
         <p><b>Habitat: </b> {{ leaf.habitat }}</p>
+        <p><b>Medicinal values: </b> {{ leaf.medicinalValues }}</p>
       </div>
       <div v-else>
         <p>Loading data...</p>
@@ -61,7 +62,7 @@
           <!-- Geotagging slot -->
       <!-- <Geotagging :identifiedLeaf="leaf" /> -->
       <!-- <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="identifiedLeaf" /> -->
-      <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" />
+      <Geotagging v-if="leaf" @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" />
       <!-- <Pins :taggedLocations="taggedLocations" /> -->
       </ion-content>
     </ion-modal>
@@ -86,19 +87,37 @@
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
-  // const location = ref<{ latitude: number; longitude: number } | null>(null);
+  const leaf = ref<Leaf | null>(null);
+// const location = ref<{ latitude: number; longitude: number } | null>(null);
+  
+const fetchLeafData = async () => {
+  const leafId = 3;
+  try {
+    const response = await axios.get('/data.json');
+    leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;
+  } catch (error) {
+    console.error('Error fetching leaf data:', error);
+  }
+};
 
+const setOpen = async (open: boolean) => {
+  isOpen.value = open;
+  if (open) {
+    await fetchLeafData();
+  }
+};
 
-  // Function to open or close the modal
-  const setOpen = (open: boolean) => {
-    isOpen.value = open;
-  };
+  const resetModal = () => {
+  isOpen.value = false;
+  imageSrc.value = '';
+  leaf.value = null;
+};
 
   // const imageSrc = ref('');
   const takePhoto = async () => {
     const image = await Camera.getPhoto({
       quality: 90,
-      allowEditing: true,
+      allowEditing: false,
       resultType: CameraResultType.Uri,
     });
 
@@ -123,25 +142,32 @@ interface Leaf {
   description: string;
   uses: string;
   habitat: string;
+  medicinalValues: string;
 }
 
-// Create a reactive reference with the correct type
-const leaf = ref<Leaf | null>(null); // Single Post object
-
-const leafId = 3;
-// const posts = ref([]);
-
 onMounted(() => {
-  setTimeout(() => {
-  axios.get('/data.json')
-    .then(response => {
-      leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
-    })
-    .catch(error => {
-      console.error('Error fetching photos:', error);
-    });
-  }, 3000);
+  // Initial fetch if needed
+  fetchLeafData();
 });
+
+
+// Create a reactive reference with the correct type
+// const leaf = ref<Leaf | null>(null); // Single Post object
+
+// const leafId = 3;
+// // const posts = ref([]);
+
+// onMounted(() => {
+//   setTimeout(() => {
+//   axios.get('/data.json')
+//     .then(response => {
+//       leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
+//     })
+//     .catch(error => {
+//       console.error('Error fetching photos:', error);
+//     });
+//   }, 3000);
+// });
 
 </script>
 
@@ -153,6 +179,22 @@ onMounted(() => {
    */
     --ion-safe-area-top: 20px;
     --ion-safe-area-bottom: 20px;
+}
+@keyframes pulse {
+  0%, 100% {
+    /**transform: scale(1);**/
+    box-shadow: 0 0 30px rgba(0, 128, 0, 0.5);
+  }
+  50% {
+    /**transform: scale(1.1);**/
+    box-shadow: 0 0 50px rgba(0, 128, 0, 1);
+  }
+}
+  
+  .pulse-animation {
+    animation: pulse 1.5s infinite;
+    background-color: transparent; /* Ensure the background is transparent */
+    border-radius: 50%; /* Ensure the button is circular */
   }
 </style>
 
@@ -166,5 +208,8 @@ onMounted(() => {
   }
   ion-grid {
     margin-top: 75%;
+  }
+  ion-fab-button {
+    --background: #034e28;
   }
 </style>

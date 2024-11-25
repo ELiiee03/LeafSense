@@ -4,6 +4,7 @@ defineCustomElements(window as any);
 declare const window: any;
 
 import { createApp } from 'vue'
+import { createPinia } from 'pinia';
 import App from './App.vue'
 import router from './router';
 import { IonicVue } from '@ionic/vue';
@@ -45,6 +46,9 @@ const app = createApp(App)
   .use(IonicVue)
   .use(router);
 
+const pinia = createPinia();  
+
 router.isReady().then(() => {
+  app.use(pinia);
   app.mount('#app');
 });

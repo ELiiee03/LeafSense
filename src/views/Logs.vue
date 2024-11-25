@@ -125,7 +125,7 @@
   </template>
   
   <script setup lang="ts">
-    import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList } from '@ionic/vue';
+    import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonThumbnail } from '@ionic/vue';
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
     import LeafInfoModal from '@/components/LeafInfoModal.vue';
