@@ -5,7 +5,9 @@ interface TaggedLocation {
   longitude: number;
   latitude: number;
   placeName: string;
-  leafCounts: Record<string, number>;
+  // leafCounter: Record<string, number>;
+  leafCounter: number;
+  leafName: string;
 }
 
 export const useTaggedLocationsStore = defineStore('taggedLocations', {

@@ -77,7 +77,8 @@
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
   import { closeOutline, cameraReverse } from 'ionicons/icons';
-// import { defineEmits } from 'vue';
+  import { useRouter } from 'vue-router';
+  import { useTaggedLocationsStore } from '@/stores/taggedLocations';
   import axios from 'axios';
   import Geotagging from '@/components/Geotagging.vue';
   // import Pins from '@/components/Pins.vue';
@@ -89,6 +90,8 @@
   const imageSrc = ref('');
   const leaf = ref<Leaf | null>(null);
 // const location = ref<{ latitude: number; longitude: number } | null>(null);
+  const store = useTaggedLocationsStore();
+  const router = useRouter();
   
 const fetchLeafData = async () => {
   const leafId = 3;
@@ -128,11 +131,16 @@ const setOpen = async (open: boolean) => {
 };
 
 
-const taggedLocations = ref([]);
-
-  const updateTaggedLocations = (newTaggedLocations: any) => {
-    taggedLocations.value = newTaggedLocations;
-  };
+const updateTaggedLocations = (newTaggedLocation: any) => {
+  if (leaf.value) {
+    const taggedLocation = {
+      ...newTaggedLocation,
+      leafName: leaf.value.name,
+    };
+    store.addTaggedLocation(taggedLocation);
+    router.push({ name: 'pins' });
+  }
+};
 
 // Http requests
 interface Leaf {

@@ -44,7 +44,7 @@ const initializeMap = () => {
   });
   map.on('load', () => {
     props.taggedLocations.forEach(tag => {
-      addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounts);
+      addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounter);
     });
   });
 };
@@ -140,17 +140,17 @@ onMounted(() => {
 </script> -->
 
 <template>
-  <ion-page>
-    <ion-content class="map-content">
+    <ion-content>
       <div id="map"></div>
+      <PinLogs />
     </ion-content>
-  </ion-page>
 </template>
 
 <script setup lang="ts">
 import { onMounted, watch } from 'vue';
 import { useTaggedLocationsStore } from '@/stores/taggedLocations';
 import mapboxgl from 'mapbox-gl';
+import PinLogs from '@/components/PinLogs.vue';
 
 const store = useTaggedLocationsStore();
 
@@ -172,13 +172,13 @@ const initializeMap = () => {
     console.log('Map loaded');
     store.taggedLocations.forEach(tag => {
       console.log('Adding marker:', tag);
-      addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounts);
+      addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounter);
     });
   });
 };
 
-const addMarker = (latitude: number, longitude: number, placeName: string, leafCounts: Record<string, number>) => {
-  const leafCountsHtml = Object.entries(leafCounts).map(([leafName, count]) => `<h5>${leafName}: ${count} leaves found</h5>`).join('');
+const addMarker = (latitude: number, longitude: number, placeName: string, leafCounter: number) => {
+  const leafCountsHtml = `<h5>Leaves found: ${leafCounter}</h5>`;
   new mapboxgl.Marker()
     .setLngLat([longitude, latitude])
     .setPopup(new mapboxgl.Popup().setHTML(`<h4>${placeName}</h4>${leafCountsHtml}`))
@@ -209,7 +209,7 @@ watch(
       // Add new markers
       newTaggedLocations.forEach(tag => {
         console.log('Adding marker:', tag);
-        addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounts);
+        addMarker(tag.latitude, tag.longitude, tag.placeName, tag.leafCounter);
       });
     } else {
       // Re-initialize the map if it was not initialized

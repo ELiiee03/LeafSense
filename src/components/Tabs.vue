@@ -15,7 +15,7 @@
 
         <ion-tab-button tab="library" href="/logs">
           <ion-icon size="large" :icon="albums" />
-          <!-- <ion-label>Logs</ion-label> -->
+           <!-- <ion-label>Logs</ion-label> -->
         </ion-tab-button>
 
         <ion-tab-button tab="search" href="/pins">
@@ -54,9 +54,10 @@
   height: 55px; /* Adjust the height as needed */
   padding: 0;
   margin: 0;
+    --background: #edeeed;
 }
 ion-tab-button {
-  --background: #edeeed;
+
   --color-selected: #034e28;
 }
 </style>

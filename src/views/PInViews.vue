@@ -15,6 +15,7 @@ import { ref } from 'vue';
 import GlobalHeader from '@/components/GlobalHeader.vue';
 import Geotagging from '@/components/Geotagging.vue';
 import Pins from '@/components/Pins.vue';
+import PinLogs from '@/components/PinLogs.vue';
 
 export default {
     components: {
@@ -26,7 +27,8 @@ export default {
         IonSearchbar,
         Pins,
         GlobalHeader,
-        Geotagging
+        Geotagging,
+        PinLogs
     }
 };
 
@@ -41,7 +43,7 @@ export default {
 <style scoped>
 /* Add your styles here */
 ion-searchbar {
-    margin-bottom: 50px;
+    margin-bottom: 20px;
     margin-top: 20px;
 }
 </style>

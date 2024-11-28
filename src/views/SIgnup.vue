@@ -33,8 +33,8 @@
 import { defineComponent, ref } from 'vue';
 import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
 // import { logoIonic } from 'ionicons/icons';
-import { supabase } from '@/supabase';
-import { useRouter } from 'vue-router';
+// import { supabase } from '@/supabase';
+// import { useRouter } from 'vue-router';
 
 export default defineComponent({
   components: {
