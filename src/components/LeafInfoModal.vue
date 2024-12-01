@@ -47,7 +47,7 @@
 <script lang="ts" setup>
   import { IonIcon, IonButtons, IonButton, IonModal, IonHeader, IonToolbar, IonContent, IonTitle } from '@ionic/vue';
   import { watch, ref } from 'vue';
-  import { defineProps } from 'vue';
+  import { defineProps, defineEmits } from 'vue';
   import axios from 'axios';
   import { closeOutline } from 'ionicons/icons';
   // import Pins from '@/components/Pins.vue';
@@ -59,6 +59,14 @@ const props = defineProps<{
   isOpen: boolean;
   onClose: () => void; // Explicitly define the type
   imageSrc?: string; // Optional string type for image source
+  leaf?: {
+    name: string;
+    scientificName: string;
+    description: string;
+    uses: string;
+    habitat: string;
+    medicinalValues: string;
+  };
 }>();
 
 // Define Leaf interface and reactive state
@@ -72,32 +80,28 @@ habitat: string;
 medicinalValues: string;
 }
 
-const leaf = ref<Leaf | null>(null); // Leaf data object
-const leafId = 3; // Example ID for fetching a specific leaf
+const emits = defineEmits(['updateTaggedLocations']);
+const leaf = ref(props.leaf || null);
 
-// Watch for isOpen prop changes
 watch(
-() => props.isOpen,
-(newIsOpen) => {
-  if (newIsOpen) {
-    // Only fetch data when modal is opened
-    fetchLeafData();
-  } else {
-    // Clear data when modal is closed
-    leaf.value = null;
+  () => props.isOpen,
+  (newIsOpen) => {
+    if (newIsOpen && !props.leaf) {
+      fetchLeafData();
+    } else {
+      leaf.value = props.leaf || null;
+    }
   }
-}
 );
 
-// Function to fetch data
 const fetchLeafData = () => {
-axios.get('/data.json')
-  .then(response => {
-    leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;
-  })
-  .catch(error => {
-    console.error('Error fetching leaf data:', error);
-  });
+  axios.get('/data.json')
+    .then(response => {
+      leaf.value = response.data.find((leaf: any) => leaf.id === 3) || null;
+    })
+    .catch(error => {
+      console.error('Error fetching leaf data:', error);
+    });
 };
 </script>
 <style scoped>
