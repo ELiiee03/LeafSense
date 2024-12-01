@@ -11,7 +11,9 @@
               <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
             </ion-input>
             <br>
-            <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Sign In</b></ion-button>
+            <ion-button shape="round" expand="full" class="ion-margin-top custom-button">
+              <a href="/home" class="no-blue"><b>Sign In</b></a>
+            </ion-button>
             <br>
           </div>
           <ion-grid>
@@ -30,9 +32,9 @@
   <script lang="ts">
 import { defineComponent, ref } from 'vue';
 import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
-import { logoIonic } from 'ionicons/icons';
+// import { logoIonic } from 'ionicons/icons';
 // import { supabase } from '@/supabase';
-import { useRouter } from 'vue-router';
+// import { useRouter } from 'vue-router';
 
 export default defineComponent({
   components: {
@@ -79,7 +81,7 @@ export default defineComponent({
 }
 
 ion-input {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   width: 100%;
 }
 
@@ -91,10 +93,16 @@ ion-icon {
   color: green;
 }
 ion-col {
-  color: #fff;
   text-align: center;
 }
 ion-grid {
-  margin-top: 50px;
+  margin-top: 15px;
+}
+.no-blue {
+  color: inherit; /* Inherit the color from the parent element */
+  text-decoration: none; /* Remove underline */
+}
+.custom-button {
+  --background:  #034e28;
 }
 </style>

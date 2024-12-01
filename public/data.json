@@ -5,7 +5,8 @@
     "scientificName": "Acer spp.",
     "description": "Maple leaves are palmate, lobed leaves commonly found in temperate regions. They are known for their vibrant red, orange, and yellow fall colors.",
     "uses": "Maple leaves are often used as symbols of Canada and are used in decoration during the fall. The sap of some maple species is used to make maple syrup.",
-    "habitat": "Temperate regions, mainly in North America, Europe, and Asia."
+    "habitat": "Temperate regions, mainly in North America, Europe, and Asia.",
+    "medicinalValues": "Maple leaves have been used in traditional medicine for their anti-inflammatory and antioxidant properties."
   },
   {
     "id": 2,
@@ -13,7 +14,8 @@
     "scientificName": "Quercus spp.",
     "description": "Oak leaves are lobed and can vary in shape, with some species having deeply lobed leaves, while others are more rounded. They are typically thick and leathery.",
     "uses": "Oak leaves are symbolic of strength and endurance. The wood of oak trees is used in furniture, flooring, and barrels for aging wine and whiskey.",
-    "habitat": "Widespread in the Northern Hemisphere, including Europe, North America, and Asia."
+    "habitat": "Widespread in the Northern Hemisphere, including Europe, North America, and Asia.",
+    "medicinalValues": "Oak leaves have been used in traditional medicine for their astringent and antiseptic properties."
   },
   {
     "id": 3,
@@ -21,23 +23,26 @@
     "scientificName": "Pinus",
     "description": "Pine needles are long, thin, and evergreen. They grow in clusters and can be found in various lengths depending on the species.",
     "uses": "Pine needles are used for making essential oils, herbal teas, and as a natural mulch. Pine wood is widely used in construction and paper manufacturing.",
-    "habitat": "Widely distributed in temperate and subtropical regions of the Northern Hemisphere."
+    "habitat": "Widely distributed in temperate and subtropical regions of the Northern Hemisphere.",
+    "medicinalValues": "Pine needles are known for their high vitamin C content and have been used to treat scurvy and respiratory issues."
   },
   {
     "id": 4,
     "name": "Birch Leaf",
-    "scientificName": "Betula spp.",
-    "description": "Birch leaves are simple, alternate, and ovate with serrated edges. They are typically bright green, turning yellow in autumn.",
-    "uses": "Birch leaves have traditional medicinal uses, such as in herbal teas. The bark is used in traditional crafts, and birch wood is used for furniture and firewood.",
-    "habitat": "Common in cooler regions of the Northern Hemisphere, such as North America, Europe, and Asia."
+    "scientificName": "Betula",
+    "description": "Birch leaves are simple, alternate, and often serrated. They are typically bright green and turn yellow in the fall.",
+    "uses": "Birch leaves are used in traditional medicine, as well as for making birch beer and syrup. Birch wood is used for furniture and plywood.",
+    "habitat": "Temperate regions of the Northern Hemisphere.",
+    "medicinalValues": "Birch leaves have been used for their diuretic and anti-inflammatory properties."
   },
   {
     "id": 5,
-    "name": "Eucalyptus Leaf",
-    "scientificName": "Eucalyptus spp.",
-    "description": "Eucalyptus leaves are elongated, leathery, and aromatic. They are evergreen and contain essential oils.",
-    "uses": "Eucalyptus leaves are used for their medicinal properties, especially in respiratory treatments. The wood is used in construction and for making paper.",
-    "habitat": "Native to Australia but also found in parts of Asia, Europe, and the Americas."
+    "name": "Willow Leaf",
+    "scientificName": "Salix",
+    "description": "Willow leaves are long, narrow, and typically lance-shaped. They are often found near water sources.",
+    "uses": "Willow leaves and bark have been used in traditional medicine. Willow wood is used for making baskets, furniture, and cricket bats.",
+    "habitat": "Temperate regions, often near water.",
+    "medicinalValues": "Willow leaves and bark contain salicin, which has pain-relieving and anti-inflammatory properties."
   },
   {
     "id": 6,
@@ -45,7 +50,8 @@
     "scientificName": "Bambusoideae",
     "description": "Bamboo leaves are narrow, elongated, and evergreen. They grow on bamboo plants, which are actually giant grasses.",
     "uses": "Bamboo leaves are used in traditional medicine, cooking (as wrappers), and crafts. Bamboo wood is widely used for construction, furniture, and paper.",
-    "habitat": "Tropical and subtropical regions, especially in Asia and the Americas."
+    "habitat": "Tropical and subtropical regions, especially in Asia and the Americas.",
+    "medicinalValues": "Bamboo leaves are used in traditional medicine for their antioxidant and anti-inflammatory properties."
   },
   {
     "id": 7,
@@ -53,7 +59,7 @@
     "scientificName": "Arecaceae",
     "description": "Palm leaves are large, often fan-shaped or feather-shaped. They are evergreen and grow on palm trees in tropical regions.",
     "uses": "Palm leaves are used in traditional roofing materials, weaving, and as decoration. The wood is used for construction and crafts.",
-    "habitat": "Primarily found in tropical and subtropical regions around the world."
+    "habitat": "Primarily found in tropical and subtropical regions around the world.",
+    "medicinalValues": "Palm leaves have been used in traditional medicine for their antibacterial and antifungal properties."
   }
-
 ]

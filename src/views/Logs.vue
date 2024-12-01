@@ -18,6 +18,9 @@
                   </ion-item-options>
             
                   <ion-item button @click="setOpen(true)">
+                    <ion-thumbnail slot="start">
+                      <img alt="Silhouette of mountains" src="/resources/pine needle.jpg" />
+                    </ion-thumbnail>
                     <ion-label>Pine Needles</ion-label>
                   </ion-item>
             
@@ -53,7 +56,10 @@
                     </ion-item-options>
                     
                     <ion-item button @click="setOpen(true)">
-                      <ion-label>Maple Laaves</ion-label>
+                      <ion-thumbnail slot="start">
+                        <img alt="Silhouette of mountains" src="/resources/maple.jpg" />
+                      </ion-thumbnail>
+                      <ion-label>Maple Leaves</ion-label>
                     </ion-item>
               
                     <ion-item-options side="end">
@@ -87,6 +93,9 @@
                     </ion-item-options>
               
                     <ion-item button @click="setOpen(true)">
+                      <ion-thumbnail slot="start">
+                        <img alt="Silhouette of mountains" src="/resources/oak-tree.jpg" />
+                      </ion-thumbnail>
                       <ion-label>Oak Tree</ion-label>
                     </ion-item>
               
@@ -116,7 +125,7 @@
   </template>
   
   <script setup lang="ts">
-    import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList } from '@ionic/vue';
+    import { IonModal, IonButton, IonGrid, IonRow, IonCol, IonHeader, IonTitle, IonToolbar, IonIcon, IonContent, IonPage, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonThumbnail } from '@ionic/vue';
     import { archive, heart, trash } from 'ionicons/icons';
     import { ref } from 'vue';
     import LeafInfoModal from '@/components/LeafInfoModal.vue';
@@ -136,7 +145,7 @@
 
 <style scoped>
 ion-list {
-    margin-top: 15%;
+    margin-top: 8%;
 }
 ion-col {
     text-align: center;

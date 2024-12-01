@@ -12,28 +12,37 @@
     </ion-grid>
 
     <!-- Camera button -->
-    <ion-fab slot="fixed" vertical="bottom" horizontal="center">
-      <ion-fab-button @click="takePhoto">
-        <ion-icon src="/resources/camera-outline.svg" name="camera-outline"></ion-icon>
+    <ion-fab slot="fixed" vertical="bottom" horizontal="center" >
+      <ion-fab-button class="pulse-animation" @click="takePhoto" >
+        <!-- <ion-loading trigger="open-loading" message="Loading..." duration="3000" spinner="circles"></ion-loading> -->
+        <ion-icon size="large" :icon="cameraReverse"></ion-icon>
       </ion-fab-button>
     </ion-fab>
 
     <!-- Model to display the image -->
-    <ion-modal :is-open="isOpen">
+    
+    <ion-modal :is-open="isOpen"  @didDismiss="resetModal">
       <ion-header class="ion-no-border">
         <ion-toolbar>
           <ion-title><b>LeafSense.</b></ion-title>
           <ion-buttons slot="end">
-            <ion-button @click="setOpen(false)">Close</ion-button>
+            <ion-button @click="setOpen(false)"><ion-icon size="large" :icon="closeOutline" slot="start"></ion-icon>
+            </ion-button>
           </ion-buttons>
         </ion-toolbar>
       </ion-header>
 
       <!-- Content display -->
       <ion-content class="ion-padding">
+        
+        <!-- <ion-loading trigger="open-loading" message="Loading..." duration="3000" spinner="circles"></ion-loading> -->
         <!-- Display the captured image -->
+        <!-- <div v-if="imageSrc">
+          <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
+        </div> -->
         <div v-if="imageSrc">
           <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
+          
         </div>
         <div v-else>
           <p>No image captured</p>
@@ -45,10 +54,16 @@
         <p><b>Description: </b> {{ leaf.description }}</p>
         <p><b>Uses: </b> {{ leaf.uses }}</p>
         <p><b>Habitat: </b> {{ leaf.habitat }}</p>
+        <p><b>Medicinal values: </b> {{ leaf.medicinalValues }}</p>
       </div>
       <div v-else>
         <p>Loading data...</p>
       </div>
+          <!-- Geotagging slot -->
+      <!-- <Geotagging :identifiedLeaf="leaf" /> -->
+      <!-- <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="identifiedLeaf" /> -->
+      <Geotagging v-if="leaf" @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" />
+      <!-- <Pins :taggedLocations="taggedLocations" /> -->
       </ion-content>
     </ion-modal>
 
@@ -58,43 +73,76 @@
 
 
 <script setup lang="ts">
-  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
+  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol, IonFabButton, IonLoading} from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
-  // import GlobalHeader from '@/components/GlobalHeader.vue';
-// import { defineEmits } from 'vue';
+  import { closeOutline, cameraReverse } from 'ionicons/icons';
+  import { useRouter } from 'vue-router';
+  import { useTaggedLocationsStore } from '@/stores/taggedLocations';
   import axios from 'axios';
+  import Geotagging from '@/components/Geotagging.vue';
+  // import Pins from '@/components/Pins.vue';
   
 // import { add } from 'ionicons/icons';
 
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
-  // const emit = defineEmits(['captureImage']);
+  const leaf = ref<Leaf | null>(null);
+// const location = ref<{ latitude: number; longitude: number } | null>(null);
+  const store = useTaggedLocationsStore();
+  const router = useRouter();
+  
+const fetchLeafData = async () => {
+  const leafId = 3;
+  try {
+    const response = await axios.get('/data.json');
+    leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;
+  } catch (error) {
+    console.error('Error fetching leaf data:', error);
+  }
+};
 
+const setOpen = async (open: boolean) => {
+  isOpen.value = open;
+  if (open) {
+    await fetchLeafData();
+  }
+};
 
-  // Function to open or close the modal
-  const setOpen = (open: boolean) => {
-    isOpen.value = open;
-  };
+  const resetModal = () => {
+  isOpen.value = false;
+  imageSrc.value = '';
+  leaf.value = null;
+};
 
   // const imageSrc = ref('');
   const takePhoto = async () => {
     const image = await Camera.getPhoto({
       quality: 90,
-      allowEditing: true,
+      allowEditing: false,
       resultType: CameraResultType.Uri,
     });
 
     imageSrc.value = image.webPath || '';
-    // Emit the captured image to the parent component
 
-      // Open the modal to display the captured image
     setOpen(true);
 
 };
+
+
+const updateTaggedLocations = (newTaggedLocation: any) => {
+  if (leaf.value) {
+    const taggedLocation = {
+      ...newTaggedLocation,
+      leafName: leaf.value.name,
+    };
+    store.addTaggedLocation(taggedLocation);
+    router.push({ name: 'pins' });
+  }
+};
+
 // Http requests
-// Define the interface for a Post
 interface Leaf {
   id: number;
   name: string;
@@ -102,25 +150,32 @@ interface Leaf {
   description: string;
   uses: string;
   habitat: string;
+  medicinalValues: string;
 }
 
-// Create a reactive reference with the correct type
-const leaf = ref<Leaf | null>(null); // Single Post object
-
-const leafId = 3;
-// const posts = ref([]);
-
 onMounted(() => {
-  setTimeout(() => {
-  axios.get('/data.json')
-    .then(response => {
-      leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
-    })
-    .catch(error => {
-      console.error('Error fetching photos:', error);
-    });
-  }, 3000);
+  // Initial fetch if needed
+  fetchLeafData();
 });
+
+
+// Create a reactive reference with the correct type
+// const leaf = ref<Leaf | null>(null); // Single Post object
+
+// const leafId = 3;
+// // const posts = ref([]);
+
+// onMounted(() => {
+//   setTimeout(() => {
+//   axios.get('/data.json')
+//     .then(response => {
+//       leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
+//     })
+//     .catch(error => {
+//       console.error('Error fetching photos:', error);
+//     });
+//   }, 3000);
+// });
 
 </script>
 
@@ -132,6 +187,22 @@ onMounted(() => {
    */
     --ion-safe-area-top: 20px;
     --ion-safe-area-bottom: 20px;
+}
+@keyframes pulse {
+  0%, 100% {
+    /**transform: scale(1);**/
+    box-shadow: 0 0 30px rgba(0, 128, 0, 0.5);
+  }
+  50% {
+    /**transform: scale(1.1);**/
+    box-shadow: 0 0 50px rgba(0, 128, 0, 1);
+  }
+}
+  
+  .pulse-animation {
+    animation: pulse 1.5s infinite;
+    background-color: transparent; /* Ensure the background is transparent */
+    border-radius: 50%; /* Ensure the button is circular */
   }
 </style>
 
@@ -145,5 +216,8 @@ onMounted(() => {
   }
   ion-grid {
     margin-top: 75%;
+  }
+  ion-fab-button {
+    --background: #034e28;
   }
 </style>

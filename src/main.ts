@@ -1,10 +1,12 @@
 // Above the createApp() line
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
-defineCustomElements(window);
+defineCustomElements(window as any);
+declare const window: any;
+
 import { createApp } from 'vue'
+import { createPinia } from 'pinia';
 import App from './App.vue'
 import router from './router';
-
 import { IonicVue } from '@ionic/vue';
 
 /* Core CSS required for Ionic components to work properly */
@@ -22,6 +24,9 @@ import '@ionic/vue/css/text-alignment.css';
 import '@ionic/vue/css/text-transformation.css';
 import '@ionic/vue/css/flex-utils.css';
 import '@ionic/vue/css/display.css';
+
+// mapbox
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 /**
  * Ionic Dark Mode
@@ -41,6 +46,9 @@ const app = createApp(App)
   .use(IonicVue)
   .use(router);
 
+const pinia = createPinia();  
+
 router.isReady().then(() => {
+  app.use(pinia);
   app.mount('#app');
 });
