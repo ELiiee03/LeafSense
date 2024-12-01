@@ -178,6 +178,30 @@ const getLocation = async () => {
 //   }
 // };
 
+// const getLocation = async () => {
+//   try {
+//     if (Capacitor.isNativePlatform()) {
+//       const permission = await Geolocation.requestPermissions();
+//       if (permission.location === 'granted') {
+//         const coordinates = await Geolocation.getCurrentPosition();
+//         location.value = {
+//           latitude: coordinates.coords.latitude,
+//           longitude: coordinates.coords.longitude,
+//         };
+//         console.log('Current position:', coordinates);
+//         await fetchPlaceName(coordinates.coords.latitude, coordinates.coords.longitude);
+//       } else {
+//         alert('Location permission denied. Please enable location permissions to use this feature.');
+//       }
+//     } else {
+//       alert('This feature is only available on native platforms.');
+//     }
+//   } catch (error) {
+//     console.error('Error getting location:', error);
+//     alert('Error getting location. Please try again.');
+//   }
+// };
+
 
 const fetchPlaceName = async (latitude: number, longitude: number) => {
   try {

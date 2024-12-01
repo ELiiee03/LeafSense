@@ -18,8 +18,8 @@
         <ion-icon size="large" :icon="cameraReverse"></ion-icon>
       </ion-fab-button>
     </ion-fab>
-
-    <!-- Model to display the image -->
+    <LeafInfoModal :isOpen="isOpen" :onClose="resetModal" :imageSrc="imageSrc" :leaf="leaf" />
+    <!-- Modal to display the image -->
     
     <ion-modal :is-open="isOpen"  @didDismiss="resetModal">
       <ion-header class="ion-no-border">
@@ -59,10 +59,11 @@
       <div v-else>
         <p>Loading data...</p>
       </div>
+      <LeafInput />
           <!-- Geotagging slot -->
       <!-- <Geotagging :identifiedLeaf="leaf" /> -->
       <!-- <Geotagging @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="identifiedLeaf" /> -->
-      <Geotagging v-if="leaf" @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" />
+      <Geotagging v-if="leaf" @updateTaggedLocations="updateTaggedLocations" :identifiedLeaf="leaf" :leafName="leaf.name" />
       <!-- <Pins :taggedLocations="taggedLocations" /> -->
       </ion-content>
     </ion-modal>
@@ -73,14 +74,17 @@
 
 
 <script setup lang="ts">
-  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol, IonFabButton, IonLoading} from '@ionic/vue';
+  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab,  IonToolbar, IonPage, IonGrid, IonRow, IonCol, IonFabButton} from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
   import { closeOutline, cameraReverse } from 'ionicons/icons';
   import { useRouter } from 'vue-router';
   import { useTaggedLocationsStore } from '@/stores/taggedLocations';
+  import { useLogsStore } from '@/stores/logs';
   import axios from 'axios';
   import Geotagging from '@/components/Geotagging.vue';
+  import LeafInput from './LeafInput.vue';
+  import LeafInfoModal from './LeafInfoModal.vue';
   // import Pins from '@/components/Pins.vue';
   
 // import { add } from 'ionicons/icons';
@@ -88,16 +92,17 @@
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
-  const leaf = ref<Leaf | null>(null);
+  const leaf = ref<Leaf | undefined>(undefined);
 // const location = ref<{ latitude: number; longitude: number } | null>(null);
   const store = useTaggedLocationsStore();
   const router = useRouter();
+  const logsStore = useLogsStore();
   
 const fetchLeafData = async () => {
   const leafId = 3;
   try {
     const response = await axios.get('/data.json');
-    leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;
+    leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || undefined;
   } catch (error) {
     console.error('Error fetching leaf data:', error);
   }
@@ -113,8 +118,9 @@ const setOpen = async (open: boolean) => {
   const resetModal = () => {
   isOpen.value = false;
   imageSrc.value = '';
-  leaf.value = null;
+  leaf.value = undefined;
 };
+
 
   // const imageSrc = ref('');
   const takePhoto = async () => {
@@ -125,7 +131,8 @@ const setOpen = async (open: boolean) => {
     });
 
     imageSrc.value = image.webPath || '';
-
+    await fetchLeafData();
+    logsStore.addLog({ id: Date.now(), imageSrc: imageSrc.value, leaf: leaf.value });
     setOpen(true);
 
 };
