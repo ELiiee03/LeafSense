@@ -1,11 +1,11 @@
 <template>
-  <ion-page>
+  <ion-page class="full-height">
     <ion-tabs>
       <ion-router-outlet></ion-router-outlet>
-      <ion-tab-bar slot="bottom">
+      <ion-tab-bar slot="bottom" class="custom-tab-bar">
         <ion-tab-button tab="home" href="/home">
-          <ion-icon :icon="home" />
-          <ion-label>Home</ion-label>
+          <ion-icon size="large" :icon="home" />
+          <!-- <ion-label>Home</ion-label> -->
         </ion-tab-button>
 
         <!-- <ion-tab-button tab="radio" href="/radio">
@@ -14,13 +14,13 @@
         </ion-tab-button> -->
 
         <ion-tab-button tab="library" href="/logs">
-          <ion-icon :icon="albums" />
-          <ion-label>Logs</ion-label>
+          <ion-icon size="large" :icon="albums" />
+           <!-- <ion-label>Logs</ion-label> -->
         </ion-tab-button>
 
-        <ion-tab-button tab="search" href="/geo">
-          <ion-icon :icon="location" />
-          <ion-label>Analytics</ion-label>
+        <ion-tab-button tab="search" href="/pins">
+          <ion-icon size="large" :icon="location" />
+          <!-- <ion-label>Analytics</ion-label> -->
         </ion-tab-button>
       </ion-tab-bar>
     </ion-tabs>
@@ -43,3 +43,25 @@
     },
   };
 </script>
+<style scoped>
+
+.full-height {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-tab-bar {
+  height: 55px; /* Adjust the height as needed */
+  padding: 0;
+  margin: 0;
+    --background: #bbef68;
+    border-top-left-radius: 25px;
+    border-top-right-radius: 25px;
+}
+ion-tab-button {
+
+  --color-selected: #228B22;
+}
+</style>
+    

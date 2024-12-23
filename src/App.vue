@@ -25,3 +25,11 @@ export default defineComponent({
   }
 });
 </script>
+<style>
+:root {
+  --ion-background-color: #DCE6CC;
+}
+</style>
+<!-- :root {
+  --ion-background-color: transparent;
+} -->

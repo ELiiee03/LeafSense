@@ -16,17 +16,18 @@
           </ion-input>
           <br>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
-          <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button2" fill="outline">
             <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
           </ion-button>
+
+          <ion-grid>
+            <ion-row>
+              <ion-col></ion-col>
+              <ion-col size="auto">Don't have an account? <b>Sign Up</b></ion-col>
+              <ion-col></ion-col>
+            </ion-row>
+          </ion-grid>
         </div>
-        <ion-grid>
-          <ion-row>
-            <ion-col></ion-col>
-            <ion-col size="auto">Don't have an account? <b>Sign Up</b></ion-col>
-            <ion-col></ion-col>
-          </ion-row>
-        </ion-grid>
         
       </ion-content>
   </ion-page>
@@ -83,7 +84,20 @@ export default defineComponent({
 <style scoped>
 /* Center the form */
 .login-container {
-  margin-top: 115px;
+  position: absolute; /* Position the container absolutely */
+  top: 30%; /* Adjust the top position as needed */
+  left: 0;
+  width: 100%; /* Full width of the viewport */
+  height: 70vh; /* 75% of the viewport height */
+  background-color: #DCE6CC;
+  display: flex; /* Center content */
+  flex-direction: column; /* Stack child elements vertically */
+  justify-content: center; /* Center vertically */
+  align-items: center; /* Center horizontally */
+  box-sizing: border-box; /* Include padding/border in the dimensions */
+  padding: 20px; /* Optional padding for aesthetics */
+  border-top-left-radius: 30px; /* Apply border-radius to the top-left corner */
+  border-top-right-radius: 30px;
 }
 
 ion-input {
@@ -107,11 +121,30 @@ ion-grid {
 }
 /* Ensure the content takes full height */
 .ion-page {
-  height: 100%;
+  --ion-background-color: transparent;
+  width: 100%;
+  height: 100vh;
+  background: url("resources/leaf3.jpg") no-repeat center center;
+  overflow: hidden;
 }
 
-.ion-content {
+ion-content {
   height: 100%;
   overflow: hidden;
+  background-color: rgba(79, 73, 73, 0.563); 
+}
+.custom-button {
+  --background: #416d3f;
+  width: 95%; /* Adjust the width as needed */
+  height: 40px;
+  margin: 2px;
+}
+.custom-button2 {
+  --border-color: #228B22;
+  color: black;
+  width: 95%; /* Adjust the width as needed */
+  height: 38px;
+  margin: 2px;
+  margin-top: 10px;
 }
 </style>

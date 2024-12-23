@@ -35,6 +35,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/signup',
+    name: 'signup',
     component: () => import('../views/SIgnup.vue'),
   },
   {
@@ -43,6 +44,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/login',
+    name: 'login',
     component: () => import('../views/Login.vue'),
   },
 ];

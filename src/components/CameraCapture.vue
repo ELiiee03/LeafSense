@@ -138,6 +138,10 @@ onMounted(() => {
 </style>
 
 <style scoped>
+ion-content {
+  --background: #DCE6CC;
+}
+
   ion-fab {
     margin-top: var(--ion-safe-area-top, 0);
     margin-bottom: var(--ion-safe-area-bottom, 0);
@@ -149,6 +153,7 @@ onMounted(() => {
     margin-top: 75%;
   }
   ion-fab-button {
+    --background: #228B22;
     --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
 </style>

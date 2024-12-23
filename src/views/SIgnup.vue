@@ -1,39 +1,39 @@
 <template>
-    <ion-page>
-      <GlobalHeader />
-        <ion-content class="ion-padding" fullscreen>
-          <!-- <h4><b>LeafSense.</b></h4> -->
-          <div class="signup-container">
-            <h1><b>Sign Up</b></h1>
-            <br>
-            <ion-input label="Email" label-placement="floating" fill="outline" placeholder="email@example.com"></ion-input>
-            <ion-input label="Phone" label-placement="floating" fill="outline" placeholder="Phone"></ion-input>
-            <ion-input label="Password" label-placement="floating" fill="outline" placeholder="password" type="password" >
-              <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
-            </ion-input>
-            <br>
-            <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Sign In</b></ion-button>
-            <br>
-          </div>
+  <ion-page>
+    <ion-content class="ion-padding">
+      <!-- <h4><b>LeafSense.</b></h4> -->
+      <div class="login-wrapper">
+        <div class="container-fluid">
+          <h1><b>Sign Up</b></h1>
+          <br>
+          <ion-input label="Email" label-placement="floating" fill="outline" placeholder="email@example.com"></ion-input>
+          <ion-input label="Phone" label-placement="floating" fill="outline" placeholder="Phone"></ion-input>
+          <ion-input label="Password" label-placement="floating" fill="outline" placeholder="password" type="password">
+            <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
+          </ion-input>
+          <br>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button">
+            <a href="/home" class="no-blue"><b>Sign In</b></a>
+          </ion-button>
+          <br>
           <ion-grid>
             <ion-row>
               <ion-col></ion-col>
-              <ion-col size="auto">Already have an account? <b>Sign Up</b></ion-col>
+              <ion-col size="12">Already have an account? <b>Sign In</b></ion-col>
               <ion-col></ion-col>
             </ion-row>
           </ion-grid>
-          
-        </ion-content>
-    </ion-page>
-  </template>
+        </div>
+        </div>
+    </ion-content>
+  </ion-page>
+</template>
 
-
-  <script lang="ts">
+<script lang="ts">
 import { defineComponent, ref } from 'vue';
-import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
-import { logoIonic } from 'ionicons/icons';
-import GlobalHeader from '@/components/GlobalHeader.vue';
-// import { supabase } from '@/supabase';
+import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow } from '@ionic/vue';
+// import { logoIonic } from 'ionicons/icons';
+import { supabase } from '@/supabaseClient';
 import { useRouter } from 'vue-router';
 
 export default defineComponent({
@@ -48,64 +48,103 @@ export default defineComponent({
     IonTitle,
     IonToolbar,
     IonIcon,
-    GlobalHeader
   },
-  // setup() {
-  //   const email = ref('');
-  //   const password = ref('');
-  //   const router = useRouter();
+  setup() {
+    const email = ref('');
+    const password = ref('');
+    const router = useRouter();
 
-  //   const login = async () => {
-  //     try {
-  //       const { error } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value });
-  //       if (error) throw error;
-  //       router.push('/home'); // Redirect to home page on successful login
-  //     } catch (error) {
-  //       console.error('Login error:', error.message);
-  //       // You can display an error message to the user here
-  //     }
-  //   };
+    const login = async () => {
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value });
+        if (error) throw error;
+        router.push('/home'); // Redirect to home page on successful login
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('Login error:', error.message);
+        } else {
+          console.error('Login error:', error);
+        }
+        // You can display an error message to the user here
+      }
+    };
 
-//     return {
-//       email,
-//       password,
-//       login
-//     };
-//   }
+    return {
+      email,
+      password,
+      login
+    };
+  }
 });
 </script>
 
 <style scoped>
-/* Center the form */
-.signup-container {
-  margin-top: 20px;
-  border: solid red;
+.container-fluid {
+  position: absolute; /* Position the container absolutely */
+  top: 30%; /* Adjust the top position as needed */
+  left: 0;
+  width: 100%; /* Full width of the viewport */
+  height: 70vh; /* 75% of the viewport height */
+  background-color: #DCE6CC;
+  display: flex; /* Center content */
+  flex-direction: column; /* Stack child elements vertically */
+  justify-content: center; /* Center vertically */
+  align-items: center; /* Center horizontally */
+  box-sizing: border-box; /* Include padding/border in the dimensions */
+  padding: 20px; /* Optional padding for aesthetics */
+  border-top-left-radius: 30px; /* Apply border-radius to the top-left corner */
+  border-top-right-radius: 30px;
 }
-
-ion-input {
-  margin-bottom: 15px;
+.login-wrapper {
+  width: 100%; /* Full width of the viewport */
+  display: flex;
+  justify-content: center;
+}
+.ion-page {
+  --ion-background-color: transparent;
   width: 100%;
-}
-
-h1 {
-  margin-bottom: 40px;
-  text-align: center;
-  
-}
-ion-icon {
-  color: green;
-}
-ion-grid {
-  margin-top: 10px;
-  border: solid red;
-}
-ion-page {
-  height: 100%;
+  height: 100vh;
+  background: url("resources/leaf3.jpg") no-repeat center center;
+  overflow: hidden;
 }
 
 ion-content {
   height: 100%;
   overflow: hidden;
-  border: solid red;
+  background-color: rgba(79, 73, 73, 0.563); 
+}
+
+ion-input {
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+h1 {
+  margin-bottom: 50px;
+  text-align: center;
+}
+
+ion-icon {
+  color: green;
+}
+
+ion-col {
+  text-align: center;
+}
+
+ion-grid {
+  margin-top: 15px;
+}
+
+.no-blue {
+  color: inherit; /* Inherit the color from the parent element */
+  text-decoration: none; /* Remove underline */
+}
+
+.custom-button {
+  --background: #416d3f;
+  width: 95%; /* Adjust the width as needed */
+  height: 70px;
+  margin: 2px;
 }
 </style>
