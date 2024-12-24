@@ -21,31 +21,48 @@
 
     <!-- Model to display the image -->
     <ion-modal :is-open="isOpen">
-      <ion-header class="ion-no-border">
-        <ion-toolbar>
+      <!-- <ion-header class="ion-no-border transparent-header">
+        <ion-toolbar  class="transparent-toolbar">
           <ion-title><b>LeafSense.</b></ion-title>
           <ion-buttons slot="end">
             <ion-button @click="setOpen(false)">Close</ion-button>
           </ion-buttons>
         </ion-toolbar>
-      </ion-header>
+      </ion-header> -->
 
       <!-- Content display -->
       <ion-content class="ion-padding">
+        <ion-fab slot="fixed" vertical="top" horizontal="start">
+          <ion-fab-button @click="setOpen(false)" size="small">
+            <ion-icon :icon="chevronBackOutline" size="small"></ion-icon>
+          </ion-fab-button>
+          </ion-fab>
         <!-- Display the captured image -->
-        <div v-if="imageSrc">
+        <!-- <div v-if="imageSrc">
           <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
+        </div> -->
+        <div v-if="imageSrc" class="image-container">
+          <img :src="imageSrc" alt="Captured image" class="image" />
         </div>
         <div v-else>
           <p>No image captured</p>
         </div>
       <!-- Iterate over the posts and display them -->
-      <div v-if="leaf">
-        <h2><b>{{ leaf.name }}</b></h2>
+      <div v-if="leaf" class="result">
+        <div class="leaf-info">
+          <div class="leaf-text">
+            <h2 class="leaf-name"><b>{{ leaf.name }}</b></h2>
+            <p class="leaf-scientific-name"> {{ leaf.scientificName }}</p>
+          </div>
+          <ion-fab-button class="leaf-fab-button" size="small">
+            <ion-icon size="small" :icon="arrowForwardOutline"></ion-icon>
+          </ion-fab-button>
+        </div>
+        <!-- <h2><b>{{ leaf.name }}</b></h2>
         <p><b>Scientific Name: </b> {{ leaf.scientificName }}</p>
         <p><b>Description: </b> {{ leaf.description }}</p>
         <p><b>Uses: </b> {{ leaf.uses }}</p>
-        <p><b>Habitat: </b> {{ leaf.habitat }}</p>
+        <p><b>Habitat: </b> {{ leaf.habitat }}</p> -->
       </div>
       <div v-else>
         <p>Loading data...</p>
@@ -62,7 +79,7 @@
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType } from '@capacitor/camera';
-  import { aperture } from 'ionicons/icons';
+  import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
   import GlobalHeader from '@/components/GlobalHeader.vue';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
@@ -138,6 +155,75 @@ onMounted(() => {
 </style>
 
 <style scoped>
+
+.leaf-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.leaf-text {
+  flex: 1;
+}
+
+.leaf-name, .leaf-scientific-name {
+  margin: 0; /* Remove default margin */
+  padding: 2px 0; /* Add padding for spacing */
+  text-align: left; 
+}
+.leaf-name {
+  margin-top: 1px;
+  padding-top: 0px;
+}
+.arrow-icon {
+  display: flex;
+  margin: 0 10px; /* Adjust the spacing as needed */
+  font-size: 24px; /* Adjust the size as needed */
+}
+.result > * {
+  margin: 0px; /* Adjust the spacing as needed */
+}
+
+.result {
+  position: absolute;
+  top: 80%;
+  left: 50%;
+  width: 90%; /* Full width of the viewport */
+  height: 13%;
+  transform: translateX(-50%);
+  z-index: 10; /* Ensure it is in front of the image */
+  background-color: rgba(216, 232, 164, 0.841); /* Optional: semi-transparent background */
+  padding: 20px;
+  border-radius: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.image-container {
+  position: absolute; /* Position the container absolutely */
+  top: 0%; /* Adjust the top position as needed */
+  left: 0;
+  width: 100vw; /* Full width of the viewport */
+  height:   100vh; /* 75% of the viewport height */
+  background-color: #fff;
+  display: flex; /* Center content */
+  flex-direction: column; /* Stack child elements vertically */
+  justify-content: center; /* Center vertically */
+  align-items: center; /* Center horizontally */
+  box-sizing: border-box; /* Include padding/border in the dimensions */
+  padding: 20px; /* Optional padding for aesthetics */
+  overflow: hidden;
+}
+
+.image {
+  position: absolute; /* Position the container absolutely */
+  width: 100vw;
+  height: 100%;
+  object-fit: cover; /* Ensure the image covers the container without distortion */
+}
+
 ion-content {
   --background: #DCE6CC;
 }
