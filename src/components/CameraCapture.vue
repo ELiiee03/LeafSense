@@ -14,8 +14,8 @@
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
-        <ion-icon size="large" :icon="aperture" />
-        <!-- <ion-icon src="/resources/camera-outline.svg" name="camera-outline"></ion-icon> -->
+        <!-- <ion-icon size="large" :icon="aperture" /> -->
+        <ion-icon src="/resources/lastnajod.svg" name="scanner" class="scanner-icon"></ion-icon>
       </ion-fab-button>
     </ion-fab>
 
@@ -54,7 +54,7 @@
             <h2 class="leaf-name"><b>{{ leaf.name }}</b></h2>
             <p class="leaf-scientific-name"> {{ leaf.scientificName }}</p>
           </div>
-          <ion-fab-button class="leaf-fab-button" size="small">
+          <ion-fab-button @click="navigateToLeafInfo" class="leaf-fab-button" size="small">
             <ion-icon size="small" :icon="arrowForwardOutline"></ion-icon>
           </ion-fab-button>
         </div>
@@ -81,14 +81,15 @@
   import { Camera, CameraResultType } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
   import GlobalHeader from '@/components/GlobalHeader.vue';
+  import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
   
-// import { add } from 'ionicons/icons';
 
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
+  const router = useRouter();
   // const emit = defineEmits(['captureImage']);
 
 
@@ -112,6 +113,12 @@
     setOpen(true);
 
 };
+
+const navigateToLeafInfo = () => {
+    setOpen(false); // Close the modal before navigating
+    router.push({ name: 'leafinfo' });
+  };
+
 // Http requests
 // Define the interface for a Post
 interface Leaf {
@@ -155,6 +162,12 @@ onMounted(() => {
 </style>
 
 <style scoped>
+
+.scanner-icon {
+  width: 24px; /* Adjust the width as needed */
+  height: 24px; /* Adjust the height as needed */
+  color: white; /* Set the desired color */
+}
 
 .leaf-info {
   display: flex;
@@ -239,7 +252,7 @@ ion-content {
     margin-top: 75%;
   }
   ion-fab-button {
-    --background: #228B22;
+    --background: #416d3f;
     --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
 </style>

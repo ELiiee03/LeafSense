@@ -55,13 +55,13 @@
   height: 55px; /* Adjust the height as needed */
   padding: 0;
   margin: 0;
-    --background: #bbef68;
-    border-top-left-radius: 25px;
-    border-top-right-radius: 25px;
+    --background: #c1d5abbc;
+    border-top-left-radius: 30px;
+    border-top-right-radius: 30px;
 }
 ion-tab-button {
 
-  --color-selected: #228B22;
+  --color-selected: #416d3f;
 }
 </style>
     

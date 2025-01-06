@@ -17,7 +17,7 @@ const routes: Array<RouteRecordRaw> = [
       },
       {
         path: 'home',
-        component: () => import('../views/HomePage.vue'),
+        component: () => import('@/views/HomePage.vue'),
       },
       {
         path: 'radio',
@@ -47,6 +47,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'login',
     component: () => import('../views/Login.vue'),
   },
+  {
+    path: '/leafinfo',
+    name: 'leafinfo',
+    component: () => import('../views/LeafInfoPage.vue'),
+  },
+
 ];
 
 const router = createRouter({
