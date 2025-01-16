@@ -86,6 +86,7 @@ description: string;
 uses: string;
 habitat: string;
 }
+
 const leaf = ref<Leaf | null>(null); // Leaf data object
 const leafId = 3; // Example ID for fetching a specific leaf
 

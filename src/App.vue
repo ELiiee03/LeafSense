@@ -11,7 +11,6 @@
 <script lang="ts">
 import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
 import { defineComponent } from 'vue';
-
 import Tabs from '@/components/Tabs.vue';
 
 

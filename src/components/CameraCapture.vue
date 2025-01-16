@@ -84,6 +84,7 @@
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
+  import { sqliteService } from '@/services/sqliteService'; // Import sqliteService
   
 
 // Modal state
@@ -119,7 +120,7 @@ const navigateToLeafInfo = () => {
     router.push({ name: 'leafinfo' });
   };
 
-// Http requests
+// Http requests 
 // Define the interface for a Post
 interface Leaf {
   id: number;
