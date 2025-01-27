@@ -5,58 +5,97 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
 import com.getcapacitor.BridgeActivity;
-import org.pytorch.IValue;
-import org.pytorch.Module;
-import org.pytorch.Tensor;
-import org.pytorch.torchvision.TensorImageUtils;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.community.database.sqlite.CapacitorSQLite;
+
+import org.tensorflow.lite.Interpreter;
+import org.tensorflow.lite.support.image.ImageProcessor;
+import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.image.ops.ResizeOp;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
+import java.io.FileInputStream;
+
 
 public class MainActivity extends BridgeActivity {
-     private Module module;
+   private Interpreter tflite;
+    private SQLiteDatabase database;
+    private ImageProcessor imageProcessor;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Load the model
+        registerPlugin(LeafInferencePlugin.class);
+        
+        // Initialize SQLite database
+        database = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null);
+        createTable();
+        
+        // Initialize TFLite
         try {
-            module = Module.load(assetFilePath("mobilenetv3_small_scripted.pt"));
+            tflite = new Interpreter(loadModelFile());
+            imageProcessor = new ImageProcessor.Builder()
+                .add(new ResizeOp(224, 224, ResizeOp.ResizeMethod.BILINEAR))
+                .build();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        // Example of preparing input tensor and running inference
-        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.your_image);
-        Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap,
-                TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
-
-        // Run inference
-        Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
-
-        // Process the output
-        float[] scores = outputTensor.getDataAsFloatArray();
-        // Handle the scores as needed
+        
+        // Register our custom plugin
+        registerPlugin(LeafInferencePlugin.class);
+        // Register SQLite plugin
+        registerPlugin(CapacitorSQLite.class);
+        registerPlugin(LeafInferencePlugin.class);
+    }
+        private MappedByteBuffer loadModelFile() throws IOException {
+        String modelPath = "model.tflite";
+        File modelFile = new File(getAssets(), modelPath);
+        FileInputStream inputStream = new FileInputStream(modelFile);
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = 0;
+        long declaredLength = modelFile.length();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
     }
 
-    // Helper function to load model file from assets
-    private String assetFilePath(String assetName) throws IOException {
-        File file = new File(getFilesDir(), assetName);
-        if (file.exists() && file.length() > 0) {
-            return file.getAbsolutePath();
-        }
 
-        try (InputStream is = getAssets().open(assetName);
-             FileOutputStream fos = new FileOutputStream(file)) {
-            byte[] buffer = new byte[4 * 1024];
-            int read;
-            while ((read = is.read(buffer)) != -1) {
-                fos.write(buffer, 0, read);
+    public Map<String, Object> runInference(String imagePath) {
+        try {
+            // Load and preprocess image
+            Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
+            TensorImage tensorImage = TensorImage.fromBitmap(bitmap);
+            tensorImage = imageProcessor.process(tensorImage);
+
+            // Prepare input and output
+            float[][][][] input = new float[1][224][224][3];
+            float[][] output = new float[1][3]; // Replace with your model's output size
+
+            // Run inference
+            tflite.run(tensorImage.getBuffer(), output);
+
+            private Map<String, Object> processResults(float[] output) {
+            // Find the index with highest probability
+                int maxIndex = 0;
+                float maxConfidence = output[0];
+                for (int i = 1; i < output.length; i++) {
+                    if (output[i] > maxConfidence) {
+                        maxIndex = i;
+                        maxConfidence = output[i];
+                    }
+                }
+
+                // Map index to class name (you'll need to define these based on your model)
+                String[] classNames = {"Jack Fruit", "Oak Leaf", "Jackfruit Leaf", "Birch Leaf"};
+                
+                Map<String, Object> result = new HashMap<>();
+                result.put("predictedClass", classNames[maxIndex]);
+                result.put("confidence", maxConfidence);
+                
+                return result;
             }
-            fos.flush();
-        }
-        return file.getAbsolutePath();
     }
 }

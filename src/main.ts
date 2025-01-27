@@ -11,6 +11,8 @@ import { IonicVue } from '@ionic/vue';
 
 import App from './App.vue';
 import router from './router';
+import { CapacitorSQLite } from '@capacitor-community/sqlite';
+import { syncService } from './services/syncService';
 
 
 /* Core CSS required for Ionic components to work properly */
@@ -45,6 +47,23 @@ import './theme/variables.css';
 
 const app = createApp(App).use(IonicVue).use(router);
 
+// Initialize SQLite
+const initializeSQLite = async () => {
+  try {
+      await CapacitorSQLite.createConnection({
+          database: 'leaf_inference',
+          encrypted: false,
+          mode: 'no-encryption',
+          version: 1
+      });
+  } catch (error) {
+      console.error('Error initializing SQLite:', error);
+  }
+};  
+
+initializeSQLite()
+
+syncService.init();
 
 router.isReady().then(() => {
   app.mount('#app');

@@ -10,8 +10,8 @@
 
 <script lang="ts">
 import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
-import { defineComponent } from 'vue';
-import Tabs from '@/components/Tabs.vue';
+import { defineComponent, onMounted } from 'vue';
+import { syncService } from '@/services/syncService';
 
 
 export default defineComponent({
@@ -22,6 +22,11 @@ export default defineComponent({
     IonPage,
     IonRouterOutlet,
   }
+});
+
+onMounted(() => {
+    // Initialize sync service
+    syncService.init();
 });
 </script>
 <style>

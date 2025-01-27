@@ -37,7 +37,9 @@
             <ion-icon :icon="chevronBackOutline" size="small"></ion-icon>
           </ion-fab-button>
           </ion-fab>
+
         <!-- Display the captured image -->
+
         <!-- <div v-if="imageSrc">
           <img :src="imageSrc" alt="Captured image" style="width: 100%;" />
         </div> -->
@@ -47,12 +49,13 @@
         <div v-else>
           <p>No image captured</p>
         </div>
-      <!-- Iterate over the posts and display them -->
+        
+      <!-- inference result display -->
       <div v-if="leaf" class="result">
         <div class="leaf-info">
           <div class="leaf-text">
-            <h2 class="leaf-name"><b>{{ leaf.name }}</b></h2>
-            <p class="leaf-scientific-name"> {{ leaf.scientificName }}</p>
+            <h2 class="leaf-name"><b>{{ inferenceResult?.leafInfo.name }}</b></h2>
+            <p class="leaf-scientific-name">{{ inferenceResult?.leafInfo.scientificName }}</p>
           </div>
           <ion-fab-button @click="navigateToLeafInfo" class="leaf-fab-button" size="small">
             <ion-icon size="small" :icon="arrowForwardOutline"></ion-icon>
@@ -84,7 +87,8 @@
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
-  import { sqliteService } from '@/services/sqliteService'; // Import sqliteService
+  import { inferenceService } from '@/services/inferenceService';
+  // import { sqliteService } from '@/services/sqliteService'; // Import sqliteService
   
 
 // Modal state
@@ -97,28 +101,93 @@
   // Function to open or close the modal
   const setOpen = (open: boolean) => {
     isOpen.value = open;
-  };
-
-  // const imageSrc = ref('');
-  const takePhoto = async () => {
-    const image = await Camera.getPhoto({
-      quality: 90,
-      allowEditing: true,
-      resultType: CameraResultType.Uri,
-    });
-
-    imageSrc.value = image.webPath || '';
-    // Emit the captured image to the parent component
-
-      // Open the modal to display the captured image
-    setOpen(true);
-
 };
 
-const navigateToLeafInfo = () => {
-    setOpen(false); // Close the modal before navigating
-    router.push({ name: 'leafinfo' });
+// In script setup
+interface InferenceResult {
+  inference: {
+    predictedClass: string;
+    confidence: number;
   };
+  leafInfo: {
+    name: string;
+    scientificName: string;
+    familyName: string;
+    description: string;
+    habitat: string;
+  };
+}
+
+// Update the ref to use the new interface
+const inferenceResult = ref<InferenceResult | null>(null);
+
+
+  // const imageSrc = ref('');
+//   const takePhoto = async () => {
+//     try {
+//         const image = await Camera.getPhoto({
+//             quality: 90,
+//             allowEditing: true,
+//             resultType: CameraResultType.Uri,
+//         });
+
+//         imageSrc.value = image.webPath || '';
+
+//         // Perform inference
+//         const inferenceResult = await inferenceService.performInference(imageSrc.value);
+
+//         // Update leaf data with inference result
+//         leaf.value = inferenceResult.leafInfo;
+
+//         // Open the modal to display the result
+//         setOpen(true);
+//     } catch (error) {
+//         console.error('Error taking photo:', error);
+//     }
+// };
+
+const takePhoto = async () => {
+    try {
+        const image = await Camera.getPhoto({
+            quality: 90,
+            allowEditing: true,
+            resultType: CameraResultType.DataUrl,  // Changed from Uri to DataUrl
+        });
+
+        imageSrc.value = image.dataUrl || '';
+        console.log('Captured image path:', imageSrc.value);
+        
+        // Perform inference
+        const result = await inferenceService.performInference(imageSrc.value);
+        console.log('Inference result:', result);
+        
+        // Store the complete result
+        inferenceResult.value = result;
+        
+        // Open the modal to display the result
+        setOpen(true);
+    } catch (error) {
+        console.error('Error taking photo:', error);
+    }
+};
+
+
+// const navigateToLeafInfo = () => {
+//     setOpen(false); // Close the modal before navigating
+//     router.push({ name: 'leafinfo' });
+//   };
+
+const navigateToLeafInfo = () => {
+    if (inferenceResult.value) {
+        setOpen(false);
+        router.push({ 
+            name: 'leafinfo',
+            params: { 
+                leafData: JSON.stringify(inferenceResult.value)
+            }
+        });
+    }
+};
 
 // Http requests 
 // Define the interface for a Post
