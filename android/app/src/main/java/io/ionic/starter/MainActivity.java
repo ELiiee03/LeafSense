@@ -33,7 +33,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(LeafInferencePlugin.class);
         
         // Initialize SQLite database
-        database = openOrCreateDatabase("leaf_inference.db", MODE_PRIVATE, null);
+        database = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null);
         createTable();
         
         // Initialize TFLite
@@ -77,16 +77,25 @@ public class MainActivity extends BridgeActivity {
             // Run inference
             tflite.run(tensorImage.getBuffer(), output);
 
-            // Process results
-            Map<String, Object> result = processResults(output[0]);
-            
-            // Save to SQLite
-            saveToDatabase(imagePath, result);
-            
-            return result;
-              } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
+            private Map<String, Object> processResults(float[] output) {
+            // Find the index with highest probability
+                int maxIndex = 0;
+                float maxConfidence = output[0];
+                for (int i = 1; i < output.length; i++) {
+                    if (output[i] > maxConfidence) {
+                        maxIndex = i;
+                        maxConfidence = output[i];
+                    }
+                }
+
+                // Map index to class name (you'll need to define these based on your model)
+                String[] classNames = {"Jack Fruit", "Oak Leaf", "Jackfruit Leaf", "Birch Leaf"};
+                
+                Map<String, Object> result = new HashMap<>();
+                result.put("predictedClass", classNames[maxIndex]);
+                result.put("confidence", maxConfidence);
+                
+                return result;
+            }
     }
 }

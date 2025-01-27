@@ -9,7 +9,9 @@
                 </ion-fab>
             <div class="leaf-container1">
               <div class="leaf-container">
-                <ion-grid class="custom-grid">
+
+                <!-- Leaf Name and Scientificname -->
+                <!-- <ion-grid class="custom-grid">
                   <ion-row>
                     <ion-col>
                       <img src="/resources/jackfruit.png" alt="Leaf Image" class="leaf-image">
@@ -23,10 +25,25 @@
                       </div>
                     </ion-col style="border: 2px solid red;">
                   </ion-row style="border: 2px solid red;">
-                </ion-grid>
+                </ion-grid> -->
+                <ion-grid class="custom-grid">
+                  <ion-row>
+                      <ion-col>
+                          <img src="/resources/jackfruit.png" alt="Leaf Image" class="leaf-image">
+                      </ion-col>
+                      <ion-col size="auto">
+                          <div style="width: 170px">
+                              <div class="leaf-info">
+                                <h3 class="leaf-name" v-if="leafData"><b>{{ leafData.leafInfo.name }}</b></h3>
+                                <p class="leaf-scientific-name" v-if="leafData">{{ leafData.leafInfo.scientificName }}</p>
+                              </div>
+                          </div>
+                      </ion-col>
+                  </ion-row>
+              </ion-grid>
 
                 <!-- Leaf results -->
-                <div>
+                <!-- <div>
                   <div v-if="leaf" class="result">
                       <p><b>Description: </b> {{ leaf.description }}</p>
                       <p><b>Uses: </b> {{ leaf.uses }}</p>
@@ -35,11 +52,27 @@
                     <div v-else>
                       <p>Loading data...</p>
                     </div>
-              </div>
+              </div> -->
+
+              <div>
+                <div v-if="leafData" class="result">
+                    <p><b>Description: </b> {{ leafData.leafInfo.description }}</p>
+                    <p><b>Family Name: </b> {{ leafData.leafInfo.familyName }}</p>
+                    <p><b>Habitat: </b> {{ leafData.leafInfo.habitat }}</p>
+                    
+                    <!-- Optional: Display inference confidence if available -->
+                    <p v-if="leafData.inference?.confidence">
+                        <b>Confidence: </b> {{ (leafData.inference.confidence * 100).toFixed(2) }}%
+                    </p>
+                </div>    
+                <div v-else>
+                    <p>Loading data...</p>
+                </div>
+            </div>
 
                       <!-- save button -->
                   <div class="button-container">
-                      <ion-button class="save">Save</ion-button>
+                      <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
                   </div>
               </div>
 
@@ -66,39 +99,153 @@
 </template>
 
 <script setup lang="ts">
-import { IonPage, IonToolbar, IonTitle, IonContent, IonCol, IonGrid, IonRow } from '@ionic/vue';
+import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
 import { arrowBack } from 'ionicons/icons';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
+import { sqliteService } from '@/services/sqliteService';
+import { Network } from '@capacitor/network';
+import { supabase } from '@/supabaseClient';
 import { ref, onMounted } from 'vue';
 
 const router = useRouter();
-interface Leaf {
-  name: string;
-  scientificName: string;
-  description?: string;
-  uses?: string;
-  habitat?: string;
+const route = useRoute();
+
+// interface for leaf info
+interface LeafInfo {
+    imagePath: string;
+    leafInfo: string;
+    result: string;
+    name: string;
+    scientificName: string;
+    familyName: string;
+    description: string;
+    habitat: string
+    timestamp: number;
+    synced: number;
 }
 
-const leaf = ref<Leaf | null>(null);
+interface InferenceResult {
+  inference: {
+    predictedClass: string;
+    confidence: number;
+  };
+  leafInfo: {
+    name: string;
+    scientificName: string;
+    familyName: string;
+    description: string;
+    habitat: string;
+  };
+}
 
+const leafData = ref<InferenceResult | null>(null);
+const imageSrc = ref<string>('');
+
+// function to close page
 function closePage() {
   router.back();
 }
 
-async function fetchLeafData() {
-  try {
-    const response = await fetch('/data.json');
-    const data = await response.json();
-    // Assuming you want to fetch the first leaf for demonstration
-    leaf.value = data[2];
-  } catch (error) {
-    console.error('Error fetching leaf data:', error);
-  }
+// Save functionality
+// function saveLeafInfo() {
+//     // Implement save functionality
+//     console.log('Saving leaf info:', leafData.value);
+// }
+async function showToast(message: string, isError = false) {
+    const toast = await toastController.create({
+        message: message,
+        duration: 2000,
+        color: isError ? 'danger' : 'success',
+        position: 'top'
+    });
+    await toast.present();
 }
 
+// Save functionality
+async function saveLeafInfo() {
+    try {
+        const timestamp = Date.now();
+        const status = await Network.getStatus();
+
+        if (status.connected) {
+            // Online: Direct insert to Supabase
+            const { error } = await supabase
+                .from('leaf_info')
+                .insert({
+                    image_path: imageSrc.value,
+                    scientific_name: leafData.value?.leafInfo.scientificName,
+                    family_name: leafData.value?.leafInfo.familyName,
+                    description: leafData.value?.leafInfo.description,
+                    habitat: leafData.value?.leafInfo.habitat,
+                    result: leafData.value?.inference.predictedClass,
+                    timestamp: timestamp,
+                    synced: 1
+                });
+
+            if (error) throw error;
+            await showToast('Leaf information saved successfully');
+            console.log('Leaf info saved directly to Supabase');
+        } else {
+            // Offline: Save to SQLite for later sync
+            await sqliteService.saveLeaf({
+            imagePath: imageSrc.value,
+            leafInfo: JSON.stringify({
+                result: leafData.value?.inference.predictedClass || '',
+                scientificName: leafData.value?.leafInfo.scientificName || '',
+                familyName: leafData.value?.leafInfo.name || '',
+                description: leafData.value?.leafInfo.description || '',
+                habitat: leafData.value?.leafInfo.habitat || ''
+            }),
+            timestamp: Date.now(),
+            synced: 0
+        });
+            await showToast('Leaf information saved offline');
+            console.log('Leaf info saved to SQLite (offline mode)');
+      }
+                // Show success message (you can use Ionic Toast here)
+        
+    } catch (error) {
+      console.error('Error saving leaf info:', error);
+      await showToast('Error saving leaf information', true);
+        // Show error message
+    }
+}
+
+
+// async function fetchLeafData() {
+//   try {
+//     const response = await fetch('/data.json');
+//     const data = await response.json();
+//     // Assuming you want to fetch the first leaf for demonstration
+//     leaf.value = data[2];
+//   } catch (error) {
+//     console.error('Error fetching leaf data:', error);
+//   }
+// }
+
+// onMounted(() => {
+//   fetchLeafData();
+// });
 onMounted(() => {
-  fetchLeafData();
+    if (route.params.leafData) {
+        try {
+            leafData.value = JSON.parse(route.params.leafData as string);
+        } catch (error) {
+            console.error('Error parsing leaf data:', error);
+        }
+    }
+
+    // Add network listener
+    Network.addListener('networkStatusChange', async (status) => {
+        if (status.connected) {
+            try {
+                // Sync any offline data when coming back online
+                await sqliteService.syncWithSupabase();
+            } catch (error) {
+                console.error('Error syncing with Supabase:', error);
+            }
+        }
+    });
 });
 
 </script>

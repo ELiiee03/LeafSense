@@ -9,13 +9,16 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class LeafInferencePlugin extends Plugin {
     @PluginMethod
     public void runInference(PluginCall call) {
-        String imagePath = call.getString("imagePath");
-        
-        try {
-            Map<String, Object> result = ((MainActivity) getActivity()).runInference(imagePath);
-            call.resolve(new JSObject(result));
-        } catch (Exception e) {
-            call.reject("Error running inference: " + e.getMessage());
-        }
+    String imagePath = call.getString("imagePath");
+    
+    try {
+        Map<String, Object> result = ((MainActivity) getActivity()).runInference(imagePath);
+        JSObject ret = new JSObject();
+        ret.put("predictedClass", result.get("predictedClass"));
+        ret.put("confidence", result.get("confidence"));
+        call.resolve(ret);
+    } catch (Exception e) {
+        call.reject("Error running inference: " + e.getMessage());
     }
+}
 }
