@@ -51,6 +51,7 @@ const routes: Array<RouteRecordRaw> = [
     path: '/leafinfo',
     name: 'leafinfo',
     component: () => import('../views/LeafInfoPage.vue'),
+    props: true,
   },
 
 ];

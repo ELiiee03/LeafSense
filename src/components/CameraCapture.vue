@@ -51,7 +51,7 @@
         </div>
         
       <!-- inference result display -->
-      <div v-if="leaf" class="result">
+      <div v-if="inferenceResult?.leafInfo" class="result">
         <div class="leaf-info">
           <div class="leaf-text">
             <h2 class="leaf-name"><b>{{ inferenceResult?.leafInfo.name }}</b></h2>
@@ -81,13 +81,15 @@
 <script setup lang="ts">
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
-  import { Camera, CameraResultType } from '@capacitor/camera';
+  import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
   import GlobalHeader from '@/components/GlobalHeader.vue';
+  import { Network } from '@capacitor/network';
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
   import axios from 'axios';
   import { inferenceService } from '@/services/inferenceService';
+  import { useInferenceStore } from '@/stores/inferenceStores';
   // import { sqliteService } from '@/services/sqliteService'; // Import sqliteService
   
 
@@ -95,6 +97,7 @@
   const isOpen = ref(false);
   const imageSrc = ref('');
   const router = useRouter();
+  const inferenceStore = useInferenceStore();
   // const emit = defineEmits(['captureImage']);
 
 
@@ -147,18 +150,32 @@ const inferenceResult = ref<InferenceResult | null>(null);
 // };
 
 const takePhoto = async () => {
-    try {
-        const image = await Camera.getPhoto({
+  try {
+      const networkStatus = await Network.getStatus();
+    
+      const image = await Camera.getPhoto({
             quality: 90,
             allowEditing: true,
-            resultType: CameraResultType.DataUrl,  // Changed from Uri to DataUrl
+            // Use DataUrl for online, Uri for offline
+            resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
+            source: CameraSource.Camera
         });
 
-        imageSrc.value = image.dataUrl || '';
+        // imageSrc.value = image.dataUrl || '';
+    // console.log('Captured image path:', imageSrc.value);
+
+           // Handle different image formats
+           if (networkStatus.connected) {
+            imageSrc.value = image.dataUrl || '';
+        } else {
+            imageSrc.value = image.webPath || '';
+        }
+        
         console.log('Captured image path:', imageSrc.value);
         
         // Perform inference
         const result = await inferenceService.performInference(imageSrc.value);
+        inferenceStore.setInferenceResult(result);
         console.log('Inference result:', result);
         
         // Store the complete result
@@ -178,15 +195,8 @@ const takePhoto = async () => {
 //   };
 
 const navigateToLeafInfo = () => {
-    if (inferenceResult.value) {
-        setOpen(false);
-        router.push({ 
-            name: 'leafinfo',
-            params: { 
-                leafData: JSON.stringify(inferenceResult.value)
-            }
-        });
-    }
+  setOpen(false);
+  router.push({ name: 'leafinfo' });
 };
 
 // Http requests 
@@ -200,23 +210,24 @@ interface Leaf {
   habitat: string;
 }
 
-// Create a reactive reference with the correct type
-const leaf = ref<Leaf | null>(null); // Single Post object
+// // Create a reactive reference with the correct type
+// const leaf = ref<Leaf | null>(null); // Single Post object
 
-const leafId = 3;
-// const posts = ref([]);
+// const leafId = 3;
+// // const posts = ref([]);
 
-onMounted(() => {
-  setTimeout(() => {
-  axios.get('/data.json')
-    .then(response => {
-      leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
-    })
-    .catch(error => {
-      console.error('Error fetching photos:', error);
-    });
-  }, 3000);
-});
+// onMounted(() => {
+//   setTimeout(() => {
+//   axios.get('/data.json')
+//     .then(response => {
+//       leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;; // Store the response data in the reactive variable
+//     })
+//     .catch(error => {
+//       console.error('Error fetching photos:', error);
+//     });
+//   }, 3000);
+// });
+
 
 </script>
 

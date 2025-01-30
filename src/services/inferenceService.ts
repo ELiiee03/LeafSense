@@ -3,7 +3,7 @@ import { supabase } from '@/supabaseClient';
 import axios from 'axios';
 import { Network } from '@capacitor/network';
 import { registerPlugin } from '@capacitor/core';
-import { Filesystem } from '@capacitor/filesystem';
+import { Directory, Filesystem } from '@capacitor/filesystem';
 
 // Register the LeafInference plugin
 const LeafInference = registerPlugin<{
@@ -60,8 +60,8 @@ export const inferenceService = {
                             confidence: result.data.confidence
                         },
                         leafInfo: {
-                            name: result.data.name,
-                            scientificName: result.data.scientificName,
+                           name: result.data.name,
+                             scientificName: result.data.scientificName,
                             familyName: result.data.familyName,
                             description: result.data.description,
                             habitat: result.data.habitat
@@ -83,6 +83,23 @@ export const inferenceService = {
             } else {
                 // Offline: Use TFLite model
                 try {
+                    // If the image is a webPath (file URI), use it directly
+                    // If it's a dataUrl, save it to a file first
+                    let finalImagePath = imagePath;
+                    if (imagePath.startsWith('data:image')) {
+                        const base64Data = imagePath.split(',')[1];
+                        const fileName = `leaf_${Date.now()}.jpg`;
+                        
+                        // Save the image to filesystem
+                        const savedImage = await Filesystem.writeFile({
+                            path: fileName,
+                            data: base64Data,
+                            directory: Directory.Cache
+                        });
+                        finalImagePath = savedImage.uri;
+                    }
+
+                    // Run TFLite inference with the file path
                     const tfliteResult = await LeafInference.runInference({
                         imagePath: imagePath
                     });
@@ -113,13 +130,25 @@ export const inferenceService = {
                         }
                     };
                     
-                    // Store in SQLite for later sync
+                    // Store in SQLite
                     await sqliteService.saveInferenceResult({
-                        imagePath,
+                        imagePath: finalImagePath,
                         result: JSON.stringify(finalResult),
                         timestamp,
                         synced: 0
                     });
+                    
+                    // Clean up temporary file if we created one
+                    if (imagePath !== finalImagePath) {
+                        try {
+                            await Filesystem.deleteFile({
+                                path: finalImagePath,
+                                directory: Directory.Cache
+                            });
+                        } catch (e) {
+                            console.warn('Error cleaning up temporary file:', e);
+                        }
+                    }
                     
                     return finalResult;
                 } catch (error) {

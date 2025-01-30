@@ -1,5 +1,8 @@
 package io.ionic.starter;
 
+import java.util.Map;
+import com.getcapacitor.JSObject;
+
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.PluginCall;

@@ -7,6 +7,7 @@ if (typeof window !== 'undefined') {
   defineCustomElements(window);
 }
 import { createApp } from 'vue'
+import { createPinia } from 'pinia';
 import { IonicVue } from '@ionic/vue';
 
 import App from './App.vue';
@@ -46,6 +47,8 @@ import '@ionic/vue/css/display.css';
 import './theme/variables.css';
 
 const app = createApp(App).use(IonicVue).use(router);
+const pinia = createPinia();
+app.use(pinia);
 
 // Initialize SQLite
 const initializeSQLite = async () => {

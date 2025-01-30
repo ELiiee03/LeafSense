@@ -34,8 +34,12 @@
                       <ion-col size="auto">
                           <div style="width: 170px">
                               <div class="leaf-info">
-                                <h3 class="leaf-name" v-if="leafData"><b>{{ leafData.leafInfo.name }}</b></h3>
-                                <p class="leaf-scientific-name" v-if="leafData">{{ leafData.leafInfo.scientificName }}</p>
+                                <h3 class="leaf-name" v-if="leafData?.leafInfo">
+                                  <b>{{ leafData.leafInfo.name }}</b>
+                              </h3>
+                              <p class="leaf-scientific-name" v-if="leafData?.leafInfo">
+                                  {{ leafData.leafInfo.scientificName }}
+                              </p>
                               </div>
                           </div>
                       </ion-col>
@@ -56,14 +60,14 @@
 
               <div>
                 <div v-if="leafData" class="result">
-                    <p><b>Description: </b> {{ leafData.leafInfo.description }}</p>
-                    <p><b>Family Name: </b> {{ leafData.leafInfo.familyName }}</p>
-                    <p><b>Habitat: </b> {{ leafData.leafInfo.habitat }}</p>
-                    
-                    <!-- Optional: Display inference confidence if available -->
-                    <p v-if="leafData.inference?.confidence">
-                        <b>Confidence: </b> {{ (leafData.inference.confidence * 100).toFixed(2) }}%
-                    </p>
+                  <p><b>Description: </b> {{ leafData.leafInfo?.description || 'No description available' }}</p>
+                  <p><b>Family Name: </b> {{ leafData.leafInfo?.familyName || 'No family name available' }}</p>
+                  <p><b>Habitat: </b> {{ leafData.leafInfo?.habitat || 'No habitat information available' }}</p>
+                  
+                  <!-- Display confidence from either format -->
+                  <p v-if="getConfidence()">
+                    <b>Confidence: </b> {{ formatConfidence(getConfidence()!) }}%
+                </p>
                 </div>    
                 <div v-else>
                     <p>Loading data...</p>
@@ -105,10 +109,16 @@ import { useRouter, useRoute } from 'vue-router';
 import { sqliteService } from '@/services/sqliteService';
 import { Network } from '@capacitor/network';
 import { supabase } from '@/supabaseClient';
-import { ref, onMounted } from 'vue';
+import { ref, defineProps, onMounted, computed } from 'vue';
+import { useInferenceStore } from '@/stores/inferenceStores';
 
-const router = useRouter();
+// const router = useRouter();
 const route = useRoute();
+// const router = useRouter();
+
+const inferenceStore = useInferenceStore();
+// const leafData = ref<LeafData | null>(null);
+const leafData = computed(() => inferenceStore.result);
 
 // interface for leaf info
 interface LeafInfo {
@@ -124,21 +134,76 @@ interface LeafInfo {
     synced: number;
 }
 
-interface InferenceResult {
-  inference: {
-    predictedClass: string;
-    confidence: number;
-  };
-  leafInfo: {
-    name: string;
-    scientificName: string;
-    familyName: string;
-    description: string;
-    habitat: string;
-  };
+// interface InferenceResult {
+//   inference: {
+//     predictedClass: string;
+//     confidence: number;
+//   };
+//   leafInfo: {
+//     name: string;
+//     scientificName: string;
+//     familyName: string;
+//     description: string;
+//     habitat: string;
+//   };
+// }
+
+// const leafData = ref<InferenceResult | null>(null);
+
+// Update the interface to handle both formats
+// interface LeafData {
+//     inference?: {
+//         predictedClass: string;
+//         confidence: number;
+//     };
+//     leafInfo?: {
+//         name: string;
+//         scientificName: string;
+//         familyName: string;
+//         description: string;
+//         habitat: string;
+//     };
+//     // Direct API response format
+//     confidence?: number;
+//     description?: string;
+//     familyName?: string;
+//     habitat?: string;
+//     name?: string;
+//     scientificName?: string;
+// }
+
+interface LeafData {
+    inference?: {
+        predictedClass: string;
+        confidence: number;
+    };
+    leafInfo?: {
+        name: string;
+        scientificName: string;
+        familyName: string;
+        description: string;
+        habitat: string;
+    };
 }
 
-const leafData = ref<InferenceResult | null>(null);
+const props = defineProps<{
+    leafData: LeafData;
+
+}>();
+
+// const leafData = ref<LeafData | null>(props.leafData);
+
+
+const router = useRouter();
+// const leafData = ref<LeafData | null>(null);
+  const formatConfidence = (confidence: number) => {
+    return (confidence * 100).toFixed(2);
+};
+
+const getConfidence = (): number | null => {
+    return props.leafData?.inference?.confidence || null;
+};
+
 const imageSrc = ref<string>('');
 
 // function to close page
@@ -161,25 +226,30 @@ async function showToast(message: string, isError = false) {
     await toast.present();
 }
 
-// Save functionality
 async function saveLeafInfo() {
     try {
+        // Check if leafData exists first
+        if (!leafData.value) {
+            await showToast('No leaf data to save', true);
+            return;
+        }
+
         const timestamp = Date.now();
         const status = await Network.getStatus();
 
         if (status.connected) {
             // Online: Direct insert to Supabase
             const { error } = await supabase
-                .from('leaf_info')
+                .from('inference_results')
                 .insert({
-                    image_path: imageSrc.value,
-                    scientific_name: leafData.value?.leafInfo.scientificName,
-                    family_name: leafData.value?.leafInfo.familyName,
-                    description: leafData.value?.leafInfo.description,
-                    habitat: leafData.value?.leafInfo.habitat,
-                    result: leafData.value?.inference.predictedClass,
-                    timestamp: timestamp,
-                    synced: 1
+                    image: imageSrc.value,
+                    scientific_name: leafData.value.leafInfo?.scientificName ?? '',
+                    family_name: leafData.value.leafInfo?.familyName ?? '',
+                    description: leafData.value.leafInfo?.description ?? '',
+                    habitat: leafData.value.leafInfo?.habitat ?? '',
+                    result: leafData.value.inference?.predictedClass ?? '',
+                    // timestamp: timestamp,
+                    // synced: 1
                 });
 
             if (error) throw error;
@@ -188,26 +258,23 @@ async function saveLeafInfo() {
         } else {
             // Offline: Save to SQLite for later sync
             await sqliteService.saveLeaf({
-            imagePath: imageSrc.value,
-            leafInfo: JSON.stringify({
-                result: leafData.value?.inference.predictedClass || '',
-                scientificName: leafData.value?.leafInfo.scientificName || '',
-                familyName: leafData.value?.leafInfo.name || '',
-                description: leafData.value?.leafInfo.description || '',
-                habitat: leafData.value?.leafInfo.habitat || ''
-            }),
-            timestamp: Date.now(),
-            synced: 0
-        });
+                imagePath: imageSrc.value,
+                leafInfo: JSON.stringify({
+                    result: leafData.value.inference?.predictedClass ?? '',
+                    scientificName: leafData.value.leafInfo?.scientificName ?? '',
+                    familyName: leafData.value.leafInfo?.familyName ?? '',
+                    description: leafData.value.leafInfo?.description ?? '',
+                    habitat: leafData.value.leafInfo?.habitat ?? ''
+                }),
+                timestamp: timestamp,
+                synced: 0
+            });
             await showToast('Leaf information saved offline');
             console.log('Leaf info saved to SQLite (offline mode)');
-      }
-                // Show success message (you can use Ionic Toast here)
-        
+        }
     } catch (error) {
-      console.error('Error saving leaf info:', error);
-      await showToast('Error saving leaf information', true);
-        // Show error message
+        console.error('Error saving leaf info:', error);
+        await showToast('Error saving leaf information', true);
     }
 }
 
@@ -226,27 +293,43 @@ async function saveLeafInfo() {
 // onMounted(() => {
 //   fetchLeafData();
 // });
-onMounted(() => {
-    if (route.params.leafData) {
-        try {
-            leafData.value = JSON.parse(route.params.leafData as string);
-        } catch (error) {
-            console.error('Error parsing leaf data:', error);
-        }
-    }
 
-    // Add network listener
-    Network.addListener('networkStatusChange', async (status) => {
-        if (status.connected) {
-            try {
-                // Sync any offline data when coming back online
-                await sqliteService.syncWithSupabase();
-            } catch (error) {
-                console.error('Error syncing with Supabase:', error);
-            }
-        }
-    });
+// onMounted(() => {
+//     // Add debug logging
+//     console.log('Route params:', route.params);
+
+//     if (route.params.leafData) {
+//         try {
+//             const parsedData = JSON.parse(route.params.leafData as string);
+//             leafData.value = parsedData;
+//             // Add debug logging
+//             console.log('Parsed leaf data:', leafData.value);
+
+//             // Also store the image path if it exists
+//             if (route.params.imagePath) {
+//                 imageSrc.value = route.params.imagePath as string;
+//             }
+//         } catch (error) {
+//             console.error('Error parsing leaf data:', error);
+//         }
+//     } else {
+//         console.warn('No leaf data received in route params');
+//     }
+
+onMounted(() => {
+  // Add network listener
+  Network.addListener('networkStatusChange', async (status) => {
+    if (status.connected) {
+      try {
+        // Sync any offline data when coming back online
+        await sqliteService.syncWithSupabase();
+      } catch (error) {
+        console.error('Error syncing with Supabase:', error);
+      }
+    }
+  });
 });
+
 
 </script>
 
@@ -259,6 +342,7 @@ onMounted(() => {
   bottom: 0; /* Position at the bottom */
   left: 0; /* Align to the left */
   padding: 5px; /* Optional padding for aesthetics */
+
 }
 
 .save {
@@ -268,6 +352,8 @@ onMounted(() => {
   --background: #416d3f;
   --ripple-color: rgb(64, 241, 44);
   --background-hover: #9ce0be;
+  --border-radius: 15px;
+  --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
 }
 
 .back-button {
@@ -285,6 +371,7 @@ onMounted(() => {
 }
 
 .custom-grid {
+    border: 2px solid red;
     width: 100% ; /* Adjust the width as needed */
     height: 10%; /* Adjust the height as needed */
     position: absolute; /* Position the container absolutely */
@@ -302,6 +389,7 @@ ion-fab-button {
     flex-direction: column;
     text-align: left;
     margin-top: 25px;
+    border: 2px solid red;
 }
 .leaf-image {
     width: 250px; /* Adjust the width as needed */
@@ -311,9 +399,12 @@ ion-fab-button {
     top: -120px; /* Adjust the top position as needed */
     left: -1px; /* Adjust the left position as needed */
     z-index: 10; /* Ensure the image is above other elements */
+    border: 2px solid red;
+    
 }
 
 .image-container {
+    border: 2px solid red;
     position: absolute; /* Position the container absolutely */
     top: 0; /* Adjust the top position as needed */
     left: 0;
@@ -336,6 +427,7 @@ ion-fab-button {
 
 /* Add your styles here */
 .leaf-container {
+    border: 2px solid red;
     position: absolute; /* Position the container absolutely */
     top: 30%; /* Adjust the top position as needed */
     left: 0;
@@ -347,7 +439,7 @@ ion-fab-button {
     justify-content: center; /* Center vertically */
     align-items: center; /* Center horizontally */
     box-sizing: border-box; /* Include padding/border in the dimensions */
-    padding: 20px; /* Optional padding for aesthetics */
+    padding: 15px; /* Optional padding for aesthetics */
     border-top-right-radius: 95px;
 
   }
