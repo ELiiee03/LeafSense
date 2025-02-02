@@ -43,17 +43,17 @@ export const inferenceService = {
                     const formData = new FormData();
                     formData.append('file', blob, 'image.jpg');
 
-                    // Send to Flask API
-                    const result = await axios.post('http://127.0.0.1:5000/predict', formData, {
+                    // API FLask request 
+                    const result = await axios.post('http://localhost:5000/predict', formData, {
                         headers: {
                             'Content-Type': 'multipart/form-data',
                             'Accept': 'application/json',
                         },
-                        withCredentials: false // Important for CORS
+                        withCredentials: false // Prevents sending cookies or credentials in cross-origin requests
                     });
-                    console.log('API Response:', result.data); // Debug log
+                    console.log('API Response:', result.data); 
 
-                    // Format the response to match the expected structure
+                    // Formatting response to match the expected structure
                     const finalResult = {
                         inference: {
                             predictedClass: result.data.name,
@@ -83,7 +83,7 @@ export const inferenceService = {
             } else {
                 // Offline: Use TFLite model
                 try {
-                    // If the image is a webPath (file URI), use it directly
+                    // function to check f the image is a webPath (file URI), use it directly
                     // If it's a dataUrl, save it to a file first
                     let finalImagePath = imagePath;
                     if (imagePath.startsWith('data:image')) {
@@ -97,6 +97,14 @@ export const inferenceService = {
                             directory: Directory.Cache
                         });
                         finalImagePath = savedImage.uri;
+                    }
+                    // Converting webPath to filesystem URL for Android
+                    if (imagePath.startsWith('file://')) {
+                        const fileContent = await Filesystem.readFile({
+                            path: imagePath.split('file://').pop() || '',
+                            directory: Directory.Data
+                        });
+                        finalImagePath = `data:image/jpeg;base64,${fileContent.data}`;
                     }
 
                     // Run TFLite inference with the file path

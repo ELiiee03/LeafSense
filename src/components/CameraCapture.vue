@@ -15,7 +15,7 @@
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
         <!-- <ion-icon size="large" :icon="aperture" /> -->
-        <ion-icon src="/resources/lastnajod.svg" name="scanner" class="scanner-icon"></ion-icon>
+        <ion-icon src="/lastnajod.svg" name="scanner" class="scanner-icon"></ion-icon>
       </ion-fab-button>
     </ion-fab>
 
@@ -155,10 +155,10 @@ const takePhoto = async () => {
     
       const image = await Camera.getPhoto({
             quality: 90,
-            allowEditing: true,
-            // Use DataUrl for online, Uri for offline
+            allowEditing: false,
+            // DataUrl for online, Uri for offline
             resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
-            source: CameraSource.Camera
+            source: CameraSource.Prompt
         });
 
         // imageSrc.value = image.dataUrl || '';
@@ -170,7 +170,7 @@ const takePhoto = async () => {
         } else {
             imageSrc.value = image.webPath || '';
         }
-        
+          
         console.log('Captured image path:', imageSrc.value);
         
         // Perform inference

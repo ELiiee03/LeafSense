@@ -104,7 +104,7 @@ export default defineComponent({
   --ion-background-color: transparent;
   width: 100%;
   height: 100vh;
-  background: url("resources/leaf3.jpg") no-repeat center center;
+  background: url("/public/leaf3.jpg") no-repeat center center;
   overflow: hidden;
 }
 
@@ -144,7 +144,7 @@ ion-grid {
 .custom-button {
   --background: #416d3f;
   width: 95%; /* Adjust the width as needed */
-  height: 70px;
+  height: 45px;
   margin: 2px;
 }
 </style>

@@ -68,7 +68,7 @@ export default defineComponent({
   --ion-background-color: transparent;
   width: 100%;
   height: 100vh;
-  background: url("resources/leaf2.jpg") no-repeat center center;
+  background: url('/public/leaf2.jpg') no-repeat center center;
   background-size: cover;
 }
 .ion-padding {

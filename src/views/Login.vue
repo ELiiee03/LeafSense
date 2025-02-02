@@ -124,7 +124,7 @@ ion-grid {
   --ion-background-color: transparent;
   width: 100%;
   height: 100vh;
-  background: url("resources/leaf3.jpg") no-repeat center center;
+  background: url('/public/leaf3.jpg') no-repeat center center;
   overflow: hidden;
 }
 

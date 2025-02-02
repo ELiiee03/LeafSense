@@ -65,8 +65,8 @@
                   <p><b>Habitat: </b> {{ leafData.leafInfo?.habitat || 'No habitat information available' }}</p>
                   
                   <!-- Display confidence from either format -->
-                  <p v-if="getConfidence()">
-                    <b>Confidence: </b> {{ formatConfidence(getConfidence()!) }}%
+                  <p v-if="inferenceStore.result?.inference.confidence">
+                    <b>Confidence:</b> {{ formatConfidence(inferenceStore.result.inference.confidence) }}%
                 </p>
                 </div>    
                 <div v-else>
@@ -120,19 +120,7 @@ const inferenceStore = useInferenceStore();
 // const leafData = ref<LeafData | null>(null);
 const leafData = computed(() => inferenceStore.result);
 
-// interface for leaf info
-interface LeafInfo {
-    imagePath: string;
-    leafInfo: string;
-    result: string;
-    name: string;
-    scientificName: string;
-    familyName: string;
-    description: string;
-    habitat: string
-    timestamp: number;
-    synced: number;
-}
+
 
 // interface InferenceResult {
 //   inference: {
@@ -150,27 +138,7 @@ interface LeafInfo {
 
 // const leafData = ref<InferenceResult | null>(null);
 
-// Update the interface to handle both formats
-// interface LeafData {
-//     inference?: {
-//         predictedClass: string;
-//         confidence: number;
-//     };
-//     leafInfo?: {
-//         name: string;
-//         scientificName: string;
-//         familyName: string;
-//         description: string;
-//         habitat: string;
-//     };
-//     // Direct API response format
-//     confidence?: number;
-//     description?: string;
-//     familyName?: string;
-//     habitat?: string;
-//     name?: string;
-//     scientificName?: string;
-// }
+
 
 interface LeafData {
     inference?: {
@@ -196,7 +164,7 @@ const props = defineProps<{
 
 const router = useRouter();
 // const leafData = ref<LeafData | null>(null);
-  const formatConfidence = (confidence: number) => {
+const formatConfidence = (confidence: number) => {
     return (confidence * 100).toFixed(2);
 };
 
@@ -248,7 +216,7 @@ async function saveLeafInfo() {
                     description: leafData.value.leafInfo?.description ?? '',
                     habitat: leafData.value.leafInfo?.habitat ?? '',
                     result: leafData.value.inference?.predictedClass ?? '',
-                    // timestamp: timestamp,
+                    // tim estamp: timestamp,
                     // synced: 1
                 });
 
@@ -264,7 +232,7 @@ async function saveLeafInfo() {
                     scientificName: leafData.value.leafInfo?.scientificName ?? '',
                     familyName: leafData.value.leafInfo?.familyName ?? '',
                     description: leafData.value.leafInfo?.description ?? '',
-                    habitat: leafData.value.leafInfo?.habitat ?? ''
+                    habitat: leafData.value.leafInfo?.habitat ?? '',
                 }),
                 timestamp: timestamp,
                 synced: 0
