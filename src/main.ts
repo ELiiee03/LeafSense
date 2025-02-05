@@ -54,7 +54,7 @@ app.use(pinia);
 const initializeSQLite = async () => {
   try {
       await CapacitorSQLite.createConnection({
-          database: 'leaf_inference',
+          database: 'leaf_results',
           encrypted: false,
           mode: 'no-encryption',
           version: 1
@@ -65,7 +65,7 @@ const initializeSQLite = async () => {
 };  
 
 initializeSQLite()
-
+  
 syncService.init();
 
 router.isReady().then(() => {

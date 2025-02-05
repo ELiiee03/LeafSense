@@ -26,10 +26,13 @@ interface LeafResponse {
 export const inferenceService = {
     async performInference(imagePath: string) {
         try {
-            const networkStatus = await Network.getStatus();
+            // const networkStatus = await Network.getStatus();
+               // Temporarily force online mode for testing
+            const networkStatus = { connected: true }; // Force online mode
+            // Remove this after testing!
             const timestamp = Date.now();
 
-            console.log('Image path:', imagePath); // Log the image path
+            // console.log('Image path:', imagePath); // Log the image path
 
             if (networkStatus.connected) {
                 // Online: Use Flask API
@@ -44,11 +47,13 @@ export const inferenceService = {
                     formData.append('file', blob, 'image.jpg');
 
                     // API FLask request 
-                    const result = await axios.post('http://localhost:5000/predict', formData, {
+                    const result = await axios.post('http://192.168.1.57:5000/predict', formData, {
                         headers: {
                             'Content-Type': 'multipart/form-data',
                             'Accept': 'application/json',
+                            'Access-Control-Allow-Origin': '*' // Add this header
                         },
+                        timeout: 30000, // Add timeout
                         withCredentials: false // Prevents sending cookies or credentials in cross-origin requests
                     });
                     console.log('API Response:', result.data); 
@@ -77,8 +82,12 @@ export const inferenceService = {
 
                     return finalResult;
                 } catch (error) {
-                    console.error('Error in online inference:', error);
-                    throw new Error('Failed to process online inference');
+                    console.error('Error in online inference:', (error as any).response?.data || (error as any).message);
+                    if (error instanceof Error) {
+                        throw new Error(`Online inference failed: ${error.message}`);
+                    } else {
+                        throw new Error('Online inference failed: Unknown error');
+                    }
                 }
             } else {
                 // Offline: Use TFLite model

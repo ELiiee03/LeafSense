@@ -27,16 +27,16 @@ class SQLiteService {
 
     private async initializeDatabase() {
         try {
-            // Create database
-            const db = await this.sqlite.createConnection(
-                'leaf_results',
-                false,
-                'no-encryption',
-                1,
-                false
-            );
-            
-            await db.open();
+        // Create database connection
+        this.db = await this.sqlite.createConnection(
+            'leaf_results',
+            false,
+            'no-encryption',
+            1,
+            false
+        );
+        
+        await this.db.open();   
             
             // Create table if not exists
             const inferenceTableQuery = `
@@ -67,9 +67,8 @@ class SQLiteService {
             );
         `;
             
-            await db.execute(inferenceTableQuery);
-            await db.execute(savedLeavesTableQuery);    
-            this.db = db;
+            await this.db.execute(inferenceTableQuery);
+            await this.db.execute(savedLeavesTableQuery);    
         } catch (error) {
             console.error('Error initializing database:', error);
         }

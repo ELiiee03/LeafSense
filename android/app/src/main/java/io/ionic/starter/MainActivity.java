@@ -5,8 +5,10 @@ import android.graphics.BitmapFactory;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
 import com.getcapacitor.BridgeActivity;
-// import com.getcapacitor.Plugin;
-// import com.getcapacitor.community.database.sqlite.CapacitorSQLite;
+import android.os.Build;
+import android.view.WindowManager;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.community.database.sqlite.CapacitorSQLite;
 
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.support.image.ImageProcessor;
@@ -30,19 +32,26 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
+        // Add display cutout code here
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            getWindow().getAttributes().layoutInDisplayCutoutMode = 
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        
         super.onCreate(savedInstanceState);
+
         registerPlugin(LeafInferencePlugin.class);
         
         // Initialize SQLite database
-        // SQLiteDatabase database1 = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null);
-        try (SQLiteDatabase database = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null)) {
-            // Create a table to store inference results
-            String createTableQuery = "CREATE TABLE IF NOT EXISTS results (" +
-                          "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
-                          "predictedClass TEXT, " +
-                          "confidence REAL)";
-            database.execSQL(createTableQuery);
-        }
+        SQLiteDatabase database1 = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null);
+        // try (SQLiteDatabase database = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null)) {
+        //     // Create a table to store inference results
+        //     String createTableQuery = "CREATE TABLE IF NOT EXISTS results (" +
+        //                   "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+        //                   "predictedClass TEXT, " +
+        //                   "confidence REAL)";
+        //     database.execSQL(createTableQuery);
+        // }
         // Initialize TFLite
         try {
             Interpreter tflite = new Interpreter(loadModelFile());
@@ -54,8 +63,9 @@ public class MainActivity extends BridgeActivity {
         }
         
         // Register our custom plugin
-        registerPlugin(LeafInferencePlugin.class);
+        // registerPlugin(LeafInferencePlugin.class);
         // Register SQLite plugin
+        // registerPlugin(com.getcapacitor.community.database.sqlite.CapacitorSQLite.class);
         registerPlugin(LeafInferencePlugin.class);
     }
 

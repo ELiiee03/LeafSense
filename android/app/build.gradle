@@ -40,6 +40,10 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    // capacitor plugin
+    implementation project(':capacitor-community-sqlite')
+    implementation 'androidx.sqlite:sqlite:2.2.0'
+    implementation 'androidx.sqlite:sqlite-framework:2.2.0'
      // ExecutorTorch dependencies
     // implementation 'org.pytorch:executorch:0.1.0'
     // implementation 'org.pytorch:executorch-lite:0.1.0'

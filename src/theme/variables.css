@@ -6,8 +6,16 @@ http://ionicframework.com/docs/theming/ */
     --background: #A9BA9D;
   } */
   :root {
-    --ion-safe-area-top: env(safe-area-inset-top);
-    /* --ion-safe-area-bottom: env(safe-area-inset-bottom); */
-    --ion-safe-area-left: env(safe-area-inset-left);
-    --ion-safe-area-right: env(safe-area-inset-right);
+    --ion-safe-area-top: 0px;
+    --ion-safe-area-bottom: 0px;
+    --ion-safe-area-left: 0px;
+    --ion-safe-area-right: 0px;
+    --ion-statusbar-padding: 0px;
+  }
+  
+  ion-content {
+    --offset-top: 0px !important;
+    --offset-bottom: 0px !important;
+    --padding-top: 0px !important;
+    --padding-bottom: 0px !important;
   }

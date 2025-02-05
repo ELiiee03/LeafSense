@@ -33,6 +33,17 @@ onMounted(() => {
 :root {
   --ion-background-color: #DCE6CC;
 }
+
+ion-toolbar {
+  --padding-top: env(safe-area-inset-top);
+  --padding-end: env(safe-area-inset-right);
+  --padding-bottom: env(safe-area-inset-bottom);
+  --padding-start: env(safe-area-inset-left);
+}
+
+ion-header {
+  padding-top: env(safe-area-inset-top);
+}
 </style>
 <!-- :root {
   --ion-background-color: transparent;

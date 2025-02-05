@@ -171,7 +171,7 @@ const takePhoto = async () => {
             imageSrc.value = image.webPath || '';
         }
           
-        console.log('Captured image path:', imageSrc.value);
+        // console.log('Captured image path:', imageSrc.value);
         
         // Perform inference
         const result = await inferenceService.performInference(imageSrc.value);
