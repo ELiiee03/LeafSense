@@ -79,7 +79,7 @@
 
 
 <script setup lang="ts">
-  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol } from '@ionic/vue';
+  import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol, toastController } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
@@ -100,6 +100,16 @@
   const inferenceStore = useInferenceStore();
   // const emit = defineEmits(['captureImage']);
 
+// Add this helper function at the top of your script section
+const showToast = async (message: string, isError: boolean = false) => {
+  const toast = await toastController.create({
+    message: message,
+    duration: 3000,
+    color: isError ? 'danger' : 'primary',
+    position: 'bottom'
+  });
+  await toast.present();
+};
 
   // Function to open or close the modal
   const setOpen = (open: boolean) => {
@@ -152,7 +162,7 @@ const inferenceResult = ref<InferenceResult | null>(null);
 const takePhoto = async () => {
   try {
       const networkStatus = await Network.getStatus();
-    
+
       const image = await Camera.getPhoto({
             quality: 90,
             allowEditing: false,
@@ -170,23 +180,71 @@ const takePhoto = async () => {
         } else {
             imageSrc.value = image.webPath || '';
         }
-          
+
         // console.log('Captured image path:', imageSrc.value);
-        
+
         // Perform inference
         const result = await inferenceService.performInference(imageSrc.value);
         inferenceStore.setInferenceResult(result);
         console.log('Inference result:', result);
-        
+
         // Store the complete result
         inferenceResult.value = result;
-        
+
         // Open the modal to display the result
         setOpen(true);
     } catch (error) {
         console.error('Error taking photo:', error);
     }
 };
+
+// Modified takePhoto function with error handling
+// const takePhoto = async () => {
+//   try {
+//     const networkStatus = await Network.getStatus();
+//     const image = await Camera.getPhoto({
+//       quality: 90,
+//       allowEditing: false,
+//       resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
+//       source: CameraSource.Prompt
+//     });
+
+//     if (!image?.webPath) {
+//       await showToast('Failed to get image path', true);
+//       return;
+//     }
+
+//     imageSrc.value = image.webPath;
+    
+//     if (!imageSrc.value) {
+//       await showToast('Image source is empty', true);
+//       return;
+//     }
+
+//     // Add network check
+//     const status = await Network.getStatus();
+//     if (!status.connected) {
+//       await showToast('No network - using offline mode');
+//     }
+
+//     try {
+//       const result = await inferenceService.performInference(image.path!);
+//       inferenceResult.value = result;
+//       setOpen(true);
+//     } catch (inferenceError) {
+//       await showToast(`Inference failed: ${inferenceError}`, true);
+//       console.error('Inference error:', inferenceError);
+//     }
+
+//   } catch (error) {
+//     await showToast(`Camera error: ${error}`, true);
+//     console.error('Camera error:', error);
+//   } finally {
+//     if (!isOpen.value) {
+//       await showToast('Modal failed to open - check console', true);
+//     }
+//   }
+// };
 
 
 // const navigateToLeafInfo = () => {

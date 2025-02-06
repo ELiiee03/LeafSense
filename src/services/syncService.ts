@@ -10,6 +10,7 @@ export const syncService = {
         Network.addListener('networkStatusChange', async (status) => {
             if (status.connected) {
                 await this.syncInferenceResults();
+                await sqliteService.syncWithSupabase();
             }
         });
 

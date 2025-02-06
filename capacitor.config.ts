@@ -7,6 +7,13 @@ const config: CapacitorConfig = {
   // server: {
   //   androidScheme: 'https'
   // },
+  // capacitor.config.json
+  server: {
+    androidScheme: 'https',
+    url: 'http://192.168.1.57:8100', // Direct URL to your dev machine
+    cleartext: true
+  },
+
   plugins: {
     CapacitorSQLite: {
       androidIsEncryption: true,
@@ -15,6 +22,9 @@ const config: CapacitorConfig = {
         biometricTitle : "Biometric login for capacitor sqlite",
         biometricSubTitle : "Log in using your biometric"
       }
+    },
+    Http: {
+      enabled: true,
     }
   }
 };
