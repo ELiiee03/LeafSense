@@ -2,8 +2,9 @@ import { sqliteService } from './sqliteService';
 // import { supabase } from '@/supabaseClient';
 import axios from 'axios';
 import { Network } from '@capacitor/network';
-import { registerPlugin } from '@capacitor/core';
+import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
+import leafData from '/public/data.json'; // Adjust path as needed
 import { Directory, Filesystem } from '@capacitor/filesystem';
 
 // Register the LeafInference plugin
@@ -127,7 +128,8 @@ export const inferenceService = {
                             familyName: result.data.familyName,
                             description: result.data.description,
                             habitat: result.data.habitat
-                        }
+                        },
+                
                     };
 
                     // // Store in Supabase
@@ -146,7 +148,14 @@ export const inferenceService = {
                         throw new Error('Online inference failed: Unknown error');
                     }
                 }
+
             } else {
+                // Offline implementation with platform check
+                if (!Capacitor.isNativePlatform()) {
+                    console.warn('Offline inference only available on native devices');
+                    return this.getMockOfflineResult();
+                }
+
                 // Offline: Use TFLite model
                 try {
                     // function to check f the image is a webPath (file URI), use it directly
@@ -175,6 +184,7 @@ export const inferenceService = {
                         // finalImagePath = `data:image/jpeg;base64,${fileContent.data}`;
                     }
 
+
                     // Run TFLite inference with the file path
                     const tfliteResult = await LeafInference.runInference({
                         imagePath: imagePath
@@ -183,21 +193,19 @@ export const inferenceService = {
                         throw error;  // Re-throw to trigger outer catch
                     });
 
-                    // Map TFLite result to local leaf data
-                    const response = await axios.get<LeafResponse[]>('/data.json');
-                    const leafData = response.data;
-                    
+                    // Map using the classIndex from native code
                     const matchedLeaf = leafData.find(leaf => 
-                        leaf.name.toLowerCase() === tfliteResult.predictedClass.toLowerCase()
+                        leaf.id === tfliteResult.classIndex
                     );
 
                     if (!matchedLeaf) {
                         throw new Error('No matching leaf found in local data');
                     }
 
-                    const finalResult = {
+                    
+                    return {
                         inference: {
-                            predictedClass: tfliteResult.predictedClass,
+                            predictedClass: matchedLeaf.name,
                             confidence: tfliteResult.confidence
                         },
                         leafInfo: {
@@ -208,6 +216,20 @@ export const inferenceService = {
                             habitat: matchedLeaf.habitat
                         }
                     };
+
+                    // const finalResult = {
+                    //     inference: {
+                    //         predictedClass: tfliteResult.predictedClass,
+                    //         confidence: tfliteResult.confidence
+                    //     },
+                    //     leafInfo: {
+                    //         name: matchedLeaf.name,
+                    //         scientificName: matchedLeaf.scientificName,
+                    //         familyName: matchedLeaf.familyName,
+                    //         description: matchedLeaf.description,
+                    //         habitat: matchedLeaf.habitat
+                    //     }
+                    // };
                     
                     // Store in SQLite
                     await sqliteService.saveInferenceResult({
@@ -230,15 +252,36 @@ export const inferenceService = {
                     }
                     
                     return finalResult;
+
                 } catch (error) {
                     console.error('Error processing offline inference:', error);
                     throw new Error('Failed to process offline inference');
                 }
+                    // Add this mock method at the end of the service
+
             }
         } catch (error) {
             console.error('Error in inference:', error);
             throw error;
         }
+
+        
+    },
+
+    getMockOfflineResult() {
+        return {
+            inference: {
+                predictedClass: 'mock_leaf',
+                confidence: 0.95
+            },
+            leafInfo: {
+                name: 'Mock Leaf',
+                scientificName: 'Fictus plantus',
+                familyName: 'Mockaceae',
+                description: 'Sample description for development',
+                habitat: 'Virtual environments'
+            }
+        };
     },
 
     base64ToBlob(base64: string, type: string): Blob {
@@ -259,4 +302,9 @@ export const inferenceService = {
 
         return new Blob(byteArrays, { type: type });
     }
+
 };
+
+function getMockOfflineResult() {
+    throw new Error('Function not implemented.');
+}
