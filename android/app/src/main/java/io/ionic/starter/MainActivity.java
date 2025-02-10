@@ -40,7 +40,8 @@ public class MainActivity extends BridgeActivity {
         
         super.onCreate(savedInstanceState);
 
-        registerPlugin(LeafInferencePlugin.class);
+        registerPlugin(LeafInferencePlugin.class); // Add this line
+        // registerPlugin(com.getcapacitor.community.database.sqlite.CapacitorSQLite.class);
         
         // Initialize SQLite database
         SQLiteDatabase database1 = openOrCreateDatabase("leaf_results.db", MODE_PRIVATE, null);
@@ -97,16 +98,32 @@ public class MainActivity extends BridgeActivity {
 
 
     public Map<String, Object> runInference(String imagePath) {
-        // Load and preprocess image
+       try {
         Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
         TensorImage tensorImage = TensorImage.fromBitmap(bitmap);
         tensorImage = imageProcessor.process(tensorImage);
 
-        // Prepare input and output
+        // Create input/output buffers
         float[][][][] input = new float[1][224][224][3];
-        float[][] output = new float[1][3]; // Replace with your model's output size
-        return java.util.Collections.emptyMap();
+        float[][] output = new float[1][3]; // Match your model's output shape
+        
+        // Copy tensor data to input buffer
+        for (int i = 0; i < 224; i++) {
+            for (int j = 0; j < 224; j++) {
+                float[] pixel = tensorImage.getTensorBuffer().getFloatArray();
+                System.arraycopy(pixel, 0, input[0][i][j], 0, 3);
+            }
+        }
+
+        // Run inference
+        Interpreter tflite = new Interpreter(loadModelFile());
+        tflite.run(input, output);
+        
+        return processResults(output[0]);
+    } catch (Exception e) {
+        throw new RuntimeException("Inference error: " + e.getMessage());
     }
+}
 
     private Map<String, Object> processResults(float[] output) {
         // Find the index with highest probability

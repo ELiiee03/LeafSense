@@ -3,7 +3,7 @@ import { sqliteService } from './sqliteService';
 import axios from 'axios';
 import { Network } from '@capacitor/network';
 import { registerPlugin } from '@capacitor/core';
-import { Http } from '@capacitor-community/http';
+// import { Http } from '@capacitor-community/http';
 import { Directory, Filesystem } from '@capacitor/filesystem';
 
 // Register the LeafInference plugin
@@ -27,9 +27,10 @@ interface LeafResponse {
 export const inferenceService = {
     async performInference(imagePath: string) {
         try {
-            const networkStatus = await Network.getStatus();
+            // const networkStatus = await Network.getStatus();
                // Temporarily force online mode for testing
             // const networkStatus = { connected: true }; // Force online mode
+            const networkStatus = { connected: false }; // Force offline mode
             // Remove this after testing!
             const timestamp = Date.now();
 
@@ -70,25 +71,33 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                     });
 
-                    const file = await Filesystem.readFile({
-                        path: imagePath,
-                        directory: Directory.Cache
-                    });
-                    // Extract base64 data without the prefix
-                    // const base64Image = base64Data.split(',')[1];
-
-                    // Modified HTTP request using Capacitor plugin
-                    const { data } = await Http.post({
-                        url: 'http://192.168.1.57:5000/predict',
+                    const result = await axios.post('http://192.168.1.57:5000/predict', {
+                        image: base64Data.split(',')[1] // Remove data URL prefix
+                    }, {
                         headers: {
-                            'Content-Type': 'application/json', // Change content type
-                            'Accept': 'application/json'
-                        },
-                        data: JSON.stringify({ image: file.data }), // Send as JSON object
-                        responseType: 'json'
+                            'Content-Type': 'application/json',
+                        }
                     });
+
+                    // const file = await Filesystem.readFile({
+                    //     path: imagePath,
+                    //     directory: Directory.Cache
+                    // });
+                    // // Extract base64 data without the prefix
+                    // // const base64Image = base64Data.split(',')[1];
+
+                    // // Modified HTTP request using Capacitor plugin
+                    // const { data } = await Http.post({
+                    //     url: 'http://192.168.1.57:5000/predict',
+                    //     headers: {
+                    //         'Content-Type': 'application/json', // Change content type
+                    //         'Accept': 'application/json'
+                    //     },
+                    //     data: JSON.stringify({ image: file.data }), // Send as JSON object
+                    //     responseType: 'json'
+                    // });
                     // console.log('API Response:', data);
-                    console.log('API Response:', data);
+                    console.log('API Response:', result.data);
 
                     //For android handling 
                     
@@ -109,15 +118,15 @@ export const inferenceService = {
                     
                     const finalResult = {
                         inference: {
-                            predictedClass: data.name,  // Changed from result.data
-                            confidence: data.confidence
+                            predictedClass: result.data.name,  // Changed from result.data
+                            confidence: result.data.confidence
                         },
                         leafInfo: {
-                            name: data.name,
-                            scientificName: data.scientificName,
-                            familyName: data.familyName,
-                            description: data.description,
-                            habitat: data.habitat
+                            name: result.data.name,
+                            scientificName: result.data.scientificName,
+                            familyName: result.data.familyName,
+                            description: result.data.description,
+                            habitat: result.data.habitat
                         }
                     };
 
@@ -157,16 +166,21 @@ export const inferenceService = {
                     }
                     // Converting webPath to filesystem URL for Android
                     if (imagePath.startsWith('file://')) {
-                        const fileContent = await Filesystem.readFile({
-                            path: imagePath.split('file://').pop() || '',
-                            directory: Directory.Data
-                        });
-                        finalImagePath = `data:image/jpeg;base64,${fileContent.data}`;
+                        // const fileContent = await Filesystem.readFile({
+                        //     path: imagePath.split('file://').pop() || '',
+                        //     directory: Directory.Data
+                        // });
+
+                        finalImagePath = imagePath;  // Keep as file:// URI
+                        // finalImagePath = `data:image/jpeg;base64,${fileContent.data}`;
                     }
 
                     // Run TFLite inference with the file path
                     const tfliteResult = await LeafInference.runInference({
                         imagePath: imagePath
+                    }).catch(error => {
+                        console.error('Plugin Error:', error);
+                        throw error;  // Re-throw to trigger outer catch
                     });
 
                     // Map TFLite result to local leaf data
