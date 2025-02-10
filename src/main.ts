@@ -14,6 +14,14 @@ import App from './App.vue';
 import router from './router';
 import { CapacitorSQLite } from '@capacitor-community/sqlite';
 import { syncService } from './services/syncService';
+import { registerPlugin } from '@capacitor/core';
+
+const LeafInference = registerPlugin<{
+  runInference(options: { imagePath: string }): Promise<{
+      predictedClass: string;
+      confidence: number;
+  }>;
+}>('LeafInference');
 
 
 /* Core CSS required for Ionic components to work properly */

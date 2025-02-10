@@ -19,10 +19,11 @@ interface InferenceResult {
 class SQLiteService {
     private sqlite: SQLiteConnection;
     private db!: SQLiteDBConnection;
+    private initialized: Promise<void>;
     
     constructor() {
         this.sqlite = new SQLiteConnection(CapacitorSQLite);
-        this.initializeDatabase();
+        this.initialized = this.initializeDatabase();
     }
 
     private async initializeDatabase() {
@@ -71,6 +72,7 @@ class SQLiteService {
             await this.db.execute(savedLeavesTableQuery);    
         } catch (error) {
             console.error('Error initializing database:', error);
+            throw error; // Re-throw to handle in methods
         }
     }
     async saveLeaf(data: SavedLeaf) {
@@ -166,11 +168,8 @@ class SQLiteService {
 
     async getUnsyncedResults() {
         try {
-            const query = `
-                SELECT * FROM inference_results 
-                WHERE synced = 0
-            `;
-            
+            await this.initialized; // Wait for initialization
+            const query = `SELECT * FROM inference_results WHERE synced = 0`;
             const results = await this.db.query(query);
             return results.values || [];
         } catch (error) {
@@ -196,11 +195,8 @@ class SQLiteService {
 
     async getUnsyncedLeaves() {
         try {
-            const query = `
-                SELECT * FROM saved_leaves 
-                WHERE synced = 0
-            `;
-            
+            await this.initialized; // Wait for initialization
+            const query = `SELECT * FROM saved_leaves WHERE synced = 0`;
             const results = await this.db.query(query);
             return results.values || [];
         } catch (error) {
