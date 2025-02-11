@@ -4,16 +4,18 @@ import axios from 'axios';
 import { Network } from '@capacitor/network';
 import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
-import leafData from '/public/data.json'; // Adjust path as needed
-import { Directory, Filesystem } from '@capacitor/filesystem';
-
-// Register the LeafInference plugin
-const LeafInference = registerPlugin<{
+import leafData from '../../public/data.json'; // Adjust path as needed
+import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+// import { LeafInference } from ''
+interface LeafInferencePlugin {
     runInference(options: { imagePath: string }): Promise<{
-        predictedClass: string;
-        confidence: number;
+      predictedClass: string;
+      confidence: number;
     }>;
-}>('LeafInference');
+  }
+  
+  // Register using the plugin name that matches your Java annotation
+  const LeafInference = registerPlugin<LeafInferencePlugin>('LeafInference');
 
 interface LeafResponse {
     id: number;
@@ -22,7 +24,6 @@ interface LeafResponse {
     description: string;
     familyName: string;
     habitat: string;
-    confidence: number;
 }
 
 export const inferenceService = {
@@ -33,7 +34,7 @@ export const inferenceService = {
             // const networkStatus = { connected: true }; // Force online mode
             const networkStatus = { connected: false }; // Force offline mode
             // Remove this after testing!
-            const timestamp = Date.now();
+            // const timestamp = Date.now();
 
             // console.log('Image path:', imagePath); // Log the image path
 
@@ -161,41 +162,38 @@ export const inferenceService = {
                     // function to check f the image is a webPath (file URI), use it directly
                     // If it's a dataUrl, save it to a file first
                     let finalImagePath = imagePath;
+        
+                    // Handle data URLs
                     if (imagePath.startsWith('data:image')) {
                         const base64Data = imagePath.split(',')[1];
                         const fileName = `leaf_${Date.now()}.jpg`;
                         
-                        // Save the image to filesystem
+                        // Write to cache directory
                         const savedImage = await Filesystem.writeFile({
                             path: fileName,
                             data: base64Data,
-                            directory: Directory.Cache
+                            directory: Directory.Cache,
+                            encoding: Encoding.UTF8
                         });
-                        finalImagePath = savedImage.uri;
+                        
+                        // Get platform-specific URI
+                        finalImagePath = Capacitor.convertFileSrc(savedImage.uri);
                     }
-                    // Converting webPath to filesystem URL for Android
-                    if (imagePath.startsWith('file://')) {
-                        // const fileContent = await Filesystem.readFile({
-                        //     path: imagePath.split('file://').pop() || '',
-                        //     directory: Directory.Data
-                        // });
-
-                        finalImagePath = imagePath;  // Keep as file:// URI
-                        // finalImagePath = `data:image/jpeg;base64,${fileContent.data}`;
-                    }
-
-
-                    // Run TFLite inference with the file path
+            
+                    // Add debug logging
+                    console.log('Final image path for native:', finalImagePath);
+            
+                    // Run TFLite inference
                     const tfliteResult = await LeafInference.runInference({
-                        imagePath: imagePath
+                        imagePath: finalImagePath
                     }).catch(error => {
                         console.error('Plugin Error:', error);
                         throw error;  // Re-throw to trigger outer catch
                     });
 
                     // Map using the classIndex from native code
-                    const matchedLeaf = leafData.find(leaf => 
-                        leaf.id === tfliteResult.classIndex
+                    const matchedLeaf: LeafResponse | undefined = leafData.find((leaf: LeafResponse) => 
+                        leaf.name === tfliteResult.predictedClass
                     );
 
                     if (!matchedLeaf) {
@@ -203,7 +201,7 @@ export const inferenceService = {
                     }
 
                     
-                    return {
+                    const finalResult = {
                         inference: {
                             predictedClass: matchedLeaf.name,
                             confidence: tfliteResult.confidence
@@ -217,41 +215,29 @@ export const inferenceService = {
                         }
                     };
 
-                    // const finalResult = {
-                    //     inference: {
-                    //         predictedClass: tfliteResult.predictedClass,
-                    //         confidence: tfliteResult.confidence
-                    //     },
-                    //     leafInfo: {
-                    //         name: matchedLeaf.name,
-                    //         scientificName: matchedLeaf.scientificName,
-                    //         familyName: matchedLeaf.familyName,
-                    //         description: matchedLeaf.description,
-                    //         habitat: matchedLeaf.habitat
-                    //     }
-                    // };
+                    return finalResult;
                     
                     // Store in SQLite
-                    await sqliteService.saveInferenceResult({
-                        imagePath: finalImagePath,
-                        result: JSON.stringify(finalResult),
-                        timestamp,
-                        synced: 0
-                    });
+                    // await sqliteService.saveInferenceResult({
+                    //     imagePath: finalImagePath,
+                    //     result: JSON.stringify(finalResult),
+                    //     timestamp,
+                    //     synced: 0
+                    // });
                     
-                    // Clean up temporary file if we created one
-                    if (imagePath !== finalImagePath) {
-                        try {
-                            await Filesystem.deleteFile({
-                                path: finalImagePath,
-                                directory: Directory.Cache
-                            });
-                        } catch (e) {
-                            console.warn('Error cleaning up temporary file:', e);
-                        }
-                    }
+                    // // Clean up temporary file if we created one
+                    // if (imagePath !== finalImagePath) {
+                    //     try {
+                    //         await Filesystem.deleteFile({
+                    //             path: finalImagePath,
+                    //             directory: Directory.Cache
+                    //         });
+                    //     } catch (e) {
+                    //         console.warn('Error cleaning up temporary file:', e);
+                    //     }
+                    // }
                     
-                    return finalResult;
+                    // return finalResult;
 
                 } catch (error) {
                     console.error('Error processing offline inference:', error);
@@ -305,6 +291,6 @@ export const inferenceService = {
 
 };
 
-function getMockOfflineResult() {
-    throw new Error('Function not implemented.');
-}
+// function getMockOfflineResult() {
+//     throw new Error('Function not implemented.');
+// }

@@ -16,12 +16,15 @@ const config: CapacitorConfig = {
 
   plugins: {
     CapacitorSQLite: {
-      androidIsEncryption: true,
-      androidBiometric: {
-        biometricAuth : false,
-        biometricTitle : "Biometric login for capacitor sqlite",
-        biometricSubTitle : "Log in using your biometric"
-      }
+      // androidIsEncryption: true,
+      // androidBiometric: {
+      //   biometricAuth : false,
+      //   biometricTitle : "Biometric login for capacitor sqlite",
+      //   biometricSubTitle : "Log in using your biometric"
+      // }
+          iosDatabaseLocation: 'Library/CapacitorDatabase',
+          androidDatabaseLocation: 'default'
+
     },
     Http: {
       enabled: true,

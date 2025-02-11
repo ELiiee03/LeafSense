@@ -13,6 +13,7 @@ import { IonicVue } from '@ionic/vue';
 import App from './App.vue';
 import router from './router';
 import { CapacitorSQLite } from '@capacitor-community/sqlite';
+import { sqliteService } from './services/sqliteService';
 import { syncService } from './services/syncService';
 import { registerPlugin } from '@capacitor/core';
 
@@ -22,6 +23,8 @@ const LeafInference = registerPlugin<{
       confidence: number;
   }>;
 }>('LeafInference');
+
+export default LeafInference;
 
 
 /* Core CSS required for Ionic components to work properly */
@@ -61,21 +64,21 @@ app.use(pinia);
 // Initialize SQLite
 const initializeSQLite = async () => {
   try {
-      await CapacitorSQLite.createConnection({
-          database: 'leaf_results',
-          encrypted: false,
-          mode: 'no-encryption',
-          version: 1
-      });
+    await CapacitorSQLite.createConnection({
+      database: 'leaf_results',
+      encrypted: false,
+      mode: 'no-encryption',
+      version: 1
+    });
+    await sqliteService.initializeDatabase(); // Ensure database is initialized
+    syncService.init(); // Initialize sync service after database is ready
   } catch (error) {
-      console.error('Error initializing SQLite:', error);
+    console.error('Error initializing SQLite:', error);
   }
-};  
+};
 
-initializeSQLite()
-  
-syncService.init();
-
-router.isReady().then(() => {
-  app.mount('#app');
+initializeSQLite().then(() => {
+  router.isReady().then(() => {
+    app.mount('#app');
+  });
 });
