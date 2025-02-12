@@ -6,10 +6,10 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
-// import { LeafInference } from ''
+
 interface LeafInferencePlugin {
     runInference(options: { imagePath: string }): Promise<{
-      predictedClass: string;
+      classIndex: number;
       confidence: number;
     }>;
   }
@@ -157,17 +157,18 @@ export const inferenceService = {
                     return this.getMockOfflineResult();
                 }
 
-                // Offline: Use TFLite model
+                // Offline: Use TFLite model    
                 try {
                     // function to check f the image is a webPath (file URI), use it directly
                     // If it's a dataUrl, save it to a file first
                     let finalImagePath = imagePath;
+                    // let isTemporaryFile = false;
         
                     // Handle data URLs
+                    // Handle data URLs and convert them to local files
                     if (imagePath.startsWith('data:image')) {
                         const base64Data = imagePath.split(',')[1];
                         const fileName = `leaf_${Date.now()}.jpg`;
-                        
                         // Write to cache directory
                         const savedImage = await Filesystem.writeFile({
                             path: fileName,
@@ -175,9 +176,15 @@ export const inferenceService = {
                             directory: Directory.Cache,
                             encoding: Encoding.UTF8
                         });
-                        
-                        // Get platform-specific URI
-                        finalImagePath = Capacitor.convertFileSrc(savedImage.uri);
+                        // Use the original local file path for native plugins
+                        finalImagePath = savedImage.uri;
+                        // isTemporaryFile = true;
+                    } else if (imagePath.startsWith('file://') || imagePath.startsWith('content://')) {
+                        // Use the path as-is if it's already a file or content URI
+                        finalImagePath = imagePath;
+                    } else {
+                        console.error('Unsupported image path format:', imagePath);
+                        throw new Error('Unsupported image path format');
                     }
             
                     // Add debug logging
@@ -193,7 +200,7 @@ export const inferenceService = {
 
                     // Map using the classIndex from native code
                     const matchedLeaf: LeafResponse | undefined = leafData.find((leaf: LeafResponse) => 
-                        leaf.name === tfliteResult.predictedClass
+                        leaf.id === tfliteResult.classIndex
                     );
 
                     if (!matchedLeaf) {
@@ -214,6 +221,29 @@ export const inferenceService = {
                             habitat: matchedLeaf.habitat
                         }
                     };
+
+                    
+                    // if (isTemporaryFile) {
+                    //     try {
+                    //         await Filesystem.deleteFile({
+                    //             path: finalImagePath,
+                    //             directory: Directory.Cache
+                    //         });
+                    //     } catch (e) {
+                    //         console.warn('Error cleaning up temporary file:', e);
+                    //     }
+                    // }
+
+                    if (imagePath !== finalImagePath) {
+                        try {
+                            await Filesystem.deleteFile({
+                                path: finalImagePath,
+                                directory: Directory.Cache
+                            });
+                        } catch (e) {
+                            console.warn('Error cleaning up temporary file:', e);
+                        }
+                    }
 
                     return finalResult;
                     

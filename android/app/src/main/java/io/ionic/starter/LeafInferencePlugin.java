@@ -6,6 +6,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import org.tensorflow.lite.Interpreter;
+import java.util.Arrays;
 import java.io.File;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -15,7 +16,7 @@ import android.provider.MediaStore;
 import android.net.Uri;
 import java.io.FileInputStream;
 import android.content.res.AssetFileDescriptor;
-//import android.util.Log;
+import android.util.Log;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 //import android.graphics.Matrix;
@@ -26,7 +27,7 @@ import android.graphics.BitmapFactory;
 public class LeafInferencePlugin extends Plugin {
     
     private Interpreter tflite;
-    private static final int NUM_CLASSES = 5; // Update this with your model's output classes
+    private static final int NUM_CLASSES = 4; // Update this with your model's output classes
     
     @Override
     public void load() {
@@ -38,46 +39,68 @@ public class LeafInferencePlugin extends Plugin {
         }
     }
 
-    @PluginMethod
-    public void runInference(PluginCall call) {
-        try {
-            String imagePath = call.getString("imagePath");
-            if (imagePath == null) {
-                call.reject("Image path is null");
-                return;
-            }
-                        if (imagePath.startsWith("content://")) {
-                try {
-                    Uri uri = Uri.parse(imagePath);
-                    Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContext().getContentResolver(), uri);
-                    processBitmap(bitmap, call);
-                    return;
-                } catch (Exception e) {
-                    call.reject("Error loading content URI: " + e.getMessage());
-                    return;
-                }
-            }
-
-            String realPath = imagePath.replace("file://", "");
-            File imageFile = new File(realPath);
-            
-            if (!imageFile.exists()) {
-                call.reject("Image file does not exist: " + realPath);
-                return;
-            }
-
-            Bitmap bitmap = BitmapFactory.decodeFile(realPath);
-            if (bitmap == null) {
-                call.reject("Failed to decode image file");
-                return;
-            }
-            
-            processBitmap(bitmap, call);
-            
-        } catch (Exception e) {
-            call.reject("Inference failed: " + e.getMessage());
+@PluginMethod
+public void runInference(PluginCall call) {
+    try {
+        String imagePath = call.getString("imagePath");
+        if (imagePath == null) {
+            call.reject("Image path is null");
+            return;
         }
+        // Handle content URIs
+        if (imagePath.startsWith("content://")) {
+            try {
+                Uri uri = Uri.parse(imagePath);
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getContext().getContentResolver(), uri);
+                processBitmap(bitmap, call);
+                return;
+            } catch (Exception e) {
+                call.reject("Error loading content URI: " + e.getMessage());
+                return;
+            }
+        }
+        // Handle file paths
+        String realPath = imagePath.replace("file://", "");
+        File imageFile = new File(realPath);
+
+        // Add debug logging
+        Log.d("LeafInference", "Checking file at path: " + realPath);
+        Log.d("LeafInference", "File exists: " + imageFile.exists());
+        Log.d("LeafInference", "File length: " + imageFile.length());
+
+        if (!imageFile.exists()) {
+            call.reject("Image file does not exist: " + realPath);
+            return;
+        }
+
+        // Validate file format
+        if (!realPath.toLowerCase().endsWith(".jpg") && !realPath.toLowerCase().endsWith(".jpeg") && !realPath.toLowerCase().endsWith(".png")) {
+            call.reject("Unsupported image format: " + realPath);
+            return;
+        }
+
+        // Debug file header
+        try (FileInputStream fis = new FileInputStream(imageFile)) {
+            byte[] header = new byte[8];
+            int bytesRead = fis.read(header);
+            Log.d("LeafInference", "File header: " + Arrays.toString(header)); // Use Arrays.toString()
+        } catch (Exception e) {
+            Log.e("LeafInference", "Error reading file header", e);
+        }
+
+        // Decode image file
+        Bitmap bitmap = BitmapFactory.decodeFile(realPath);
+        if (bitmap == null) {
+            call.reject("Failed to decode image file");
+            return;
+        }
+
+        processBitmap(bitmap, call);
+
+    } catch (Exception e) {
+        call.reject("Inference failed: " + e.getMessage());
     }
+}
 
     private void processBitmap(Bitmap originalBitmap, PluginCall call) {
         Bitmap resizedBitmap = null;

@@ -81,6 +81,7 @@
 <script setup lang="ts">
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol, toastController } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
+  import { Capacitor } from '@capacitor/core';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
   import GlobalHeader from '@/components/GlobalHeader.vue';
@@ -159,43 +160,40 @@ const inferenceResult = ref<InferenceResult | null>(null);
 //     }
 // };
 
+// In the takePhoto function:
 const takePhoto = async () => {
   try {
-      const networkStatus = await Network.getStatus();
+    const networkStatus = await Network.getStatus();
+    
+    const image = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
+      source: CameraSource.Prompt
+    });
 
-      const image = await Camera.getPhoto({
-            quality: 90,
-            allowEditing: false,
-            // DataUrl for online, Uri for offline
-            resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
-            source: CameraSource.Prompt
-        });
-
-        // imageSrc.value = image.dataUrl || '';
-    // console.log('Captured image path:', imageSrc.value);
-
-           // Handle different image formats
-           if (networkStatus.connected) {
-            imageSrc.value = image.dataUrl || '';
-        } else {
-            imageSrc.value = image.webPath || '';
-        }
-
-        // console.log('Captured image path:', imageSrc.value);
-
-        // Perform inference
-        const result = await inferenceService.performInference(imageSrc.value);
-        inferenceStore.setInferenceResult(result);
-        console.log('Inference result:', result);
-
-        // Store the complete result
-        inferenceResult.value = result;
-
-        // Open the modal to display the result
-        setOpen(true);
-    } catch (error) {
-        console.error('Error taking photo:', error);
+    let finalImagePath = '';
+    if (networkStatus.connected) {
+      imageSrc.value = image.dataUrl || '';
+    } else {
+      // Convert capacitor file URI to native path
+      finalImagePath = Capacitor.convertFileSrc(image.path || '');
+      imageSrc.value = finalImagePath;
     }
+
+    // Use path instead of webPath for native operations
+    const result = await inferenceService.performInference(
+      networkStatus.connected ? image.dataUrl! : finalImagePath
+    );
+    
+    inferenceStore.setInferenceResult(result);
+    inferenceResult.value = result;
+    setOpen(true);
+
+  } catch (error) {
+    console.error('Error:', error);
+    showToast(`Error: ${error}`, true);
+  }
 };
 
 // Modified takePhoto function with error handling
