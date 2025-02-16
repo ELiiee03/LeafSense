@@ -6,16 +6,18 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
 import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+// import { LeafInferencePlugin } from '../definitions';
 
 interface LeafInferencePlugin {
     runInference(options: { imagePath: string }): Promise<{
       classIndex: number;
-      confidence: number;
+        confidence: number;
+        allConfidences: number[]; // Array of all probabilities
     }>;
   }
   
   // Register using the plugin name that matches your Java annotation
-  const LeafInference = registerPlugin<LeafInferencePlugin>('LeafInference');
+const LeafInference = registerPlugin<LeafInferencePlugin>('LeafInference');
 
 interface LeafResponse {
     id: number;
@@ -173,8 +175,8 @@ export const inferenceService = {
                         const savedImage = await Filesystem.writeFile({
                             path: fileName,
                             data: base64Data,
-                            directory: Directory.Cache,
-                            encoding: Encoding.UTF8
+                            directory: Directory.Data,
+                            // encoding: Encoding.UTF8
                         });
                         // Use the original local file path for native plugins
                         finalImagePath = savedImage.uri;
@@ -198,10 +200,21 @@ export const inferenceService = {
                         throw error;  // Re-throw to trigger outer catch
                     });
 
+              // Add this debug logging
+                    console.log('Raw TFLite Result:', {
+                        classIndex: tfliteResult.classIndex,
+                        confidence: tfliteResult.confidence,
+                        // rawOutput: tfliteResult.rawOutput, // 🔹 Log raw logits before softmax
+                        allClasses: leafData.map((_, index) => ({
+                            id: index + 1,
+                            confidence: tfliteResult.confidence // Changed confidences?.[index] to confidence
+                        }))
+                    });      
+
                     // Map using the classIndex from native code
-                    const matchedLeaf: LeafResponse | undefined = leafData.find((leaf: LeafResponse) => 
-                        leaf.id === tfliteResult.classIndex
-                    );
+                    // Map class index to leaf name from data.json
+                    const matchedLeaf = leafData.find(leaf => leaf.id === tfliteResult.classIndex);
+                    console.debug('Matched Leaf Data:', matchedLeaf);
 
                     if (!matchedLeaf) {
                         throw new Error('No matching leaf found in local data');
