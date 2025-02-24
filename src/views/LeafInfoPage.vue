@@ -68,7 +68,14 @@
                   <p v-if="inferenceStore.result?.inference.confidence">
                     <b>Confidence:</b> {{ formatConfidence(inferenceStore.result.inference.confidence) }}%
                 </p>
-                </div>    
+                </div>  
+                <div v-if="geoStore.currentLocation">
+                  <h3>Detected Location</h3>
+                  <p>{{ geoStore.currentLocation.address }}</p>
+                  <ion-button @click="togglePin">
+                    {{ geoStore.currentLocation.isPinned ? 'Unpin' : 'Pin' }} Location
+                  </ion-button>
+                </div>  
                 <div v-else>
                     <p>Loading data...</p>
                 </div>
@@ -111,6 +118,19 @@ import { Network } from '@capacitor/network';
 import { supabase } from '@/supabaseClient';
 import { ref, defineProps, onMounted, computed } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
+import { dbService } from '@/services/dbService';
+import { useGeoStore } from '@/stores/geolocationStore';
+
+
+const geoStore = useGeoStore();
+
+onMounted(async () => {
+  await geoStore.updateLocation();
+});
+
+const togglePin = () => {
+  geoStore.togglePin();
+};
 
 // const router = useRouter();
 const route = useRoute();
@@ -225,7 +245,7 @@ async function saveLeafInfo() {
             console.log('Leaf info saved directly to Supabase');
         } else {
             // Offline: Save to SQLite for later sync
-            await sqliteService.saveLeaf({
+            await dbService.saveLeaf({
                 imagePath: imageSrc.value,
                 leafInfo: JSON.stringify({
                     result: leafData.value.inference?.predictedClass ?? '',
@@ -235,7 +255,7 @@ async function saveLeafInfo() {
                     habitat: leafData.value.leafInfo?.habitat ?? '',
                 }),
                 timestamp: timestamp,
-                synced: 0
+                synced: false
             });
             await showToast('Leaf information saved offline');
             console.log('Leaf info saved to SQLite (offline mode)');

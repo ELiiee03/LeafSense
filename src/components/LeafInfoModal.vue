@@ -32,8 +32,8 @@
                 <ion-col size="auto">
                   <div style="width: 170px">
                       <div class="leaf-info">
-                          <h3 class="leaf-name" v-if="leaf"><b>{{ leaf?.name }}</b></h3 >
-                          <p class="leaf-scientific-name" v-if="leaf"> {{ leaf?.scientificName }}</p>
+                          <h3 class="leaf-name" v-if="leaf"><b>{{ leaf.result }}</b></h3 >
+                          <p class="leaf-scientific-name" v-if="leaf"> {{ leaf.scientific_name }}</p>
                       </div>
                   </div>
                 </ion-col style="border: 2px solid red;">
@@ -44,7 +44,6 @@
             <div>
               <div v-if="leaf" class="result">
                   <p><b>Description: </b> {{ leaf.description }}</p>
-                  <p><b>Uses: </b> {{ leaf.uses }}</p>
                   <p><b>Habitat: </b> {{ leaf.habitat }}</p>
                 </div>    
                 <div v-else>
@@ -52,9 +51,9 @@
                 </div>
           </div>
                   <!-- save button -->
-              <div class="button-container">
+              <!-- <div class="button-container">
                   <ion-button class="save">Save</ion-button>
-              </div>
+              </div> -->
           </div>
 
       </div>
@@ -75,45 +74,59 @@ const props = defineProps<{
   isOpen: boolean;
   onClose: () => void; // Explicitly define the type
   imageSrc?: string; // Optional string type for image source
+  leaf: any;
 }>();
 
 // Define Leaf interface and reactive state
-interface Leaf {
-id: number;
-name: string;
-scientificName: string;
-description: string;
-uses: string;
-habitat: string;
+interface LeafInfo {
+  name: string;
+  scientificName: string;
+  description: string;
+  familyName: string;
+  habitat: string;
 }
 
-const leaf = ref<Leaf | null>(null); // Leaf data object
-const leafId = 3; // Example ID for fetching a specific leaf
+interface Leaf {
+  id: number;
+  leafInfo: LeafInfo;
+}
+
+const leaf = ref(props.leaf);
+
+// const leaf = ref<Leaf | null>(null); // Leaf data object
+// const leafId = 3; // Example ID for fetching a specific leaf
 
 // Watch for isOpen prop changes
+// watch(
+// () => props.isOpen,
+// (newIsOpen) => {
+//   if (newIsOpen) {
+//     // Only fetch data when modal is opened
+//     fetchLeafData();
+//   } else {
+//     // Clear data when modal is closed
+//     leaf.value = null;
+//   }
+// }
+// );
+
 watch(
-() => props.isOpen,
-(newIsOpen) => {
-  if (newIsOpen) {
-    // Only fetch data when modal is opened
-    fetchLeafData();
-  } else {
-    // Clear data when modal is closed
-    leaf.value = null;
+  () => props.leaf,
+  (newLeaf) => {
+    leaf.value = newLeaf;
   }
-}
 );
 
 // Function to fetch data
-const fetchLeafData = () => {
-axios.get('/data.json')
-  .then(response => {
-    leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;
-  })
-  .catch(error => {
-    console.error('Error fetching leaf data:', error);
-  });
-};
+// const fetchLeafData = () => {
+// axios.get('/data.json')
+//   .then(response => {
+//     leaf.value = response.data.find((leaf: Leaf) => leaf.id === leafId) || null;
+//   })
+//   .catch(error => {
+//     console.error('Error fetching leaf data:', error);
+//   });
+// };
 </script>
 <style scoped>
 

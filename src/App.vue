@@ -12,6 +12,7 @@
 import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
 import { defineComponent, onMounted } from 'vue';
 import { syncService } from '@/services/syncService';
+// import { Network } from '@capacitor/network';
 
 
 export default defineComponent({
@@ -23,6 +24,7 @@ export default defineComponent({
     IonRouterOutlet,
   }
 });
+
 
 onMounted(() => {
     // Initialize sync service

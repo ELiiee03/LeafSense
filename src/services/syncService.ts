@@ -1,4 +1,4 @@
-import { sqliteService } from './sqliteService';
+import { dbService } from './dbService';
 import { Network } from '@capacitor/network';
 import { supabase } from '@/supabaseClient';
 import { ref } from 'vue';
@@ -10,7 +10,6 @@ export const syncService = {
     Network.addListener('networkStatusChange', async (status) => {
       if (status.connected) {
         await this.syncInferenceResults();
-        await sqliteService.syncWithSupabase();
       }
     });
 
@@ -26,28 +25,32 @@ export const syncService = {
   },
 
   async syncInferenceResults() {
-    const unsyncedResults = await sqliteService.getUnsyncedResults();
+    const unsyncedResults = await dbService.getUnsyncedResults();
     this.isSyncing.value = true;
 
-    for (const result of unsyncedResults) {
-      try {
+    try {
+      for (const result of unsyncedResults) {
         const { error } = await supabase
           .from('inference_results')
           .insert({
-            image_path: result.imagePath,
-            result: JSON.parse(result.result),
-            timestamp: result.timestamp
+            image_path: result.image_path,
+            result: JSON.stringify({
+              predictedClass: result.predicted_class,
+              scientificName: result.scientific_name,
+              familyName: result.family_name,
+              description: result.description,
+              habitat: result.habitat,
+            }),
+            timestamp: result.timestamp,
+            synced: true
           });
 
         if (!error) {
-          await sqliteService.markAsSynced(result.id!);
-          console.log('Successfully synced result:', result.id);
+          await dbService.markAsSynced(result.id!);
         }
-      } catch (error) {
-        console.error('Error syncing result:', error);
-      } finally {
-        this.isSyncing.value = false;
       }
+    } finally {
+      this.isSyncing.value = false;
     }
   }
 };

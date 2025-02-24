@@ -5,7 +5,7 @@ import { Network } from '@capacitor/network';
 import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
-import { Directory, Encoding, Filesystem } from '@capacitor/filesystem';
+import { Directory, Filesystem } from '@capacitor/filesystem';
 // import { LeafInferencePlugin } from '../definitions';
 
 interface LeafInferencePlugin {
@@ -31,10 +31,10 @@ interface LeafResponse {
 export const inferenceService = {
     async performInference(imagePath: string) {
         try {
-            // const networkStatus = await Network.getStatus();
+            const networkStatus = await Network.getStatus();
                // Temporarily force online mode for testing
             // const networkStatus = { connected: true }; // Force online mode
-            const networkStatus = { connected: false }; // Force offline mode
+            // const networkStatus = { connected: false }; // Force offline mode
             // Remove this after testing!
             // const timestamp = Date.now();
 
@@ -73,7 +73,7 @@ export const inferenceService = {
                     const base64Data = await new Promise<string>((resolve) => {
                         reader.onloadend = () => resolve(reader.result as string);
                         reader.readAsDataURL(blob);
-                    });
+                     });
 
                     const result = await axios.post('http://192.168.1.57:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
@@ -154,10 +154,10 @@ export const inferenceService = {
 
             } else {
                 // Offline implementation with platform check
-                if (!Capacitor.isNativePlatform()) {
-                    console.warn('Offline inference only available on native devices');
-                    return this.getMockOfflineResult();
-                }
+                // if (Capacitor.isNativePlatform()) {
+                //     console.warn('Offline inference only available on native devices');
+                //     // return this.getMockOfflineResult();
+                // }
 
                 // Offline: Use TFLite model    
                 try {
@@ -297,21 +297,21 @@ export const inferenceService = {
         
     },
 
-    getMockOfflineResult() {
-        return {
-            inference: {
-                predictedClass: 'mock_leaf',
-                confidence: 0.95
-            },
-            leafInfo: {
-                name: 'Mock Leaf',
-                scientificName: 'Fictus plantus',
-                familyName: 'Mockaceae',
-                description: 'Sample description for development',
-                habitat: 'Virtual environments'
-            }
-        };
-    },
+    // getMockOfflineResult() {
+    //     return {
+    //         inference: {
+    //             predictedClass: 'mock_leaf',
+    //             confidence: 0.95
+    //         },
+    //         leafInfo: {
+    //             name: 'Mock Leaf',
+    //             scientificName: 'Fictus plantus',
+    //             familyName: 'Mockaceae',
+    //             description: 'Sample description for development',
+    //             habitat: 'Virtual environments'
+    //         }
+    //     };
+    // }
 
     base64ToBlob(base64: string, type: string): Blob {
         const byteCharacters = atob(base64);
@@ -333,6 +333,12 @@ export const inferenceService = {
     }
 
 };
+
+// Add this in your root component
+Network.addListener('networkStatusChange', (status) => {
+    console.log('Network status changed:', status);
+    // You might want to update a global store or state here
+});
 
 // function getMockOfflineResult() {
 //     throw new Error('Function not implemented.');
