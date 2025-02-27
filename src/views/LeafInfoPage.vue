@@ -71,7 +71,9 @@
                 </div>  
                 <div v-if="geoStore.currentLocation">
                   <h3>Detected Location</h3>
-                  <p>{{ geoStore.currentLocation.address }}</p>
+                  <!-- <p>Address: {{ geoStore.currentLocation.address }}</p> -->
+                  <p>Latitude: {{ geoStore.currentLocation.lat }}</p>
+                  <p>Longitude: {{ geoStore.currentLocation.lng }}</p>
                   <ion-button @click="togglePin">
                     {{ geoStore.currentLocation.isPinned ? 'Unpin' : 'Pin' }} Location
                   </ion-button>

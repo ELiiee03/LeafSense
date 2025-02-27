@@ -13,7 +13,7 @@
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonSearchbar } from '@ionic/vue';
 import { ref } from 'vue';
 import GlobalHeader from '@/components/GlobalHeader.vue';
-import Geotagging from '@/components/Geotagging.vue';
+// import Geotagging from '@/components/Geotagging.vue';
 import Pins from '@/components/PinsComponent.vue';
 // import PinLogs from '@/components/PinLogs.vue';
 
@@ -26,9 +26,7 @@ export default {
         IonContent,
         IonSearchbar,
         Pins,
-        GlobalHeader,
-        Geotagging,
-        PinLogs
+        GlobalHeader
     }
 };
 

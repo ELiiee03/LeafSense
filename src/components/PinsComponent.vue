@@ -15,11 +15,12 @@
   const geoStore = useGeoStore();
   const mapRef = ref<HTMLElement>();
   let map: google.maps.Map;
+  let infoWindow: google.maps.InfoWindow;
   
   const loader = new Loader({
     apiKey: import.meta.env.VITE_GMAPS_API_KEY,
     version: 'weekly',
-    libraries: ['maps', 'geocoding']
+    libraries: ['places', 'geometry'] // Correct library names
   });
   
   onMounted(async () => {
@@ -36,18 +37,35 @@
         map,
         title: 'Current Location'
       });
+
+      // Initialize InfoWindow
+    infoWindow = new google.maps.InfoWindow();
   
-      // Watch for pinned locations changes
-      watch(() => geoStore.pinnedLocations, (pins) => {
-        pins.forEach(pin => {
-          new google.maps.Marker({
-            position: pin,
-            map,
-            title: 'Pinned Location',
-            icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
-          });
+     
+    // Watch for pinned locations changes
+    watch(() => geoStore.pinnedLocations, (pins) => {
+      pins.forEach(pin => {
+        const marker = new google.maps.Marker({
+          position: pin,
+          map,
+          title: 'Pinned Location',
+          icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png'
         });
-      }, { deep: true });
+
+        // Add click listener to marker to show InfoWindow
+        marker.addListener('click', () => {
+          infoWindow.setContent(`
+            <div>
+              <h3>Pinned Leaf</h3>
+              <p>Latitude: ${pin.lat}</p>
+              <p>Longitude: ${pin.lng}</p>
+              <p>Address: ${pin.address}</p>
+            </div>
+          `);
+          infoWindow.open(map, marker);
+        });
+      });
+    }, { deep: true });
     }
   });
   </script>
@@ -59,7 +77,7 @@
   }
   
   .map {
-    height: 100%;
+    height: 120%;
     width: 100%;
   }
   </style>
