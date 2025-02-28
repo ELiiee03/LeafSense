@@ -7,6 +7,7 @@ export const requestPermissions = async () => {
   }
 };
 
+
 export const getCurrentPosition = async () => {
   await requestPermissions(); // Ensure permissions before getting location
 

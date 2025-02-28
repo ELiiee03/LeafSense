@@ -19,7 +19,7 @@
         </ion-tab-button>
 
         <ion-tab-button tab="search" href="/pins">
-          <ion-icon size="large" :icon="location" />
+          <ion-icon size="large" :icon="mapSharp" />
           <!-- <ion-label>Analytics</ion-label> -->
         </ion-tab-button>
       </ion-tab-bar>
@@ -30,7 +30,7 @@
 <script lang="ts">
   import { IonPage, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonLabel, IonIcon } from '@ionic/vue';
 
-  import { home, albums, location } from 'ionicons/icons';
+  import { home, albums, mapSharp } from 'ionicons/icons';
 
   export default {
     components: { IonPage, IonTabs, IonRouterOutlet, IonTabBar, IonTabButton, IonLabel, IonIcon },
@@ -38,7 +38,7 @@
       return {
         home,
         albums,
-        location,
+        mapSharp
       };
     },
   };

@@ -9,23 +9,6 @@
                 </ion-fab>
             <div class="leaf-container1">
               <div class="leaf-container">
-
-                <!-- Leaf Name and Scientificname -->
-                <!-- <ion-grid class="custom-grid">
-                  <ion-row>
-                    <ion-col>
-                      <img src="/resources/jackfruit.png" alt="Leaf Image" class="leaf-image">
-                    </ion-col>
-                    <ion-col size="auto">
-                      <div style="width: 170px">
-                          <div class="leaf-info">
-                              <h3 class="leaf-name" v-if="leaf"><b>{{ leaf?.name }}</b></h3 >
-                              <p class="leaf-scientific-name" v-if="leaf"> {{ leaf?.scientificName }}</p>
-                          </div>
-                      </div>
-                    </ion-col style="border: 2px solid red;">
-                  </ion-row style="border: 2px solid red;">
-                </ion-grid> -->
                 <ion-grid class="custom-grid">
                   <ion-row>
                       <ion-col>
@@ -45,18 +28,6 @@
                       </ion-col>
                   </ion-row>
               </ion-grid>
-
-                <!-- Leaf results -->
-                <!-- <div>
-                  <div v-if="leaf" class="result">
-                      <p><b>Description: </b> {{ leaf.description }}</p>
-                      <p><b>Uses: </b> {{ leaf.uses }}</p>
-                      <p><b>Habitat: </b> {{ leaf.habitat }}</p>
-                    </div>    
-                    <div v-else>
-                      <p>Loading data...</p>
-                    </div>
-              </div> -->
 
               <div>
                 <div v-if="leafData" class="result">
@@ -86,34 +57,65 @@
                       <!-- save button -->
                   <div class="button-container">
                       <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
+                      <ion-button id="open-modal" class="pin">
+                        <ion-icon size="medium" :icon="locationSharp"></ion-icon>
+                      </ion-button>
                   </div>
               </div>
 
+              <!-- Modaaallll -->
+              <ion-modal class="modalSheet" ref="modal" trigger="open-modal" :initial-breakpoint="0.25" :breakpoints="[0, 0.25, 0.5, 0.75]">
+                <ion-content class="ion-padding">
+                  <!-- <ion-searchbar @click="( $refs.modal as HTMLIonModalElement ).setCurrentBreakpoint(0.75)" placeholder="Search"></ion-searchbar> -->
+                  <ion-list>
+                    <ion-item>
+                      <ion-avatar slot="start">
+                        <ion-img src="https://i.pravatar.cc/300?u=b"></ion-img>
+                      </ion-avatar>
+                      <ion-label>
+                        <h2>Connor Smith</h2>
+                        <p>Sales Rep</p>
+                      </ion-label>
+                    </ion-item>
+                    <ion-item>
+                      <ion-avatar slot="start">
+                        <ion-img src="https://i.pravatar.cc/300?u=a"></ion-img>
+                      </ion-avatar>
+                      <ion-label>
+                        <h2>Daniel Smith</h2>
+                        <p>Product Designer</p>
+                      </ion-label>
+                    </ion-item>
+                    <ion-item>
+                      <ion-avatar slot="start">
+                        <ion-img src="https://i.pravatar.cc/300?u=d"></ion-img>
+                      </ion-avatar>
+                      <ion-label>
+                        <h2>Greg Smith</h2>
+                        <p>Director of Operations</p>
+                      </ion-label>
+                    </ion-item>
+                    <ion-item>
+                      <ion-avatar slot="start">
+                        <ion-img src="https://i.pravatar.cc/300?u=e"></ion-img>
+                      </ion-avatar>
+                      <ion-label>
+                        <h2>Zoey Smith</h2>
+                        <p>CEO</p>
+                      </ion-label>
+                    </ion-item>
+                  </ion-list>
+                </ion-content>
+              </ion-modal>
+
           </div>
-              <!-- <div class="image-container">
-                <div v-if="leaf" class="result">
-                    <div class="leaf-info">
-                        <h1 class="leaf-name"><b>{{ leaf.name }}</b></h1 >
-                        <p class="leaf-scientific-name"> {{ leaf.scientificName }}</p>
-                    </div>
-                     <h2><b>{{ leaf.name }}</b></h2>
-                    <p><b>Scientific Name: </b> {{ leaf.scientificName }}</p>
-                    <p><b>Description: </b> {{ leaf.description }}</p>
-                    <p><b>Uses: </b> {{ leaf.uses }}</p>
-                    <p><b>Habitat: </b> {{ leaf.habitat }}</p>
-                  </div>    
-                  <div v-else>
-                    <p>Loading data...</p>
-                  </div>
-              </div> -->
-           
         </ion-content>
     </ion-page>
 </template>
 
 <script setup lang="ts">
-import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
-import { arrowBack } from 'ionicons/icons';
+import { IonSearchbar, IonModal, IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
+import { arrowBack, locationSharp } from 'ionicons/icons';
 import { useRouter, useRoute } from 'vue-router';
 import { sqliteService } from '@/services/sqliteService';
 import { Network } from '@capacitor/network';
@@ -268,44 +270,6 @@ async function saveLeafInfo() {
     }
 }
 
-
-// async function fetchLeafData() {
-//   try {
-//     const response = await fetch('/data.json');
-//     const data = await response.json();
-//     // Assuming you want to fetch the first leaf for demonstration
-//     leaf.value = data[2];
-//   } catch (error) {
-//     console.error('Error fetching leaf data:', error);
-//   }
-// }
-
-// onMounted(() => {
-//   fetchLeafData();
-// });
-
-// onMounted(() => {
-//     // Add debug logging
-//     console.log('Route params:', route.params);
-
-//     if (route.params.leafData) {
-//         try {
-//             const parsedData = JSON.parse(route.params.leafData as string);
-//             leafData.value = parsedData;
-//             // Add debug logging
-//             console.log('Parsed leaf data:', leafData.value);
-
-//             // Also store the image path if it exists
-//             if (route.params.imagePath) {
-//                 imageSrc.value = route.params.imagePath as string;
-//             }
-//         } catch (error) {
-//             console.error('Error parsing leaf data:', error);
-//         }
-//     } else {
-//         console.warn('No leaf data received in route params');
-//     }
-
 onMounted(() => {
   // Add network listener
   Network.addListener('networkStatusChange', async (status) => {
@@ -324,9 +288,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.modalSheet {
+  --background: #fff;
+  --border-radius: 25px;
+}
+
 .button-container {
   display: flex;
-  justify-content: center; /* Center the button horizontally */
+  justify-content: space-between; /* Center the button horizontally */
   width: 100%; /* Full width of the container */
   position: fixed; /* Fix the position */
   bottom: 0; /* Position at the bottom */
@@ -336,9 +305,21 @@ onMounted(() => {
 }
 
 .save {
-  width: 100%; /* Full width of the container */
-  max-width: 300px; /* Optional max width */
-  height: 20px; /* Adjust the height as needed */
+  width: 70%; /* Adjust the width as needed */
+  max-width: 300px;
+
+  --background: #416d3f;
+  --ripple-color: rgb(64, 241, 44);
+  --background-hover: #9ce0be;
+  --border-radius: 15px;
+  --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
+}
+
+.pin {
+  width: 25%; /* Adjust the width as needed */
+  max-width: 150px;
+  color: #fff;
+  margin-top: 0px;
   --background: #416d3f;
   --ripple-color: rgb(64, 241, 44);
   --background-hover: #9ce0be;

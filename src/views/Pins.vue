@@ -1,8 +1,8 @@
 <template>
     <ion-page>
-        <GlobalHeader />
+        <!-- <GlobalHeader /> -->
         <ion-content>
-            <ion-searchbar show-clear-button="focus" placeholder="Search pins"></ion-searchbar>
+            <!-- <ion-searchbar show-clear-button="focus" placeholder="Search pins"></ion-searchbar> -->
             <!-- <Geotagging /> -->
             <Pins />
         </ion-content>
