@@ -2,14 +2,23 @@
   <GlobalHeader />
   <ion-page>
   <ion-content class="ion-padding">
+
+
     <!-- <h4><b>LeafSense.</b></h4> -->
     <ion-grid>
+
+      <ion-button expand="block" @click="navigateToHomeContent">Block</ion-button>
       <ion-row>
-        <ion-col></ion-col>
-        <ion-col size="8">Tap Camera button to scan</ion-col>
+        <ion-col>      
+          <HomeContent />
+        </ion-col>
+        <ion-col size="8">Tap Camera button to scan
+          <HomeContent />
+        </ion-col>
         <ion-col></ion-col>
       </ion-row>
     </ion-grid>
+    <HomeContent />
 
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
@@ -85,6 +94,7 @@
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
   import GlobalHeader from '@/components/GlobalHeader.vue';
+  import HomeContent from '@/components/HomeContent.vue';
   import { Network } from '@capacitor/network';
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
@@ -135,30 +145,6 @@ interface InferenceResult {
 // Update the ref to use the new interface
 const inferenceResult = ref<InferenceResult | null>(null);
 
-
-  // const imageSrc = ref('');
-//   const takePhoto = async () => {
-//     try {
-//         const image = await Camera.getPhoto({
-//             quality: 90,
-//             allowEditing: true,
-//             resultType: CameraResultType.Uri,
-//         });
-
-//         imageSrc.value = image.webPath || '';
-
-//         // Perform inference
-//         const inferenceResult = await inferenceService.performInference(imageSrc.value);
-
-//         // Update leaf data with inference result
-//         leaf.value = inferenceResult.leafInfo;
-
-//         // Open the modal to display the result
-//         setOpen(true);
-//     } catch (error) {
-//         console.error('Error taking photo:', error);
-//     }
-// };
 
 // In the takePhoto function:
 const takePhoto = async () => {
@@ -253,6 +239,11 @@ const takePhoto = async () => {
 const navigateToLeafInfo = () => {
   setOpen(false);
   router.push({ name: 'leafinfo' });
+};
+
+const navigateToHomeContent = () => {
+  setOpen(false);
+  router.push({ name: 'homecontent' });
 };
 
 // Http requests 
@@ -392,4 +383,5 @@ ion-content {
     --background: #416d3f;
     --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
+
 </style>

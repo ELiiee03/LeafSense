@@ -112,6 +112,8 @@ const loader = new Loader({
   libraries: ['places', 'geometry'] // Correct library names
 });
 
+// 
+
 onMounted(async () => {
   try {
     await loader.load();
@@ -119,8 +121,9 @@ onMounted(async () => {
     
     if (mapRef.value) {
       map = new google.maps.Map(mapRef.value, {
-        center: geoStore.currentLocation || { lat: 0, lng: 0 },
-        zoom: 12
+        center: geoStore.currentLocation || { lat: 8.9475, lng: 125.5406 },
+        zoom: 12,
+        mapTypeId: 'hybrid'
       });
       console.log('Map initialized', map);
 
@@ -184,9 +187,10 @@ html, body, #app {
 }
 
 .map-container {
-  height: 100vh;
+  height: 95vh;
   width: 100vw;
   position: relative;
+  overflow: hidden;
 }
 
 .map {

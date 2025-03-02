@@ -40,15 +40,6 @@
                     <b>Confidence:</b> {{ formatConfidence(inferenceStore.result.inference.confidence) }}%
                 </p>
                 </div>  
-                <div v-if="geoStore.currentLocation">
-                  <h3>Detected Location</h3>
-                  <!-- <p>Address: {{ geoStore.currentLocation.address }}</p> -->
-                  <p>Latitude: {{ geoStore.currentLocation.lat }}</p>
-                  <p>Longitude: {{ geoStore.currentLocation.lng }}</p>
-                  <ion-button @click="togglePin">
-                    {{ geoStore.currentLocation.isPinned ? 'Unpin' : 'Pin' }} Location
-                  </ion-button>
-                </div>  
                 <div v-else>
                     <p>Loading data...</p>
                 </div>
@@ -57,56 +48,18 @@
                       <!-- save button -->
                   <div class="button-container">
                       <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
-                      <ion-button id="open-modal" class="pin">
+                      <ion-button class="pin"  @click="handlePinClick">
                         <ion-icon size="medium" :icon="locationSharp"></ion-icon>
                       </ion-button>
+                
+                      <LocationModal 
+                        :is-open="showModal" 
+                        @did-dismiss="showModal = false"
+                      />
                   </div>
               </div>
 
-              <!-- Modaaallll -->
-              <ion-modal class="modalSheet" ref="modal" trigger="open-modal" :initial-breakpoint="0.25" :breakpoints="[0, 0.25, 0.5, 0.75]">
-                <ion-content class="ion-padding">
-                  <!-- <ion-searchbar @click="( $refs.modal as HTMLIonModalElement ).setCurrentBreakpoint(0.75)" placeholder="Search"></ion-searchbar> -->
-                  <ion-list>
-                    <ion-item>
-                      <ion-avatar slot="start">
-                        <ion-img src="https://i.pravatar.cc/300?u=b"></ion-img>
-                      </ion-avatar>
-                      <ion-label>
-                        <h2>Connor Smith</h2>
-                        <p>Sales Rep</p>
-                      </ion-label>
-                    </ion-item>
-                    <ion-item>
-                      <ion-avatar slot="start">
-                        <ion-img src="https://i.pravatar.cc/300?u=a"></ion-img>
-                      </ion-avatar>
-                      <ion-label>
-                        <h2>Daniel Smith</h2>
-                        <p>Product Designer</p>
-                      </ion-label>
-                    </ion-item>
-                    <ion-item>
-                      <ion-avatar slot="start">
-                        <ion-img src="https://i.pravatar.cc/300?u=d"></ion-img>
-                      </ion-avatar>
-                      <ion-label>
-                        <h2>Greg Smith</h2>
-                        <p>Director of Operations</p>
-                      </ion-label>
-                    </ion-item>
-                    <ion-item>
-                      <ion-avatar slot="start">
-                        <ion-img src="https://i.pravatar.cc/300?u=e"></ion-img>
-                      </ion-avatar>
-                      <ion-label>
-                        <h2>Zoey Smith</h2>
-                        <p>CEO</p>
-                      </ion-label>
-                    </ion-item>
-                  </ion-list>
-                </ion-content>
-              </ion-modal>
+             
 
           </div>
         </ion-content>
@@ -114,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { IonSearchbar, IonModal, IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
+import { IonModal, IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
 import { arrowBack, locationSharp } from 'ionicons/icons';
 import { useRouter, useRoute } from 'vue-router';
 import { sqliteService } from '@/services/sqliteService';
@@ -124,12 +77,16 @@ import { ref, defineProps, onMounted, computed } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
 import { dbService } from '@/services/dbService';
 import { useGeoStore } from '@/stores/geolocationStore';
+import LocationModal from '@/components/LocationModal.vue';
+import { requestPermissions, getCurrentPosition } from '@/services/geolocationService';
 
-
+// Add this reactive state
+const showModal = ref(false);
+const locationNote = ref(''); 
 const geoStore = useGeoStore();
 
 onMounted(async () => {
-  await geoStore.updateLocation();
+  await geoStore.setCurrentLocation(); // Changed from updateLocation
 });
 
 const togglePin = () => {
@@ -208,6 +165,31 @@ function closePage() {
 //     // Implement save functionality
 //     console.log('Saving leaf info:', leafData.value);
 // }
+
+
+async function handlePinClick() {
+  try {
+    // 1. Request permissions through the service
+    await requestPermissions();
+    
+    // 2. Update store with fresh coordinates and geocoded address
+    await geoStore.setCurrentLocation();
+    
+    // 3. Only show modal if location was successfully obtained
+    if (geoStore.currentLocation) {
+      showModal.value = true;
+    } else {
+      throw new Error('Could not retrieve location data');
+    }
+    
+  } catch (error) {
+    console.error('Location error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Location access is required to pin locations';
+    showToast(errorMessage, true);
+  }
+}
+
+
 async function showToast(message: string, isError = false) {
     const toast = await toastController.create({
         message: message,
@@ -221,9 +203,14 @@ async function showToast(message: string, isError = false) {
 async function saveLeafInfo() {
     try {
         // Check if leafData exists first
-        if (!leafData.value) {
-            await showToast('No leaf data to save', true);
-            return;
+        if (!leafData.value?.leafInfo || !leafData.value?.inference) {
+          await showToast('Missing leaf data', true);
+          return;
+        }
+
+        if (!geoStore.currentLocation) {
+          await showToast('Location data not available', true);
+          return;
         }
 
         const timestamp = Date.now();
@@ -231,43 +218,59 @@ async function saveLeafInfo() {
 
         if (status.connected) {
             // Online: Direct insert to Supabase
-            const { error } = await supabase
-                .from('inference_results')
+            // 1. Save to inference_results
+            const { data: inferenceData, error: infError } = await supabase
+              .from('inference_results')
+              .insert({
+                image: imageSrc.value,
+                scientific_name: leafData.value.leafInfo?.scientificName,
+                family_name: leafData.value.leafInfo?.familyName,
+                description: leafData.value.leafInfo?.description,
+                habitat: leafData.value.leafInfo?.habitat,
+                confidence: leafData.value.inference?.confidence
+              })
+              .select();
+
+            if (infError) throw infError;
+
+              // 2. Save to pinned_locations if pinned
+            if (geoStore.currentLocation.isPinned) {
+              const { error: locError } = await supabase
+                .from('pinned_locations')
                 .insert({
-                    image: imageSrc.value,
-                    scientific_name: leafData.value.leafInfo?.scientificName ?? '',
-                    family_name: leafData.value.leafInfo?.familyName ?? '',
-                    description: leafData.value.leafInfo?.description ?? '',
-                    habitat: leafData.value.leafInfo?.habitat ?? '',
-                    result: leafData.value.inference?.predictedClass ?? '',
-                    // tim estamp: timestamp,
-                    // synced: 1
+                  lat: geoStore.currentLocation.lat,
+                  lng: geoStore.currentLocation.lng,
+                  note: locationNote.value,
+                  inference_result_id: inferenceData[0].id
                 });
 
-            if (error) throw error;
-            await showToast('Leaf information saved successfully');
-            console.log('Leaf info saved directly to Supabase');
-        } else {
-            // Offline: Save to SQLite for later sync
-            await dbService.saveLeaf({
-                imagePath: imageSrc.value,
-                leafInfo: JSON.stringify({
-                    result: leafData.value.inference?.predictedClass ?? '',
-                    scientificName: leafData.value.leafInfo?.scientificName ?? '',
-                    familyName: leafData.value.leafInfo?.familyName ?? '',
-                    description: leafData.value.leafInfo?.description ?? '',
-                    habitat: leafData.value.leafInfo?.habitat ?? '',
-                }),
-                timestamp: timestamp,
-                synced: false
-            });
-            await showToast('Leaf information saved offline');
-            console.log('Leaf info saved to SQLite (offline mode)');
+              if (locError) throw locError;
+            }
+
+            await showToast('Data saved successfully');
+            router.back(); // Optional: Navigate back after save
+
+            } else {
+                // Offline: Save to SQLite for later sync
+                await dbService.saveLeaf({
+                    imagePath: imageSrc.value,
+                    leafInfo: JSON.stringify({
+                        result: leafData.value.inference?.predictedClass ?? '',
+                        scientificName: leafData.value.leafInfo?.scientificName ?? '',
+                        familyName: leafData.value.leafInfo?.familyName ?? '',
+                        description: leafData.value.leafInfo?.description ?? '',
+                        habitat: leafData.value.leafInfo?.habitat ?? '',
+                    }),
+                    // timestamp: timestamp,
+                    synced: false
+                });
+                await showToast('Leaf information saved offline');
+                console.log('Leaf info saved to SQLite (offline mode)');
+            }
+        } catch (error) {
+            console.error('Error saving leaf info:', error);
+            await showToast('Error saving leaf information', true);
         }
-    } catch (error) {
-        console.error('Error saving leaf info:', error);
-        await showToast('Error saving leaf information', true);
-    }
 }
 
 onMounted(() => {
@@ -307,7 +310,7 @@ onMounted(() => {
 .save {
   width: 70%; /* Adjust the width as needed */
   max-width: 300px;
-
+  margin-left: 8px;
   --background: #416d3f;
   --ripple-color: rgb(64, 241, 44);
   --background-hover: #9ce0be;
@@ -318,8 +321,10 @@ onMounted(() => {
 .pin {
   width: 25%; /* Adjust the width as needed */
   max-width: 150px;
+  height: 30px;
   color: #fff;
-  margin-top: 0px;
+  margin-top: 5px;
+  margin-right: 8px;
   --background: #416d3f;
   --ripple-color: rgb(64, 241, 44);
   --background-hover: #9ce0be;
