@@ -58,11 +58,11 @@ const routes: Array<RouteRecordRaw> = [
     name: 'homecontent',
     component: () => import('../components/HomeContent.vue'),
   },
-  {
-    path: '/modal',
-    name: 'modal',
-    component: () => import('../components/ModalSheet.vue'),
-  }
+  // {
+  //   path: '/modal',
+  //   name: 'modal',
+  //   component: () => import('../components/ModalSheet.vue'),
+  // }
 ];
 
 const router = createRouter({

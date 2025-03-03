@@ -67,7 +67,7 @@
 </template>
 
 <script setup lang="ts">
-import { IonModal, IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
+import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
 import { arrowBack, locationSharp } from 'ionicons/icons';
 import { useRouter, useRoute } from 'vue-router';
 import { sqliteService } from '@/services/sqliteService';
@@ -76,22 +76,30 @@ import { supabase } from '@/supabaseClient';
 import { ref, defineProps, onMounted, computed } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
 import { dbService } from '@/services/dbService';
-import { useGeoStore } from '@/stores/geolocationStore';
+// import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
-import { requestPermissions, getCurrentPosition } from '@/services/geolocationService';
+import { requestPermissions, getCurrentPosition, geocodeLocation } from '@/services/geolocationService';
 
 // Add this reactive state
 const showModal = ref(false);
 const locationNote = ref(''); 
-const geoStore = useGeoStore();
+// const geoStore = useGeoStore();
 
-onMounted(async () => {
-  await geoStore.setCurrentLocation(); // Changed from updateLocation
-});
+const currentLocation = ref<{
+  lat: number;
+  lng: number;
+  note: string;
+  isPinned: boolean;
+  address?: string;
+} | null>(null);
 
-const togglePin = () => {
-  geoStore.togglePin();
-};
+// onMounted(async () => {
+//   await geoStore.setCurrentLocation(); // Changed from updateLocation
+// });
+
+// const togglePin = () => {
+//   geoStore.togglePin();
+// };
 
 // const router = useRouter();
 const route = useRoute();
@@ -100,25 +108,6 @@ const route = useRoute();
 const inferenceStore = useInferenceStore();
 // const leafData = ref<LeafData | null>(null);
 const leafData = computed(() => inferenceStore.result);
-
-
-
-// interface InferenceResult {
-//   inference: {
-//     predictedClass: string;
-//     confidence: number;
-//   };
-//   leafInfo: {
-//     name: string;
-//     scientificName: string;
-//     familyName: string;
-//     description: string;
-//     habitat: string;
-//   };
-// }
-
-// const leafData = ref<InferenceResult | null>(null);
-
 
 
 interface LeafData {
@@ -169,23 +158,30 @@ function closePage() {
 
 async function handlePinClick() {
   try {
-    // 1. Request permissions through the service
+    // Request location permissions
     await requestPermissions();
     
-    // 2. Update store with fresh coordinates and geocoded address
-    await geoStore.setCurrentLocation();
+    // Get current position
+    const position = await getCurrentPosition();
     
-    // 3. Only show modal if location was successfully obtained
-    if (geoStore.currentLocation) {
-      showModal.value = true;
-    } else {
-      throw new Error('Could not retrieve location data');
-    }
+    // Get address from coordinates
+    const address = await geocodeLocation(position.lat, position.lng);
+    
+    // Update local state
+    currentLocation.value = {
+      lat: position.lat,
+      lng: position.lng,
+      note: '',
+      isPinned: false,
+      address
+    };
+    
+    showModal.value = true;
     
   } catch (error) {
     console.error('Location error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Location access is required to pin locations';
-    showToast(errorMessage, true);
+    const message = error instanceof Error ? error.message : 'Location access is required to pin locations';
+    showToast(message, true);
   }
 }
 
@@ -202,75 +198,80 @@ async function showToast(message: string, isError = false) {
 
 async function saveLeafInfo() {
     try {
-        // Check if leafData exists first
+        // Validate required data
         if (!leafData.value?.leafInfo || !leafData.value?.inference) {
-          await showToast('Missing leaf data', true);
-          return;
+            await showToast('Missing plant data', true);
+            return;
         }
 
-        if (!geoStore.currentLocation) {
-          await showToast('Location data not available', true);
-          return;
-        }
+        // Check network status
+        const networkStatus = await Network.getStatus();
+        
+        if (networkStatus.connected) {
+            try {
+                if (!currentLocation.value) {
+                    await showToast('Location data not available', true);
+                    return;
+                }
 
-        const timestamp = Date.now();
-        const status = await Network.getStatus();
+                // Save plant data
+                const { data: inferenceData, error: infError } = await supabase
+                    .from('inference_results')
+                    .insert({
+                        image: imageSrc.value,
+                        scientific_name: leafData.value.leafInfo.scientificName,
+                        family_name: leafData.value.leafInfo.familyName,
+                        description: leafData.value.leafInfo.description,
+                        habitat: leafData.value.leafInfo.habitat,
+                        confidence: leafData.value.inference.confidence
+                    })
+                    .select();
 
-        if (status.connected) {
-            // Online: Direct insert to Supabase
-            // 1. Save to inference_results
-            const { data: inferenceData, error: infError } = await supabase
-              .from('inference_results')
-              .insert({
-                image: imageSrc.value,
-                scientific_name: leafData.value.leafInfo?.scientificName,
-                family_name: leafData.value.leafInfo?.familyName,
-                description: leafData.value.leafInfo?.description,
-                habitat: leafData.value.leafInfo?.habitat,
-                confidence: leafData.value.inference?.confidence
-              })
-              .select();
+                if (infError) throw infError;
 
-            if (infError) throw infError;
+                // Save location if pinned
+                if (currentLocation.value.isPinned) {
+                    const { error: locError } = await supabase
+                        .from('pinned_locations')
+                        .insert({
+                            lat: currentLocation.value.lat,
+                            lng: currentLocation.value.lng,
+                            note: currentLocation.value.note,
+                            inference_result_id: inferenceData[0].id,
+                            address: currentLocation.value.address
+                        });
 
-              // 2. Save to pinned_locations if pinned
-            if (geoStore.currentLocation.isPinned) {
-              const { error: locError } = await supabase
-                .from('pinned_locations')
-                .insert({
-                  lat: geoStore.currentLocation.lat,
-                  lng: geoStore.currentLocation.lng,
-                  note: locationNote.value,
-                  inference_result_id: inferenceData[0].id
-                });
+                    if (locError) throw locError;
+                }
 
-              if (locError) throw locError;
+                await showToast('Data saved successfully');
+                router.back();
+            } catch (error) {
+                console.error('Save error:', error);
+                const message = error instanceof Error ? error.message : 'Failed to save data';
+                await showToast(message, true);
             }
-
-            await showToast('Data saved successfully');
-            router.back(); // Optional: Navigate back after save
-
-            } else {
-                // Offline: Save to SQLite for later sync
-                await dbService.saveLeaf({
-                    imagePath: imageSrc.value,
-                    leafInfo: JSON.stringify({
-                        result: leafData.value.inference?.predictedClass ?? '',
-                        scientificName: leafData.value.leafInfo?.scientificName ?? '',
-                        familyName: leafData.value.leafInfo?.familyName ?? '',
-                        description: leafData.value.leafInfo?.description ?? '',
-                        habitat: leafData.value.leafInfo?.habitat ?? '',
-                    }),
-                    // timestamp: timestamp,
-                    synced: false
-                });
-                await showToast('Leaf information saved offline');
-                console.log('Leaf info saved to SQLite (offline mode)');
-            }
-        } catch (error) {
-            console.error('Error saving leaf info:', error);
-            await showToast('Error saving leaf information', true);
+        } else {
+            // Offline: Save to SQLite for later sync
+            await dbService.saveLeaf({
+                imagePath: imageSrc.value,
+                leafInfo: JSON.stringify({
+                    result: leafData.value?.inference?.predictedClass ?? '',
+                    scientificName: leafData.value?.leafInfo?.scientificName ?? '',
+                    familyName: leafData.value?.leafInfo?.familyName ?? '',
+                    description: leafData.value?.leafInfo?.description ?? '',
+                    habitat: leafData.value?.leafInfo?.habitat ?? '',
+                }),
+                // timestamp: timestamp,
+                synced: false
+            });
+            await showToast('Leaf information saved offline');
+            console.log('Leaf info saved to SQLite (offline mode)');
         }
+    } catch (error) {
+        console.error('Error saving leaf info:', error);
+        await showToast('Error saving leaf information', true);
+    }
 }
 
 onMounted(() => {
