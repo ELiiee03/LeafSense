@@ -1,65 +1,74 @@
-// Creating the router instance
-
 import { createRouter, createWebHistory } from '@ionic/vue-router';
 import { RouteRecordRaw } from 'vue-router';
-import Tabs from '../components/Tabs.vue';
-// import Camera from '@/views/CameraCapture.vue'
-// import Login from '../views/Login.vue';
-// import Signup from '../views/SIgnup.vue';
+import Tabs from '@/components/Tabs.vue';
 
 const routes: Array<RouteRecordRaw> = [
   {
-    path: '/preview',
-    component: () => import ('@/views/Preview.vue')
-  },
-  {
-    path: '/login',
-    component: () => import ('@/views/Login.vue')
-  },
-  // {
-  //   path: '/signup',
-  //   component: () => import ('@/views/SIgnup.vue')
-  // },
-  // {
-  //   path: '/logs',
-  //   component: () => import ('@/views/Logs.vue')
-  // },
-  {
-    path: '/leafinfo',
-    component: () => import ('@/components/LeafInfoModal.vue')
+    path: '/',
+    redirect: '/home',
   },
   {
     path: '/',
-    redirect: '/home' // Redirect to /home when no path is provided
-  },
-  {
-    path: '/home',
-    component: Tabs, // Show Tabs.vue on the /home route
+    component: Tabs,
     children: [
       {
         path: '',
-        redirect: '/home/camera', // Default tab for the home route (can be adjusted)
+        redirect: '/home',
       },
       {
-        path: 'camera',
-        component: () => import('@/views/CameraCapture.vue'), // Camera tab
+        path: 'home',
+        component: () => import('@/views/HomePage.vue'),
+      },
+      {
+        path: 'radio',
+        component: () => import('../views/Preview.vue'),
       },
       {
         path: 'logs',
-        component: () => import('@/views/Logs.vue'), // Search tab
+        component: () => import('../views/Logs.vue'),
       },
       {
-        path: 'signup',
-        component: () => import('@/views/SIgnup.vue'), // Folder tab
+        path: 'pins',
+        component: () => import('../views/Pins.vue'),
       },
     ],
   },
-  
-]
+  {
+    path: '/signup',
+    name: 'signup',
+    component: () => import('../views/SIgnup.vue'),
+  },
+  {
+    path: '/preview',
+    component: () => import('../views/Preview.vue'),
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: () => import('../views/Login.vue'),
+  },
+  {
+    path: '/leafinfo',
+    name: 'leafinfo',
+    component: () => import('../views/LeafInfoPage.vue'),
+    props: true,
+  },
+  {
+    path: '/homecontent',
+    name: 'homecontent',
+    component: () => import('../components/HomeContent.vue'),
+  },
+  // {
+  //   path: '/modal',
+  //   name: 'modal',
+  //   component: () => import('../components/ModalSheet.vue'),
+  // }
+];
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
-  routes
-})
+  // Use: createWebHistory(process.env.BASE_URL) in your app
+  history: createWebHistory(),
+  routes,
+});
 
-export default router
+export default router;

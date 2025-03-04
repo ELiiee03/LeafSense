@@ -1,24 +1,3 @@
-<!-- <template>
-  <ion-page>
-    <ion-header>
-      <ion-toolbar>
-        <ion-title>Login</ion-title>
-      </ion-toolbar>
-    </ion-header>
-    <ion-content>
-      <ion-item>
-        <ion-label position="floating">Email</ion-label>
-        <ion-input v-model="email" type="email" placeholder="Email" fill="outline"></ion-input>
-      </ion-item>
-      <ion-item>
-        <ion-label position="floating">Password</ion-label>
-        <ion-input v-model="password" type="password" placeholder="Password" fill="outline"></ion-input>
-      </ion-item>
-      <ion-button expand="full" @click="login">Login</ion-button>
-    </ion-content>
-  </ion-page>
-</template> -->
-
 <template>
   <ion-page>
     <!-- <ion-header>
@@ -26,8 +5,8 @@
         <ion-title></ion-title>
         </ion-toolbar>
       </ion-header> -->
-      <ion-content class="ion-padding">
-        <h4><b>LeafSense.</b></h4>
+      <ion-content class="ion-padding" fullscreen>
+        <!-- <h4><b>LeafSense.</b></h4> -->
         <div class="login-container">
           <h1><b>Log In</b></h1>
           <br>
@@ -37,18 +16,18 @@
           </ion-input>
           <br>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
-          <br>
-          <ion-button shape="round" expand="full" class="ion-margin-top" fill="outline">
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button2" fill="outline">
             <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
           </ion-button>
+
+          <ion-grid>
+            <ion-row>
+              <ion-col></ion-col>
+              <ion-col size="auto">Don't have an account? <b>Sign Up</b></ion-col>
+              <ion-col></ion-col>
+            </ion-row>
+          </ion-grid>
         </div>
-        <ion-grid>
-          <ion-row>
-            <ion-col></ion-col>
-            <ion-col size="10">Don't have an account? <b>Sign Up</b></ion-col>
-            <ion-col></ion-col>
-          </ion-row>
-        </ion-grid>
         
       </ion-content>
   </ion-page>
@@ -105,29 +84,67 @@ export default defineComponent({
 <style scoped>
 /* Center the form */
 .login-container {
-  margin-top: 120px;
+  position: absolute; /* Position the container absolutely */
+  top: 30%; /* Adjust the top position as needed */
+  left: 0;
+  width: 100%; /* Full width of the viewport */
+  height: 70vh; /* 75% of the viewport height */
+  background-color: #DCE6CC;
+  display: flex; /* Center content */
+  flex-direction: column; /* Stack child elements vertically */
+  justify-content: center; /* Center vertically */
+  align-items: center; /* Center horizontally */
+  box-sizing: border-box; /* Include padding/border in the dimensions */
+  padding: 20px; /* Optional padding for aesthetics */
+  border-top-left-radius: 30px; /* Apply border-radius to the top-left corner */
+  border-top-right-radius: 30px;
 }
 
 ion-input {
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   width: 100%;
 }
 
 h1 {
-  margin-bottom: 80px;
+  margin-bottom: 60px;
   text-align: center;
 }
 ion-icon {
   color: green;
 }
-.custom-button {
-  color: green;
-}
+
 ion-col {
-  color: #fff;
   text-align: center;
 }
 ion-grid {
-  margin-top: 50px;
+  margin-top: 40px;
+}
+/* Ensure the content takes full height */
+.ion-page {
+  --ion-background-color: transparent;
+  width: 100%;
+  height: 100vh;
+  background: url('/public/leaf3.jpg') no-repeat center center;
+  overflow: hidden;
+}
+
+ion-content {
+  height: 100%;
+  overflow: hidden;
+  background-color: rgba(79, 73, 73, 0.563); 
+}
+.custom-button {
+  --background: #416d3f;
+  width: 95%; /* Adjust the width as needed */
+  height: 40px;
+  margin: 2px;
+}
+.custom-button2 {
+  --border-color: #228B22;
+  color: black;
+  width: 95%; /* Adjust the width as needed */
+  height: 38px;
+  margin: 2px;
+  margin-top: 10px;
 }
 </style>

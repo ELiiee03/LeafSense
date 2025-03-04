@@ -2,3 +2,20 @@
 http://ionicframework.com/docs/theming/ */
 
 /* Set variables for all modes */
+/* :root {
+    --background: #A9BA9D;
+  } */
+  :root {
+    --ion-safe-area-top: 0px;
+    --ion-safe-area-bottom: 0px;
+    --ion-safe-area-left: 0px;
+    --ion-safe-area-right: 0px;
+    --ion-statusbar-padding: 0px;
+  }
+  
+  ion-content {
+    --offset-top: 0px !important;
+    --offset-bottom: 0px !important;
+    --padding-top: 0px !important;
+    --padding-bottom: 0px !important;
+  }

@@ -1,11 +1,32 @@
 // Above the createApp() line
 import { defineCustomElements } from '@ionic/pwa-elements/loader';
-defineCustomElements(window);
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router';
+// defineCustomElements(window);
+declare const window: any;
 
+if (typeof window !== 'undefined') {
+  defineCustomElements(window);
+}
+import { createApp } from 'vue'
+import { createPinia } from 'pinia';
 import { IonicVue } from '@ionic/vue';
+
+import App from './App.vue';
+import router from './router';
+import { db } from './services/dbService'; // Add this import
+// import { CapacitorSQLite } from '@capacitor-community/sqlite';
+// import { sqliteService } from './services/sqliteService';
+import { syncService } from './services/syncService';
+import { registerPlugin } from '@capacitor/core';
+
+const LeafInference = registerPlugin<{
+  runInference(options: { imagePath: string }): Promise<{
+      predictedClass: string;
+      confidence: number;
+  }>;
+}>('LeafInference');
+
+export default LeafInference;
+
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/vue/css/core.css';
@@ -37,9 +58,33 @@ import '@ionic/vue/css/display.css';
 /* Theme variables */
 import './theme/variables.css';
 
-const app = createApp(App)
-  .use(IonicVue)
-  .use(router);
+// Initialize IndexedDB when app starts
+db.open().catch(err => {
+  console.error('Failed to open database:', err);
+});
+
+// // Temporary test code - START (remove after verification)
+// db.inferences.put({
+//   image_path: 'test.jpg',
+//   predicted_class: 'Oak',
+//   scientific_name: 'Quercus',
+//   family_name: 'Fagaceae',
+//   description: 'Test entry',
+//   habitat: 'Forest',
+//   timestamp: Date.now(),
+//   synced: false
+// }).then(() => {
+//   console.log('Test entry added to IndexedDB');
+// });
+
+
+const app = createApp(App).use(IonicVue).use(router);
+const pinia = createPinia();
+app.use(pinia);
+
+
+// Initialize sync service
+syncService.init();
 
 router.isReady().then(() => {
   app.mount('#app');
