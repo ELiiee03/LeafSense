@@ -86,9 +86,9 @@
  <template>
   <div class="map-container">
     <div ref="mapRef" class="map">
-      <ion-button class="pin" @click="geoStore.showPins = !geoStore.showPins">
+      <!-- <ion-button class="pin" @click="geoStore.showPins = !geoStore.showPins">
         {{ geoStore.showPins ? 'Hide Pins' : 'Show Pins' }}
-      </ion-button>
+      </ion-button> -->
     </div>
     <!-- <ion-button @click="geoStore.showPins = !geoStore.showPins">
       {{ geoStore.showPins ? 'Hide Pins' : 'Show Pins' }}
@@ -99,24 +99,24 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { useGeoStore } from '@/stores/geolocationStore';
-import { Loader } from '@googlemaps/js-api-loader';
-
+// import { Loader } from '@googlemaps/js-api-loader';
+import { mapsLoader } from '@/services/googleMapsService';
 const geoStore = useGeoStore();
 const mapRef = ref<HTMLElement>();
 let map: google.maps.Map;
 let infoWindow: google.maps.InfoWindow;
 
-const loader = new Loader({
-  apiKey: import.meta.env.VITE_GMAPS_API_KEY,
-  version: 'weekly',
-  libraries: ['places', 'geometry'] // Correct library names
-});
+// const loader = new Loader({
+//   apiKey: import.meta.env.VITE_GMAPS_API_KEY || 'AIzaSyAyCfmaKiT3XE3s_PBVRKe8qNzNtfXJLbA', 
+//   version: 'weekly',
+//   libraries: ['places', 'geometry'] // Correct library names
+// });
 
 // 
 
 onMounted(async () => {
   try {
-    await loader.load();
+    await mapsLoader.load();
     console.log('Google Maps API loaded successfully');
     
     if (mapRef.value) {

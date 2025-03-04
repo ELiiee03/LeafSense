@@ -76,14 +76,14 @@ import { supabase } from '@/supabaseClient';
 import { ref, defineProps, onMounted, computed } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
 import { dbService } from '@/services/dbService';
-// import { useGeoStore } from '@/stores/geolocationStore';
+import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
 import { requestPermissions, getCurrentPosition, geocodeLocation } from '@/services/geolocationService';
 
 // Add this reactive state
 const showModal = ref(false);
 const locationNote = ref(''); 
-// const geoStore = useGeoStore();
+const geoStore = useGeoStore();
 
 const currentLocation = ref<{
   lat: number;
@@ -158,29 +158,12 @@ function closePage() {
 
 async function handlePinClick() {
   try {
-    // Request location permissions
     await requestPermissions();
-    
-    // Get current position
-    const position = await getCurrentPosition();
-    
-    // Get address from coordinates
-    const address = await geocodeLocation(position.lat, position.lng);
-    
-    // Update local state
-    currentLocation.value = {
-      lat: position.lat,
-      lng: position.lng,
-      note: '',
-      isPinned: false,
-      address
-    };
-    
+    await geoStore.setCurrentLocation(locationNote.value);
     showModal.value = true;
-    
   } catch (error) {
     console.error('Location error:', error);
-    const message = error instanceof Error ? error.message : 'Location access is required to pin locations';
+    const message = error instanceof Error ? error.message : 'Location access required';
     showToast(message, true);
   }
 }

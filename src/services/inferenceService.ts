@@ -83,6 +83,8 @@ export const inferenceService = {
                         }
                     });
 
+                    // 'http://192.168.1.57:5000/predict' http://192.168.218.173:5000/predict
+
                     // const file = await Filesystem.readFile({
                     //     path: imagePath,
                     //     directory: Directory.Cache
