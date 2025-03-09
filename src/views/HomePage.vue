@@ -1,25 +1,12 @@
 <template>
     <ion-page>
         <ion-content>
+            <GlobalHeader />
+            <HeroSection />
+            <RecentIdentifications />
+            <ExploreDatabase />
+            <TipCard />
             <CameraCapture />
-            <ion-breadcrumbs>
-                <ion-breadcrumb href="#home">
-                  Home
-                  <ion-icon slot="separator" :icon="arrowForwardCircle"></ion-icon>
-                </ion-breadcrumb>
-                <ion-breadcrumb href="#electronics">
-                  Electronics
-                  <ion-icon slot="separator" :icon="arrowForwardCircle"></ion-icon>
-                </ion-breadcrumb>
-                <ion-breadcrumb href="#cameras">
-                  Cameras
-                  <ion-icon slot="separator" :icon="arrowForwardCircle"></ion-icon>
-                </ion-breadcrumb>
-                <ion-breadcrumb href="#film">
-                  Film
-                  <ion-icon slot="separator" :icon="arrowForwardCircle"></ion-icon>
-                </ion-breadcrumb>
-              </ion-breadcrumbs>
         </ion-content>
     </ion-page>
 </template>
@@ -28,7 +15,13 @@
 import { IonIcon, IonBreadcrumb, IonBreadcrumbs, IonPage, IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/vue';
 import { defineComponent } from 'vue';
 import CameraCapture from '@/components/CameraCapture.vue';
+import HomeContent from '@/components/HomeContent.vue';
 import { arrowForwardCircle } from 'ionicons/icons';
+import RecentIdentifications from '@/components/RecentIdentifications.vue';
+import GlobalHeader from '@/components/GlobalHeader.vue';
+import HeroSection from '@/components/HeroSection.vue';
+import ExploreDatabase from '@/components/ExploreDatabase.vue';
+import TipCard from '@/components/TipCard.vue';
 
 export default defineComponent({
     name: 'HomePage',
@@ -41,7 +34,12 @@ export default defineComponent({
         CameraCapture,
         IonBreadcrumb,
         IonBreadcrumbs,
-        IonIcon
+        IonIcon,
+        RecentIdentifications,
+        HeroSection,
+        GlobalHeader,
+        ExploreDatabase,
+        TipCard
     }
 });
 </script>

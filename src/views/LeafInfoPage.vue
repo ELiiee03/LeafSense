@@ -12,7 +12,7 @@
                 <ion-grid class="custom-grid">
                   <ion-row>
                       <ion-col>
-                          <img src="/resources/jackfruit.png" alt="Leaf Image" class="leaf-image">
+                          <!-- <img src="/resources/jackfruit.png" alt="Leaf Image" class="leaf-image"> -->
                       </ion-col>
                       <ion-col size="auto">
                           <div style="width: 170px">
@@ -25,17 +25,18 @@
                               </p>
                               </div>
                           </div>
+                          <ion-chip v-if="inferenceStore.result?.inference?.confidence">{{ formatConfidence(inferenceStore.result.inference.confidence) }}% match</ion-chip>
                       </ion-col>
                   </ion-row>
               </ion-grid>
-
+<!-- 
               <div>
                 <div v-if="leafData" class="result">
                   <p><b>Description: </b> {{ leafData.leafInfo?.description || 'No description available' }}</p>
                   <p><b>Family Name: </b> {{ leafData.leafInfo?.familyName || 'No family name available' }}</p>
                   <p><b>Habitat: </b> {{ leafData.leafInfo?.habitat || 'No habitat information available' }}</p>
                   
-                  <!-- Display confidence from either format -->
+                   Display confidence from either format
                   <p v-if="inferenceStore.result?.inference.confidence">
                     <b>Confidence:</b> {{ formatConfidence(inferenceStore.result.inference.confidence) }}%
                 </p>
@@ -43,31 +44,104 @@
                 <div v-else>
                     <p>Loading data...</p>
                 </div>
-            </div>
+            </div> -->
 
-                      <!-- save button -->
-                  <div class="button-container">
-                      <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
-                      <ion-button class="pin"  @click="handlePinClick">
-                        <ion-icon size="medium" :icon="locationSharp"></ion-icon>
-                      </ion-button>
-                
-                      <LocationModal 
-                        :is-open="showModal" 
-                        @did-dismiss="showModal = false"
-                      />
-                  </div>
               </div>
 
              
 
           </div>
+          <ion-card class="card-container1">
+            <ion-card-header>
+              <ion-card-title>Description</ion-card-title>
+              <ion-card-subtitle><b>Family Name: </b> {{ leafData?.leafInfo?.familyName || 'No family name available' }}</ion-card-subtitle>
+            </ion-card-header>
+            <ion-card-content>
+              {{ leafData?.leafInfo?.description || 'No description available' }}
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="card-container2">
+            <ion-card-header>
+              <ion-card-title>Characteristics</ion-card-title>
+              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> -->
+            </ion-card-header>
+        
+            <ion-card-content>
+              <ion-grid>
+                <ion-row class="characteristics-card">
+                  <ion-col size="6" size-md="4" size-lg="2">
+                    <ion-text>
+                      <h2><b>Color</b></h2>
+
+                    </ion-text>
+                  </ion-col>
+                  <ion-col size="6" size-md="4" size-lg="2">
+                    <ion-text>
+                      <h2><b>Shape</b></h2>
+
+                    </ion-text>
+                  </ion-col>
+                  <ion-col size="6" size-md="4" size-lg="2">
+                    <ion-text>
+                      <h2><b>Margin</b></h2>
+
+                    </ion-text>
+                  </ion-col>
+                  <ion-col size="6" size-md="4" size-lg="2">
+                    <ion-text>
+                    <h2><b>Size</b></h2>
+
+                  </ion-text></ion-col>
+
+                </ion-row>
+              </ion-grid>
+            </ion-card-content>
+          </ion-card>
+
+          <ion-card class="card-container3">
+            <ion-card-header>
+              <ion-card-title>Habitat</ion-card-title>
+              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> -->
+            </ion-card-header>
+        
+            <ion-card-content>
+              {{ leafData?.leafInfo?.habitat || 'No habitat information available' }}
+            </ion-card-content>
+          </ion-card>
+
+
+          <!-- <ion-card class="card-container3">
+            <ion-card-header>
+              <ion-card-title>Card Title</ion-card-title>
+              <ion-card-subtitle>Card Subtitle</ion-card-subtitle>
+            </ion-card-header>
+        
+            <ion-card-content>
+              Here's a small text description for the card content. Nothing more, nothing less.
+            </ion-card-content>
+          </ion-card> -->
+
+             <!-- save button -->
+            <div class="button-container">
+                <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
+                <ion-button class="pin"  @click="handlePinClick">
+                <ion-icon size="medium" :icon="locationSharp"></ion-icon>
+                    </ion-button>
+                  
+                  <LocationModal 
+                    :is-open="showModal" 
+                    @did-dismiss="showModal = false"
+                    />
+           </div>
+
         </ion-content>
+
     </ion-page>
 </template>
 
 <script setup lang="ts">
-import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController } from '@ionic/vue';
+import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController, IonChip } from '@ionic/vue';
 import { arrowBack, locationSharp } from 'ionicons/icons';
 import { useRouter, useRoute } from 'vue-router';
 import { sqliteService } from '@/services/sqliteService';
@@ -84,14 +158,6 @@ import { requestPermissions, getCurrentPosition, geocodeLocation } from '@/servi
 const showModal = ref(false);
 const locationNote = ref(''); 
 const geoStore = useGeoStore();
-
-const currentLocation = ref<{
-  lat: number;
-  lng: number;
-  note: string;
-  isPinned: boolean;
-  address?: string;
-} | null>(null);
 
 // onMounted(async () => {
 //   await geoStore.setCurrentLocation(); // Changed from updateLocation
@@ -159,7 +225,7 @@ function closePage() {
 async function handlePinClick() {
   try {
     await requestPermissions();
-    await geoStore.setCurrentLocation(locationNote.value);
+    await geoStore.setCurrentLocation('');
     showModal.value = true;
   } catch (error) {
     console.error('Location error:', error);
@@ -192,45 +258,90 @@ async function saveLeafInfo() {
         
         if (networkStatus.connected) {
             try {
-                if (!currentLocation.value) {
-                    await showToast('Location data not available', true);
-                    return;
-                }
-
-                // Save plant data
+                console.log('Starting to save plant data...');
+                
+                // Save plant data - no longer requiring location
                 const { data: inferenceData, error: infError } = await supabase
                     .from('inference_results')
                     .insert({
                         image: imageSrc.value,
-                        scientific_name: leafData.value.leafInfo.scientificName,
-                        family_name: leafData.value.leafInfo.familyName,
-                        description: leafData.value.leafInfo.description,
-                        habitat: leafData.value.leafInfo.habitat,
-                        confidence: leafData.value.inference.confidence
+                        scientific_name: leafData.value.leafInfo?.scientificName ?? '',
+                        family_name: leafData.value.leafInfo?.familyName ?? '',
+                        description: leafData.value.leafInfo?.description ?? '',
+                        habitat: leafData.value.leafInfo?.habitat ?? '',
+                        result: leafData.value.inference?.predictedClass ?? '',
+                        confidence: leafData.value.inference.confidence ?? ''
                     })
                     .select();
 
-                if (infError) throw infError;
+                if (infError) {
+                    console.error('Error saving inference data:', infError);
+                    throw infError;
+                }
 
-                // Save location if pinned
-                if (currentLocation.value.isPinned) {
-                    const { error: locError } = await supabase
-                        .from('pinned_locations')
-                        .insert({
-                            lat: currentLocation.value.lat,
-                            lng: currentLocation.value.lng,
-                            note: currentLocation.value.note,
-                            inference_result_id: inferenceData[0].id,
-                            address: currentLocation.value.address
-                        });
+                console.log('Inference data saved successfully:', inferenceData);
 
-                    if (locError) throw locError;
+                // Check if we have any pinned location from geoStore
+                const pinnedLocation = geoStore.currentLocation;
+                console.log('Current location from geoStore:', pinnedLocation);
+                console.log('Is location pinned?', pinnedLocation?.isPinned);
+                
+                if (pinnedLocation && pinnedLocation.isPinned) {
+                    console.log('Attempting to save pinned location...');
+                    
+                    try {
+                        // First approach: Direct insert with POINT format
+                        const geographyData = {
+                            user_id: null,
+                            leaf_id: inferenceData[0].id,
+                            geom: `POINT(${pinnedLocation.lng} ${pinnedLocation.lat})`,
+                            title: pinnedLocation.title || '',
+                            note: pinnedLocation.note
+                        };
+                        
+                        console.log('Geography data being sent to Supabase:', geographyData);
+                        
+                        const { data: locationResult, error: locError } = await supabase
+                            .from('pinned_locations')
+                            .insert(geographyData)
+                            .select();
+
+                        if (locError) {
+                            console.error('Error saving location data - likely a permission/RLS policy issue');
+                            /* Comment out detailed error logging that causes TypeScript errors
+                            console.error('Error code:', locError.code);
+                            console.error('Error message:', locError.message);
+                            console.error('Error details:', locError.details);
+                            console.error('Error hint:', locError.hint);
+                            */
+                            throw locError;
+                        }
+                        
+                        console.log('Location saved successfully:', locationResult);
+                    } catch (locError) {
+                        console.error('Detailed location save error - check RLS policies in Supabase');
+                        /* Comment out checks that cause TypeScript errors
+                        if (locError.code && locError.message) {
+                            console.error('Supabase error code:', locError.code);
+                            console.error('Supabase error message:', locError.message);
+                            console.error('Supabase error details:', locError.details);
+                            console.error('Supabase error hint:', locError.hint);
+                            await showToast('Leaf saved but location failed: ' + locError.message, true);
+                        } else {
+                        */
+                        // Generic error
+                        const errorMessage = locError instanceof Error ? locError.message : 'Permission error - check RLS policy';
+                        await showToast('Leaf saved but location failed: ' + errorMessage, true);
+                        // Continue anyway to not lose leaf data
+                    }
+                } else {
+                    console.log('Location not being saved - either null or not pinned');
                 }
 
                 await showToast('Data saved successfully');
                 router.back();
             } catch (error) {
-                console.error('Save error:', error);
+                console.error('Save error details:', error);
                 const message = error instanceof Error ? error.message : 'Failed to save data';
                 await showToast(message, true);
             }
@@ -275,6 +386,44 @@ onMounted(() => {
 </script>
 
 <style scoped>
+
+.characteristics-card {
+  background-color: #135d54;
+  border: solid 1px #fff;
+  color: #fff;
+  text-align: left;
+}
+
+ion-chip {
+  --background: #416d3f;
+  --color: #fff;
+  margin-top: 75%;
+  margin-left: 30%;
+}
+
+.card-container1 {
+  margin-top: 80%;
+  --background: #fff;
+  border-radius: 15px;
+}
+
+.card-container2 {
+  margin-top: 15px;
+  --background: #fff;
+  border-radius: 15px;
+}
+
+.card-container3 {
+  margin-top: 15px;
+  --background: #fff;
+  border-radius: 15px;
+}
+.card-container4 {
+  margin-top: 15px;
+  --background: #fff;
+  border-radius: 15px;
+}
+
 .modalSheet {
   --background: #fff;
   --border-radius: 25px;
@@ -370,7 +519,7 @@ ion-fab-button {
     left: 0;
     width: 100%; /* Full width of the viewport */
     height: 45vh; /* 75% of the viewport height */
-    background-color: rgb(233, 224, 224);
+    background-color: rgb(252, 251, 251);
     display: flex; /* Center content */
     flex-direction: column; /* Stack child elements vertically */
     justify-content: center; /* Center vertically */
@@ -389,18 +538,20 @@ ion-fab-button {
 .leaf-container {
     border: 2px solid red;
     position: absolute; /* Position the container absolutely */
-    top: 30%; /* Adjust the top position as needed */
+    top: 0%; /* Adjust the top position as needed */
     left: 0;
     width: 100%; /* Full width of the viewport */
-    height: 80vh; /* 75% of the viewport height */
-    background-color: #e5e8e0;
+    height: 35vh; /* 75% of the viewport height */
+    background-color: #fff;
     display: flex; /* Center content */
     flex-direction: column; /* Stack child elements vertically */
     justify-content: center; /* Center vertically */
     align-items: center; /* Center horizontally */
     box-sizing: border-box; /* Include padding/border in the dimensions */
     padding: 15px; /* Optional padding for aesthetics */
-    border-top-right-radius: 95px;
+    /*border-top-right-radius: 95px;*/
+     border-bottom-right-radius: 30px;
+     border-bottom-left-radius: 30px;
 
   }
 

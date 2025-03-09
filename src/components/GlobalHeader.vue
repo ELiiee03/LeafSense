@@ -34,7 +34,6 @@ export default defineComponent({
 </script>
 <style scoped>
 ion-toolbar {
-  --background: #2c3e50;
-  --color: #fff;
+  --color: black;
 }
 </style>

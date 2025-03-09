@@ -4,13 +4,14 @@ const config: CapacitorConfig = {
   appId: 'io.ionic.starter',
   appName: 'Leafify',
   webDir: 'dist',
+  bundledWebRuntime: false,
   // server: {
   //   androidScheme: 'https'
   // },
   // capacitor.config.json
   server: {
     androidScheme: 'https',
-    url: 'http://192.168.1.57:8100', // Direct URL to your dev machine
+    // url: 'http://192.168.1.57:8100', // Direct URL to your dev machine
     cleartext: true
   },
 
