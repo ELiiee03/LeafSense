@@ -40,31 +40,13 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (networkStatus.connected) {
+            if (networkStatus.connected && networkStatus.connectionType === 'wifi') {
                 // Online: Use Flask API
                 try {
 
                     // Convert blob URL to base64
                     const response = await fetch(imagePath);
-                    const blob = await response.blob();
-                    
-                    // FOR NEXUS BROWSER
-                    
-                    // Create FormData and append the blob
-                    // const formData = new FormData();
-                    // formData.append('file', blob, 'image.jpg');
-
-                    // // API FLask request 
-                    // const result = await axios.post('http://192.168.1.57:5000/predict', formData, {
-                    //     headers: {
-                    //         'Content-Type': 'multipart/form-data',
-                    //         'Accept': 'application/json',
-                    //         // 'Access-Control-Allow-Origin': '*' // Add this header
-                    //     },
-                    //     timeout: 30000, // Add timeout
-                    //     withCredentials: false // Prevents sending cookies or credentials in cross-origin requests
-                    // });
-                        
+                    const blob = await response.blob();    
                     
                     
                     //For android handling 

@@ -10,17 +10,6 @@
       <ion-content class="ion-padding">
         <ion-list>
           <ion-item>
-            <!-- <div v-if="geoStore.currentLocation">
-              <h3>Detected Location</h3>
-              <p>Latitude: {{ geoStore.currentLocation.lat }}</p>
-              <p>Longitude: {{ geoStore.currentLocation.lng }}</p>
-              <ion-button @click="togglePin">
-                {{ geoStore.currentLocation.isPinned ? 'Unpin' : 'Pin' }} Location
-              </ion-button>
-            </div>
-            <div v-else>
-              <p>Loading data...</p>
-            </div> -->
           </ion-item>
           <ion-item>
             <div class="location-details">
@@ -28,33 +17,54 @@
               <p>Latitude: {{ geoStore.currentLocation?.lat.toFixed(4) }}</p>
               <p>Longitude: {{ geoStore.currentLocation?.lng.toFixed(4) }}</p>
               
-              <ion-textarea
+              <!-- <ion-textarea
                 label="Location Notes"
                 :value="geoStore.currentLocation?.note"
                 @ionInput="geoStore.updateNote($event.target.value)"
                 placeholder="Add notes about this location"
               ></ion-textarea>
-  
-              <ion-button @click="geoStore.togglePin">
+   -->
+              <!-- <ion-button @click="geoStore.togglePin">
                 {{ geoStore.currentLocation?.isPinned ? 'Unpin' : 'Pin' }}
-              </ion-button>
+              </ion-button> -->
             </div>
 
           </ion-item>
           <ion-item>
             <div class="map-container" ref="mapContainer"></div>
           </ion-item>
+          <ion-list lines="none">
+            <ion-item>
+              <ion-label position="stacked">Location Title</ion-label>
+              <ion-input v-model="locationTitle" placeholder="Enter a title for this location"></ion-input>
+            </ion-item>
+            <ion-item>
+              <ion-label position="stacked">Note</ion-label>
+              <ion-textarea v-model="locationNote" placeholder="Add notes about this location"></ion-textarea>
+            </ion-item>
+            <ion-item>
+              <ion-label>Pin this location</ion-label>
+              <ion-toggle v-model="isPinned" @ionChange="togglePin"></ion-toggle>
+            </ion-item>
+          </ion-list>
         </ion-list>
+        <ion-button class="save-button ion-text-capitalize" @click="saveLocation">
+          <ion-icon size="small" :icon="checkmarkSharp" />
+          Save Location
+        </ion-button>
       </ion-content>
     </ion-modal>
   </template>
   
   <script setup lang="ts">
-import { IonModal, IonContent, IonList, IonItem, IonButton } from '@ionic/vue';
+import { IonModal, IonContent, IonList, IonItem, IonButton, IonInput, IonToggle, IonLabel, IonTextarea } from '@ionic/vue';
 import { ref, watch } from 'vue';
 import { useGeoStore } from '@/stores/geolocationStore';
-  // import { Loader } from '@googlemaps/js-api-loader';
-  import { mapsLoader } from '@/services/googleMapsService'; // Import the shared loader
+import { mapsLoader } from '@/services/googleMapsService'; // Import the shared loader
+import { checkmarkSharp } from 'ionicons/icons';
+import { inject } from 'vue';
+import { toastController } from '@ionic/vue';
+
   
   const geoStore = useGeoStore();
   const mapContainer = ref<HTMLElement>();
@@ -138,8 +148,71 @@ const handleDismiss = () => {
 //   const emit = defineEmits(['did-dismiss']);
   
   const togglePin = () => {
-    geoStore.togglePin();
+    isPinned.value = !isPinned.value;
+    // Also update the geoStore directly
+    if (geoStore.currentLocation) {
+      geoStore.togglePin();
+      console.log('Toggle pin in modal, new isPinned value:', geoStore.currentLocation.isPinned);
+    }
   };
+
+  const locationNote = ref('');
+  const locationTitle = ref('');
+  const isPinned = ref(false);
+
+  const closeModal = () => {
+    handleDismiss();
+  };
+
+  async function saveLocation() {
+    try {
+      // Force isPinned to true when saving
+      isPinned.value = true;
+      
+      console.log('LocationModal - Saving location with isPinned:', isPinned.value);
+      
+      await geoStore.saveLocationData({
+        note: locationNote.value,
+        title: locationTitle.value,
+        isPinned: true // Always set to true when saving from the modal
+      });
+      
+      // Log the updated state after saving
+      console.log('LocationModal - After saving, geoStore.currentLocation:', geoStore.currentLocation);
+      
+      // Show success toast
+      const toast = await toastController.create({
+        message: 'Location pinned successfully',
+        duration: 2000,
+        color: 'success',
+        position: 'top'
+      });
+      await toast.present();
+      
+      // Close the modal
+      closeModal();
+    } catch (error) {
+      console.error('Error saving location:', error);
+      
+      // Show error toast
+      const toast = await toastController.create({
+        message: 'Failed to pin location',
+        duration: 2000,
+        color: 'danger',
+        position: 'top'
+      });
+      await toast.present();
+    }
+  }
+
+  // Initialize isPinned from geoStore when the component mounts
+  watch(() => props.isOpen, (isOpen) => {
+    if (isOpen && geoStore.currentLocation) {
+      isPinned.value = geoStore.currentLocation.isPinned;
+      locationNote.value = geoStore.currentLocation.note || '';
+      locationTitle.value = geoStore.currentLocation.title || '';
+    }
+  });
   </script>
   
   <style scoped>
@@ -162,5 +235,14 @@ const handleDismiss = () => {
 
   .modalSheet {
     --height: 100%;  /* Required for proper breakpoints */
+  }
+
+  .save-button {
+    --background: #93e9be;
+    --border-color: #000;
+    --border-style: solid;
+    --border-radius: 15px;
+    align-items: center;
+    display: flex;
   }
   </style>

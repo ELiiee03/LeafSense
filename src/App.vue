@@ -33,7 +33,7 @@ onMounted(() => {
 </script>
 <style>
 :root {
-  --ion-background-color: #DCE6CC;
+  --ion-background-color: #fff;
 }
 
 ion-toolbar {

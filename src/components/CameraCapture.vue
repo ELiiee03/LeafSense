@@ -1,25 +1,24 @@
 <template>
-  <GlobalHeader />
-  <ion-page>
-  <ion-content class="ion-padding">
-
+  <!-- <GlobalHeader /> -->
+  <!-- <ion-page> -->
+    <!-- <ion-content class="ion-padding"> -->
+    <!-- <HomeContent /> -->
 
     <!-- <h4><b>LeafSense.</b></h4> -->
     <ion-grid>
 
-      <ion-button expand="block" @click="navigateToHomeContent">Block</ion-button>
+      <!-- <ion-button expand="block" @click="navigateToHomeContent">Block</ion-button> -->
       <ion-row>
         <ion-col>      
-          <HomeContent />
-        </ion-col>
-        <ion-col size="8">Tap Camera button to scan
-          <HomeContent />
+          <!-- <HomeContent /> -->
         </ion-col>
         <ion-col></ion-col>
       </ion-row>
     </ion-grid>
-    <HomeContent />
 
+    <!-- <HomeContent /> -->
+
+    
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
@@ -82,8 +81,8 @@
       </ion-content>
     </ion-modal>
 
-  </ion-content>
-  </ion-page>
+  <!-- </ion-content> -->
+  <!-- </ion-page> -->
 </template>
 
 
@@ -93,8 +92,6 @@
   import { Capacitor } from '@capacitor/core';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
-  import GlobalHeader from '@/components/GlobalHeader.vue';
-  import HomeContent from '@/components/HomeContent.vue';
   import { Network } from '@capacitor/network';
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
@@ -370,14 +367,14 @@ ion-content {
 }
 
   ion-fab {
-    margin-top: var(--ion-safe-area-top, 0);
-    margin-bottom: var(--ion-safe-area-bottom, 0);
+    margin-top: 0px;
+    margin-bottom: 0px;
   }
   ion-col {
     text-align: center;
   }
   ion-grid {
-    margin-top: 75%;
+    margin-top: 0;
   }
   ion-fab-button {
     --background: #416d3f;
