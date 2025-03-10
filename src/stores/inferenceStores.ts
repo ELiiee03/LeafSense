@@ -12,6 +12,8 @@ interface InferenceResult {
     familyName: string;
     description: string;
     habitat: string;
+    imageData?: string;
+    imageType?: string;
   };
 }
 

@@ -43,6 +43,7 @@
     --background: #f8faf5;
     padding: 16px;
     border-radius: 12px;
+    padding-top: 2px;
   }
   
   .header {

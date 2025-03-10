@@ -9,42 +9,27 @@
                 </ion-fab>
             <div class="leaf-container1">
               <div class="leaf-container">
+                <img v-if="leafImage" :src="leafImage" alt="Leaf Image" class="leaf-image">
                 <ion-grid class="custom-grid">
                   <ion-row>
                       <ion-col>
-                          <!-- <img src="/resources/jackfruit.png" alt="Leaf Image" class="leaf-image"> -->
+                          <!-- Display the leaf image -->
+                          <div style="width: 170px">
+                            <div class="leaf-info">
+                              <h1 class="leaf-name" v-if="leafData?.leafInfo">
+                                <b>{{ leafData.leafInfo.name }}</b>
+                            </h1>
+                            <p class="leaf-scientific-name" v-if="leafData?.leafInfo">
+                              <i> {{ leafData.leafInfo.scientificName }}</i> 
+                            </p>
+                            </div>
+                        </div>
                       </ion-col>
                       <ion-col size="auto">
-                          <div style="width: 170px">
-                              <div class="leaf-info">
-                                <h3 class="leaf-name" v-if="leafData?.leafInfo">
-                                  <b>{{ leafData.leafInfo.name }}</b>
-                              </h3>
-                              <p class="leaf-scientific-name" v-if="leafData?.leafInfo">
-                                  {{ leafData.leafInfo.scientificName }}
-                              </p>
-                              </div>
-                          </div>
                           <ion-chip v-if="inferenceStore.result?.inference?.confidence">{{ formatConfidence(inferenceStore.result.inference.confidence) }}% match</ion-chip>
                       </ion-col>
                   </ion-row>
               </ion-grid>
-<!-- 
-              <div>
-                <div v-if="leafData" class="result">
-                  <p><b>Description: </b> {{ leafData.leafInfo?.description || 'No description available' }}</p>
-                  <p><b>Family Name: </b> {{ leafData.leafInfo?.familyName || 'No family name available' }}</p>
-                  <p><b>Habitat: </b> {{ leafData.leafInfo?.habitat || 'No habitat information available' }}</p>
-                  
-                   Display confidence from either format
-                  <p v-if="inferenceStore.result?.inference.confidence">
-                    <b>Confidence:</b> {{ formatConfidence(inferenceStore.result.inference.confidence) }}%
-                </p>
-                </div>  
-                <div v-else>
-                    <p>Loading data...</p>
-                </div>
-            </div> -->
 
               </div>
 
@@ -60,11 +45,11 @@
               {{ leafData?.leafInfo?.description || 'No description available' }}
             </ion-card-content>
           </ion-card>
-
+<!-- 
           <ion-card class="card-container2">
             <ion-card-header>
               <ion-card-title>Characteristics</ion-card-title>
-              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> -->
+              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle>
             </ion-card-header>
         
             <ion-card-content>
@@ -97,7 +82,10 @@
                 </ion-row>
               </ion-grid>
             </ion-card-content>
-          </ion-card>
+          </ion-card> -->
+
+          <CharacteristicsCard />
+
 
           <ion-card class="card-container3">
             <ion-card-header>
@@ -147,17 +135,19 @@ import { useRouter, useRoute } from 'vue-router';
 import { sqliteService } from '@/services/sqliteService';
 import { Network } from '@capacitor/network';
 import { supabase } from '@/supabaseClient';
-import { ref, defineProps, onMounted, computed } from 'vue';
+import { ref, defineProps, onMounted, computed, watch } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
 import { dbService } from '@/services/dbService';
 import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
+import CharacteristicsCard from '@/components/CharacteristicsCard.vue';
 import { requestPermissions, getCurrentPosition, geocodeLocation } from '@/services/geolocationService';
 
 // Add this reactive state
 const showModal = ref(false);
 const locationNote = ref(''); 
 const geoStore = useGeoStore();
+const leafImage = ref<string | null>(null); // New ref for the leaf image
 
 // onMounted(async () => {
 //   await geoStore.setCurrentLocation(); // Changed from updateLocation
@@ -175,6 +165,14 @@ const inferenceStore = useInferenceStore();
 // const leafData = ref<LeafData | null>(null);
 const leafData = computed(() => inferenceStore.result);
 
+// Set the leaf image when data changes
+watch(() => leafData.value, (newData) => {
+    if (newData?.leafInfo?.imageData && newData?.leafInfo?.imageType) {
+        leafImage.value = `data:image/${newData.leafInfo.imageType};base64,${newData.leafInfo.imageData}`;
+    } else {
+        leafImage.value = null;
+    }
+}, { immediate: true });
 
 interface LeafData {
     inference?: {
@@ -187,6 +185,8 @@ interface LeafData {
         familyName: string;
         description: string;
         habitat: string;
+        imageData?: string;
+        imageType?: string;
     };
 }
 
@@ -260,11 +260,22 @@ async function saveLeafInfo() {
             try {
                 console.log('Starting to save plant data...');
                 
+                // Prepare image data for Supabase
+                let imageToSave = '';
+                
+                // Use the image from the server if available
+                if (leafData.value.leafInfo?.imageData) {
+                    imageToSave = `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`;
+                } else if (imageSrc.value) {
+                    // Fallback to the image captured
+                    imageToSave = imageSrc.value;
+                }
+                
                 // Save plant data - no longer requiring location
                 const { data: inferenceData, error: infError } = await supabase
                     .from('inference_results')
                     .insert({
-                        image: imageSrc.value,
+                        image: imageToSave, // Save the image from the server or captured image
                         scientific_name: leafData.value.leafInfo?.scientificName ?? '',
                         family_name: leafData.value.leafInfo?.familyName ?? '',
                         description: leafData.value.leafInfo?.description ?? '',
@@ -308,31 +319,14 @@ async function saveLeafInfo() {
 
                         if (locError) {
                             console.error('Error saving location data - likely a permission/RLS policy issue');
-                            /* Comment out detailed error logging that causes TypeScript errors
-                            console.error('Error code:', locError.code);
-                            console.error('Error message:', locError.message);
-                            console.error('Error details:', locError.details);
-                            console.error('Error hint:', locError.hint);
-                            */
                             throw locError;
                         }
                         
                         console.log('Location saved successfully:', locationResult);
                     } catch (locError) {
                         console.error('Detailed location save error - check RLS policies in Supabase');
-                        /* Comment out checks that cause TypeScript errors
-                        if (locError.code && locError.message) {
-                            console.error('Supabase error code:', locError.code);
-                            console.error('Supabase error message:', locError.message);
-                            console.error('Supabase error details:', locError.details);
-                            console.error('Supabase error hint:', locError.hint);
-                            await showToast('Leaf saved but location failed: ' + locError.message, true);
-                        } else {
-                        */
-                        // Generic error
                         const errorMessage = locError instanceof Error ? locError.message : 'Permission error - check RLS policy';
                         await showToast('Leaf saved but location failed: ' + errorMessage, true);
-                        // Continue anyway to not lose leaf data
                     }
                 } else {
                     console.log('Location not being saved - either null or not pinned');
@@ -348,7 +342,9 @@ async function saveLeafInfo() {
         } else {
             // Offline: Save to SQLite for later sync
             await dbService.saveLeaf({
-                imagePath: imageSrc.value,
+                imagePath: leafData.value.leafInfo?.imageData 
+                    ? `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`
+                    : imageSrc.value,
                 leafInfo: JSON.stringify({
                     result: leafData.value?.inference?.predictedClass ?? '',
                     scientificName: leafData.value?.leafInfo?.scientificName ?? '',
@@ -397,8 +393,10 @@ onMounted(() => {
 ion-chip {
   --background: #416d3f;
   --color: #fff;
-  margin-top: 75%;
-  margin-left: 30%;
+  margin-top: 85%;
+  margin-left: 0%;
+  align-self: flex-end;
+  z-index: 3; /* Above the gradient */
 }
 
 .card-container1 {
@@ -476,15 +474,17 @@ ion-chip {
     margin: 0; /* Remove default margin */
     padding: 2px 0; /* Add padding for spacing */
     text-align: left; 
-
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
 }
 
 .custom-grid {
-    border: 2px solid red;
     width: 100% ; /* Adjust the width as needed */
-    height: 10%; /* Adjust the height as needed */
+    height: 5%; /* Adjust the height as needed */
     position: absolute; /* Position the container absolutely */
-    top: 0; /* Adjust the top position as needed */
+    top: 110px; /* Adjust the top position as needed */
+    bottom: 0; /* Position at bottom */
+    z-index: 2; /* Position above the image */
 }
 
 ion-fab-button {
@@ -497,24 +497,29 @@ ion-fab-button {
     display: flex;
     flex-direction: column;
     text-align: left;
-    margin-top: 25px;
-    border: 2px solid red;
+    margin-top: 80px;
+    border: none;
+    max-width: 75%;
+    margin-left: 10px;
+    z-index: 3; 
 }
+
 .leaf-image {
-    width: 250px; /* Adjust the width as needed */
-    height: auto; /* Maintain aspect ratio */
-    margin-right: 20px; /* Space between image and other content */
-    position: absolute; /* Position the image absolutely */
-    top: -120px; /* Adjust the top position as needed */
-    left: -1px; /* Adjust the left position as needed */
-    z-index: 10; /* Ensure the image is above other elements */
-    border: 2px solid red;
-    
+  width: 100%; /* Full width of container */
+  height: 100%; /* Full height of container */
+  margin: 0; /* Remove margins */
+  object-fit: cover; /* Ensure the image covers the area */
+  border-radius: inherit; /* Match parent's border radius */
+  border: none; /* Remove border or adjust as needed */
+  position: absolute; /* Position absolutely within container */
+  top: 0;
+  left: 0;
+  z-index: 1; /* Ensure image is above other content if needed */
+  object-fit: cover;
 }
 
 .image-container {
-    border: 2px solid red;
-    position: absolute; /* Position the container absolutely */
+    position: relative; /* Position the container absolutely */
     top: 0; /* Adjust the top position as needed */
     left: 0;
     width: 100%; /* Full width of the viewport */
@@ -536,13 +541,11 @@ ion-fab-button {
 
 /* Add your styles here */
 .leaf-container {
-    border: 2px solid red;
     position: absolute; /* Position the container absolutely */
     top: 0%; /* Adjust the top position as needed */
     left: 0;
     width: 100%; /* Full width of the viewport */
     height: 35vh; /* 75% of the viewport height */
-    background-color: #fff;
     display: flex; /* Center content */
     flex-direction: column; /* Stack child elements vertically */
     justify-content: center; /* Center vertically */
@@ -552,15 +555,18 @@ ion-fab-button {
     /*border-top-right-radius: 95px;*/
      border-bottom-right-radius: 30px;
      border-bottom-left-radius: 30px;
-
   }
 
   .ion-page {
     --ion-background-color: transparent;
     width: 100%;
     height: 100vh;
-    background-color: rgb(65, 130, 61);
+    --background: #f8faf5
     overflow: hidden;
+  }
+
+  ion-col {
+    border: none;
   }
 
   
