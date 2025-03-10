@@ -114,7 +114,10 @@ export const inferenceService = {
                             scientificName: result.data.scientificName,
                             familyName: result.data.familyName,
                             description: result.data.description,
-                            habitat: result.data.habitat
+                            habitat: result.data.habitat,
+                            // Add image data from server response if available
+                            imageData: result.data.imageData || null,
+                            imageType: result.data.imageType || 'jpeg'
                         },
                 
                     };
@@ -280,22 +283,6 @@ export const inferenceService = {
 
         
     },
-
-    // getMockOfflineResult() {
-    //     return {
-    //         inference: {
-    //             predictedClass: 'mock_leaf',
-    //             confidence: 0.95
-    //         },
-    //         leafInfo: {
-    //             name: 'Mock Leaf',
-    //             scientificName: 'Fictus plantus',
-    //             familyName: 'Mockaceae',
-    //             description: 'Sample description for development',
-    //             habitat: 'Virtual environments'
-    //         }
-    //     };
-    // }
 
     base64ToBlob(base64: string, type: string): Blob {
         const byteCharacters = atob(base64);
