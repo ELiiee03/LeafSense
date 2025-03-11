@@ -26,6 +26,10 @@ interface LeafResponse {
     description: string;
     familyName: string;
     habitat: string;
+    color: string;
+    shape: string;
+    margin: string;
+    growthHabits: string;
 }
 
 export const inferenceService = {
@@ -115,6 +119,10 @@ export const inferenceService = {
                             familyName: result.data.familyName,
                             description: result.data.description,
                             habitat: result.data.habitat,
+                            color: result.data.color,
+                            shape: result.data.shape,
+                            margin: result.data.margin,
+                            growthHabits: result.data.growthHabits,
                             // Add image data from server response if available
                             imageData: result.data.imageData || null,
                             imageType: result.data.imageType || 'jpeg'
@@ -218,7 +226,8 @@ export const inferenceService = {
                             scientificName: matchedLeaf.scientificName,
                             familyName: matchedLeaf.familyName,
                             description: matchedLeaf.description,
-                            habitat: matchedLeaf.habitat
+                            habitat: matchedLeaf.habitat,
+                            // color: matchedLeaf.color
                         }
                     };
 

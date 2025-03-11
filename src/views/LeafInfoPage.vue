@@ -185,6 +185,10 @@ interface LeafData {
         familyName: string;
         description: string;
         habitat: string;
+        color: string;
+        shape: string;
+        margin: string;
+        growthHabits: string;
         imageData?: string;
         imageType?: string;
     };
@@ -281,6 +285,10 @@ async function saveLeafInfo() {
                         description: leafData.value.leafInfo?.description ?? '',
                         habitat: leafData.value.leafInfo?.habitat ?? '',
                         result: leafData.value.inference?.predictedClass ?? '',
+                        color: leafData.value.leafInfo?.color ?? '',
+                        shape: leafData.value.leafInfo.shape ?? '',
+                        margin: leafData.value.leafInfo.margin ?? '',
+                        growth_habits: leafData.value.leafInfo.growthHabits ?? '',
                         confidence: leafData.value.inference.confidence ?? ''
                     })
                     .select();
@@ -485,6 +493,7 @@ ion-chip {
     top: 110px; /* Adjust the top position as needed */
     bottom: 0; /* Position at bottom */
     z-index: 2; /* Position above the image */
+    border: none;
 }
 
 ion-fab-button {
@@ -497,11 +506,12 @@ ion-fab-button {
     display: flex;
     flex-direction: column;
     text-align: left;
-    margin-top: 80px;
+    margin-top: 50px;
     border: none;
-    max-width: 75%;
-    margin-left: 10px;
+    max-width: 85%;
+    margin-left: 5px;
     z-index: 3; 
+    width: 100%;
 }
 
 .leaf-image {
