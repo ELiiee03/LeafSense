@@ -27,13 +27,18 @@
   <script setup lang="ts">
   import { IonGrid, IonRow, IonCol, IonCard, IonIcon } from '@ionic/vue';
   import { leafOutline } from 'ionicons/icons';
+  import { useInferenceStore } from '@/stores/inferenceStores';
+  import { computed } from 'vue';
   
-  const characteristics = [
-    { name: 'Color', value: 'Green to red in autumn' },
-    { name: 'Shape', value: 'Palmate with 5-7 pointed lobes' },
-    { name: 'Margin', value: 'Serrated' },
-    { name: 'Size', value: '8-15 cm wide' }
-  ];
+  const inferenceStore = useInferenceStore();
+
+  const characteristics = computed(() => [
+    { name: 'Color', value: inferenceStore.result?.leafInfo?.color || 'Not available' },
+    { name: 'Shape', value: inferenceStore.result?.leafInfo?.shape || 'Not available' },
+    { name: 'Margin', value: inferenceStore.result?.leafInfo?.margin || 'Not available' },
+    { name: 'Growth Habits', value: inferenceStore.result?.leafInfo?.growthHabits || 'Not available' }
+  ]);
+  
   </script>
   
   <style scoped>

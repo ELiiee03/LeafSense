@@ -1,8 +1,8 @@
 <template>
-    <ion-card class="leaf-card">
+    <ion-card class="leaf-card" @click="navigateToDetail">
       <div class="image-container">
         <img 
-          src="@/assets/pine needle.jpg" 
+          :src="leaf.leafInfo.image || defaultImage"
           alt="Leaf image"
           class="leaf-image"
         />
@@ -17,7 +17,7 @@
         
         <div class="date-container">
           <ion-icon :icon="calendarOutline" class="date-icon" />
-          <span class="date-text">{{ formatDate(leaf.created_at) }}</span>
+          <span class="date-text">{{ leaf.formattedDate || formatDate(leaf.created_at) }}</span>
         </div>
       </div>
     </ion-card>
@@ -26,20 +26,31 @@
   <script setup lang="ts">
   import { IonCard, IonIcon } from '@ionic/vue'
   import { calendarOutline } from 'ionicons/icons'
+  import { useRouter } from 'vue-router'
+  import defaultLeafImage from '@/assets/pine needle.jpg'
   
-  defineProps<{
+  const router = useRouter()
+  const defaultImage = defaultLeafImage
+  
+  const props = defineProps<{
     leaf: {
       id: string
       created_at: string
+      formattedDate?: string
       inference: {
         confidence: number
       }
       leafInfo: {
         name: string
         scientificName: string
+        image?: string
       }
     }
   }>()
+  
+  const navigateToDetail = () => {
+    router.push(`/leaf/${props.leaf.id}`)
+  }
   
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -58,6 +69,13 @@
     display: flex;
     flex-direction: column;
     margin: 0;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  .leaf-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
   }
   
   .image-container {
