@@ -45,44 +45,6 @@
               {{ leafData?.leafInfo?.description || 'No description available' }}
             </ion-card-content>
           </ion-card>
-<!-- 
-          <ion-card class="card-container2">
-            <ion-card-header>
-              <ion-card-title>Characteristics</ion-card-title>
-              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle>
-            </ion-card-header>
-        
-            <ion-card-content>
-              <ion-grid>
-                <ion-row class="characteristics-card">
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                      <h2><b>Color</b></h2>
-
-                    </ion-text>
-                  </ion-col>
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                      <h2><b>Shape</b></h2>
-
-                    </ion-text>
-                  </ion-col>
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                      <h2><b>Margin</b></h2>
-
-                    </ion-text>
-                  </ion-col>
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                    <h2><b>Size</b></h2>
-
-                  </ion-text></ion-col>
-
-                </ion-row>
-              </ion-grid>
-            </ion-card-content>
-          </ion-card> -->
 
           <CharacteristicsCard />
 
@@ -565,6 +527,7 @@ ion-fab-button {
     /*border-top-right-radius: 95px;*/
      border-bottom-right-radius: 30px;
      border-bottom-left-radius: 30px;
+     border: 2px solid red;
   }
 
   .ion-page {

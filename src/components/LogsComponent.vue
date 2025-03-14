@@ -1,6 +1,10 @@
 <template>
-  <ion-list>
-    <ion-item-sliding v-for="log in logs" :key="log.id">
+  <!-- Add Filter Component -->
+  <FilterComponent :allLogs="allLogs" @filter-changed="handleFilterChange" />
+  
+  <!-- <ion-list> -->
+  <ion-card v-for="log in logs" :key="log.id">
+    <ion-item-sliding>
       <ion-item button @click="openLeafInfo(log)" :detail="false">
         <ion-label>
           <strong>{{ log.result }}</strong>  <!-- Changed from leafInfo.name -->
@@ -23,27 +27,47 @@
       </ion-item-options>
     </ion-item-sliding>
 
+    <!-- Empty state when no logs match the filters -->
+    <div class="empty-state" v-if="logs.length === 0 && !loading">
+      <ion-icon :icon="leafOutline" size="large"></ion-icon>
+      <p>No leaves match your filter criteria</p>
+      <ion-button fill="clear" @click="resetFilters">Reset Filters</ion-button>
+    </div>
+
+    <!-- Loading state -->
+    <div class="loading-state" v-if="loading">
+      <ion-spinner name="crescent"></ion-spinner>
+      <p>Loading leaves...</p>
+    </div>
+
     <!-- Use LeafInfoModal as a reusable component -->
     <LeafInfoModal :isOpen="isOpen" :onClose="() => setOpen(false)" :leaf="selectedLeaf" />
-  </ion-list>
+  <!-- </ion-list> -->
+</ion-card>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref, onMounted } from 'vue';
-import { chevronForward } from 'ionicons/icons';
-import { IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText } from '@ionic/vue';
+import { defineComponent, ref, onMounted, onUnmounted } from 'vue';
+import { chevronForward, leafOutline } from 'ionicons/icons';
+import { IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner } from '@ionic/vue';
 import { supabase } from '@/supabaseClient';
 import LeafInfoModal from './LeafInfoModal.vue';
+import FilterComponent from './FilterComponent.vue';
 
 export default defineComponent({
   components: {
     IonItem,
+    IonCard,
     IonItemOption,
     IonItemOptions,
     IonItemSliding,
     IonLabel,
     IonList,
     LeafInfoModal,
+    FilterComponent,
+    IonButton,
+    IonIcon,
+    IonSpinner,
   },
   
   setup() {
@@ -53,27 +77,26 @@ export default defineComponent({
       scientific_name: string;
       description: string; 
       created_at: string;      // Use Supabase's timestamp field
-      habitat?: string;        // Optional field   
+      habitat?: string;        // Optional field
+      growthHabits?: string;   // Added growth habits field  
+      image?: string;          // Added image field
     }
 
-    const logs = ref<Log[]>([]);
+    const allLogs = ref<Log[]>([]); // Store all unfiltered logs
+    const logs = ref<Log[]>([]);    // Filtered logs to display
     const isOpen = ref(false);
     const selectedLeaf = ref<Log | null>(null);
+    const loading = ref(true);
+    const error = ref<string | null>(null);
 
     const setOpen = (open: boolean) => {
       isOpen.value = open;
     };
 
-    // Add error state and loading state
-    const loading = ref(true);
-    const error = ref<string | null>(null);
-
     const fetchLogs = async () => {
-      const cachedLogs = localStorage.getItem('logs');
-      if (cachedLogs) {
-        logs.value = JSON.parse(cachedLogs);
-        loading.value = false;
-      } else {
+      loading.value = true;
+      try {
+        // Always fetch fresh data from Supabase
         const { data, error } = await supabase
           .from('inference_results')
           .select('*')
@@ -81,17 +104,53 @@ export default defineComponent({
 
         if (error) {
           console.error('Error fetching logs:', error);
-          loading.value = false;
+          error.value = error.message;
         } else {
-          logs.value = data;
+          // Update both allLogs and logs with fresh data
+          allLogs.value = data || [];
+          logs.value = data || [];
+          // Update localStorage with fresh data
           localStorage.setItem('logs', JSON.stringify(data));
-          loading.value = false;
         }
+      } catch (err) {
+        console.error('Error in fetchLogs:', err);
+        error.value = 'Failed to fetch logs';
+      } finally {
+        loading.value = false;
       }
+    };
+
+    // Set up real-time subscription
+    let subscription: any = null;
+
+    const setupRealtimeSubscription = () => {
+      // Remove existing subscription if any
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+
+      // Set up new subscription
+      subscription = supabase
+        .channel('inference_results_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'inference_results'
+          },
+          (payload) => {
+            console.log('Change received:', payload);
+            // Refresh data when any change occurs
+            fetchLogs();
+          }
+        )
+        .subscribe();
     };
 
     const clearCache = () => {
       localStorage.removeItem('logs');
+      fetchLogs(); // Fetch fresh data after clearing cache
     };
 
     const openLeafInfo = (log: Log) => {
@@ -103,14 +162,32 @@ export default defineComponent({
       return new Date(timestamp).toLocaleString();
     };
 
+    // Handler for filter changes from FilterComponent
+    const handleFilterChange = (filteredLogs: Log[]) => {
+      logs.value = filteredLogs;
+    };
+
+    // Reset filters and show all logs
+    const resetFilters = () => {
+      logs.value = [...allLogs.value];
+    };
+
     onMounted(() => {
       fetchLogs();
+      setupRealtimeSubscription();
     });
 
-    // Add loading state display
+    onUnmounted(() => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    });
+
     return {
       chevronForward,
+      leafOutline,
       logs,
+      allLogs,
       isOpen,
       setOpen,
       selectedLeaf,
@@ -118,9 +195,10 @@ export default defineComponent({
       formatTimestamp,
       loading,
       error,
-      clearCache
+      clearCache,
+      handleFilterChange,
+      resetFilters
     };
-
   },
 });
 </script>
@@ -147,5 +225,33 @@ export default defineComponent({
 
 ion-item {
   --background: #dedfe2;
+}
+
+/* Empty state styles */
+.empty-state, .loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--ion-color-medium);
+}
+
+.empty-state ion-icon, .loading-state ion-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  color: var(--ion-color-medium);
+}
+
+.empty-state p, .loading-state p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.loading-state ion-spinner {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
 }
 </style>

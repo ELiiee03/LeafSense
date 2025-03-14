@@ -32,9 +32,17 @@
           :key="leaf.id"
           :leaf="leaf"
           class="card-item"
+          @click="openLeafInfo(leaf)"
         />
       </div>
     </div>
+
+    <!-- Add LeafInfoModal -->
+    <LeafInfoModal 
+      :isOpen="isModalOpen" 
+      :onClose="() => setModalOpen(false)" 
+      :leaf="selectedLeaf" 
+    />
   </div>
 </template>
 
@@ -42,6 +50,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { timeOutline, leafOutline } from 'ionicons/icons'
 import LeafCard from './LeafCards.vue'
+import LeafInfoModal from './LeafInfoModal.vue'
 import { supabase } from '@/supabaseClient'
 import { RouterLink } from 'vue-router'
 import { IonSpinner, IonIcon } from '@ionic/vue'
@@ -380,6 +389,20 @@ onMounted(async () => {
 onUnmounted(() => {
   cleanupSubscription()
 })
+
+// Add modal state
+const isModalOpen = ref(false)
+const selectedLeaf = ref<any>(null)
+
+const setModalOpen = (open: boolean) => {
+  isModalOpen.value = open
+}
+
+// Add function to open leaf info
+const openLeafInfo = (leaf: any) => {
+  selectedLeaf.value = leaf
+  setModalOpen(true)
+}
 </script>
 
 <style scoped>
