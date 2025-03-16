@@ -2,15 +2,15 @@
     <ion-page>
       <GlobalHeader />
         <ion-content>
-        <ion-grid>
+        <!-- <ion-grid>
             <ion-row>
                 <ion-col></ion-col>
-                <ion-col size="auto">Recent Identifications</ion-col>
+                <!-- <ion-col size="auto">Recent Identifications</ion-col> 
                 <ion-col>
 
                 </ion-col>
               </ion-row>
-        </ion-grid>
+        </ion-grid> -->
         <LogsComponent />
         </ion-content>
     </ion-page>
