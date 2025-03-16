@@ -1,16 +1,24 @@
 <template>
-  <GlobalHeader />
-  <ion-page>
-  <ion-content class="ion-padding">
+  <!-- <GlobalHeader /> -->
+  <!-- <ion-page> -->
+    <!-- <ion-content class="ion-padding"> -->
+    <!-- <HomeContent /> -->
+
     <!-- <h4><b>LeafSense.</b></h4> -->
     <ion-grid>
+
+      <!-- <ion-button expand="block" @click="navigateToHomeContent">Block</ion-button> -->
       <ion-row>
-        <ion-col></ion-col>
-        <ion-col size="8">Tap Camera button to scan</ion-col>
+        <ion-col>      
+          <!-- <HomeContent /> -->
+        </ion-col>
         <ion-col></ion-col>
       </ion-row>
     </ion-grid>
 
+    <!-- <HomeContent /> -->
+
+    
     <!-- Camera button -->
     <ion-fab slot="fixed" vertical="bottom" horizontal="center">
       <ion-fab-button @click="takePhoto">
@@ -73,17 +81,17 @@
       </ion-content>
     </ion-modal>
 
-  </ion-content>
-  </ion-page>
+  <!-- </ion-content> -->
+  <!-- </ion-page> -->
 </template>
 
 
 <script setup lang="ts">
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol, toastController } from '@ionic/vue';
   import { onMounted, ref } from 'vue';
+  import { Capacitor } from '@capacitor/core';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
-  import GlobalHeader from '@/components/GlobalHeader.vue';
   import { Network } from '@capacitor/network';
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
@@ -135,67 +143,40 @@ interface InferenceResult {
 const inferenceResult = ref<InferenceResult | null>(null);
 
 
-  // const imageSrc = ref('');
-//   const takePhoto = async () => {
-//     try {
-//         const image = await Camera.getPhoto({
-//             quality: 90,
-//             allowEditing: true,
-//             resultType: CameraResultType.Uri,
-//         });
-
-//         imageSrc.value = image.webPath || '';
-
-//         // Perform inference
-//         const inferenceResult = await inferenceService.performInference(imageSrc.value);
-
-//         // Update leaf data with inference result
-//         leaf.value = inferenceResult.leafInfo;
-
-//         // Open the modal to display the result
-//         setOpen(true);
-//     } catch (error) {
-//         console.error('Error taking photo:', error);
-//     }
-// };
-
+// In the takePhoto function:
 const takePhoto = async () => {
   try {
-      const networkStatus = await Network.getStatus();
+    const networkStatus = await Network.getStatus();
+    
+    const image = await Camera.getPhoto({
+      quality: 90,
+      allowEditing: false,
+      resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
+      source: CameraSource.Prompt
+    });
 
-      const image = await Camera.getPhoto({
-            quality: 90,
-            allowEditing: false,
-            // DataUrl for online, Uri for offline
-            resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
-            source: CameraSource.Prompt
-        });
-
-        // imageSrc.value = image.dataUrl || '';
-    // console.log('Captured image path:', imageSrc.value);
-
-           // Handle different image formats
-           if (networkStatus.connected) {
-            imageSrc.value = image.dataUrl || '';
-        } else {
-            imageSrc.value = image.webPath || '';
-        }
-
-        // console.log('Captured image path:', imageSrc.value);
-
-        // Perform inference
-        const result = await inferenceService.performInference(imageSrc.value);
-        inferenceStore.setInferenceResult(result);
-        console.log('Inference result:', result);
-
-        // Store the complete result
-        inferenceResult.value = result;
-
-        // Open the modal to display the result
-        setOpen(true);
-    } catch (error) {
-        console.error('Error taking photo:', error);
+    let finalImagePath = '';
+    if (networkStatus.connected) {
+      imageSrc.value = image.dataUrl || '';
+    } else {
+      // Convert capacitor file URI to native path
+      finalImagePath = Capacitor.convertFileSrc(image.path || '');
+      imageSrc.value = finalImagePath;
     }
+
+    // Use path instead of webPath for native operations
+    const result = await inferenceService.performInference(
+      networkStatus.connected ? image.dataUrl! : finalImagePath
+    );
+    
+    inferenceStore.setInferenceResult(result);
+    inferenceResult.value = result;
+    setOpen(true);
+
+  } catch (error) {
+    console.error('Error:', error);
+    showToast(`Error: ${error}`, true);
+  }
 };
 
 // Modified takePhoto function with error handling
@@ -255,6 +236,11 @@ const takePhoto = async () => {
 const navigateToLeafInfo = () => {
   setOpen(false);
   router.push({ name: 'leafinfo' });
+};
+
+const navigateToHomeContent = () => {
+  setOpen(false);
+  router.push({ name: 'homecontent' });
 };
 
 // Http requests 
@@ -381,17 +367,18 @@ ion-content {
 }
 
   ion-fab {
-    margin-top: var(--ion-safe-area-top, 0);
-    margin-bottom: var(--ion-safe-area-bottom, 0);
+    margin-top: 0px;
+    margin-bottom: 0px;
   }
   ion-col {
     text-align: center;
   }
   ion-grid {
-    margin-top: 75%;
+    margin-top: 0;
   }
   ion-fab-button {
     --background: #416d3f;
     --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
+
 </style>

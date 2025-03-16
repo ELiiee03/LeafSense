@@ -33,5 +33,7 @@ export default defineComponent({
 });
 </script>
 <style scoped>
-
+ion-toolbar {
+  --color: black;
+}
 </style>

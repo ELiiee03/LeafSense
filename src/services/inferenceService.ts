@@ -2,17 +2,22 @@ import { sqliteService } from './sqliteService';
 // import { supabase } from '@/supabaseClient';
 import axios from 'axios';
 import { Network } from '@capacitor/network';
-import { registerPlugin } from '@capacitor/core';
+import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
+import leafData from '../../public/data.json'; // Adjust path as needed
 import { Directory, Filesystem } from '@capacitor/filesystem';
+// import { LeafInferencePlugin } from '../definitions';
 
-// Register the LeafInference plugin
-const LeafInference = registerPlugin<{
+interface LeafInferencePlugin {
     runInference(options: { imagePath: string }): Promise<{
-        predictedClass: string;
+      classIndex: number;
         confidence: number;
+        allConfidences: number[]; // Array of all probabilities
     }>;
-}>('LeafInference');
+  }
+  
+  // Register using the plugin name that matches your Java annotation
+const LeafInference = registerPlugin<LeafInferencePlugin>('LeafInference');
 
 interface LeafResponse {
     id: number;
@@ -21,46 +26,31 @@ interface LeafResponse {
     description: string;
     familyName: string;
     habitat: string;
-    confidence: number;
+    color: string;
+    shape: string;
+    margin: string;
+    growthHabits: string;
 }
 
 export const inferenceService = {
     async performInference(imagePath: string) {
         try {
-            // const networkStatus = await Network.getStatus();
+            const networkStatus = await Network.getStatus();
                // Temporarily force online mode for testing
             // const networkStatus = { connected: true }; // Force online mode
-            const networkStatus = { connected: false }; // Force offline mode
+            // const networkStatus = { connected: false }; // Force offline mode
             // Remove this after testing!
-            const timestamp = Date.now();
+            // const timestamp = Date.now();
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (networkStatus.connected) {
+            if (networkStatus.connected && networkStatus.connectionType === 'wifi') {
                 // Online: Use Flask API
                 try {
 
                     // Convert blob URL to base64
                     const response = await fetch(imagePath);
-                    const blob = await response.blob();
-                    
-                    // FOR NEXUS BROWSER
-                    
-                    // Create FormData and append the blob
-                    // const formData = new FormData();
-                    // formData.append('file', blob, 'image.jpg');
-
-                    // // API FLask request 
-                    // const result = await axios.post('http://192.168.1.57:5000/predict', formData, {
-                    //     headers: {
-                    //         'Content-Type': 'multipart/form-data',
-                    //         'Accept': 'application/json',
-                    //         // 'Access-Control-Allow-Origin': '*' // Add this header
-                    //     },
-                    //     timeout: 30000, // Add timeout
-                    //     withCredentials: false // Prevents sending cookies or credentials in cross-origin requests
-                    // });
-                        
+                    const blob = await response.blob();    
                     
                     
                     //For android handling 
@@ -69,7 +59,7 @@ export const inferenceService = {
                     const base64Data = await new Promise<string>((resolve) => {
                         reader.onloadend = () => resolve(reader.result as string);
                         reader.readAsDataURL(blob);
-                    });
+                     });
 
                     const result = await axios.post('http://192.168.1.57:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
@@ -78,6 +68,8 @@ export const inferenceService = {
                             'Content-Type': 'application/json',
                         }
                     });
+
+                    // 'http://192.168.1.57:5000/predict' http://192.168.218.173:5000/predict
 
                     // const file = await Filesystem.readFile({
                     //     path: imagePath,
@@ -126,8 +118,16 @@ export const inferenceService = {
                             scientificName: result.data.scientificName,
                             familyName: result.data.familyName,
                             description: result.data.description,
-                            habitat: result.data.habitat
-                        }
+                            habitat: result.data.habitat,
+                            color: result.data.color,
+                            shape: result.data.shape,
+                            margin: result.data.margin,
+                            growthHabits: result.data.growthHabits,
+                            // Add image data from server response if available
+                            imageData: result.data.imageData || null,
+                            imageType: result.data.imageType || 'jpeg'
+                        },
+                
                     };
 
                     // // Store in Supabase
@@ -146,58 +146,79 @@ export const inferenceService = {
                         throw new Error('Online inference failed: Unknown error');
                     }
                 }
+
             } else {
-                // Offline: Use TFLite model
+                // Offline implementation with platform check
+                // if (Capacitor.isNativePlatform()) {
+                //     console.warn('Offline inference only available on native devices');
+                //     // return this.getMockOfflineResult();
+                // }
+
+                // Offline: Use TFLite model    
                 try {
                     // function to check f the image is a webPath (file URI), use it directly
                     // If it's a dataUrl, save it to a file first
                     let finalImagePath = imagePath;
+                    // let isTemporaryFile = false;
+        
+                    // Handle data URLs
+                    // Handle data URLs and convert them to local files
                     if (imagePath.startsWith('data:image')) {
                         const base64Data = imagePath.split(',')[1];
                         const fileName = `leaf_${Date.now()}.jpg`;
-                        
-                        // Save the image to filesystem
+                        // Write to cache directory
                         const savedImage = await Filesystem.writeFile({
                             path: fileName,
                             data: base64Data,
-                            directory: Directory.Cache
+                            directory: Directory.Data,
+                            // encoding: Encoding.UTF8
                         });
+                        // Use the original local file path for native plugins
                         finalImagePath = savedImage.uri;
+                        // isTemporaryFile = true;
+                    } else if (imagePath.startsWith('file://') || imagePath.startsWith('content://')) {
+                        // Use the path as-is if it's already a file or content URI
+                        finalImagePath = imagePath;
+                    } else {
+                        console.error('Unsupported image path format:', imagePath);
+                        throw new Error('Unsupported image path format');
                     }
-                    // Converting webPath to filesystem URL for Android
-                    if (imagePath.startsWith('file://')) {
-                        // const fileContent = await Filesystem.readFile({
-                        //     path: imagePath.split('file://').pop() || '',
-                        //     directory: Directory.Data
-                        // });
-
-                        finalImagePath = imagePath;  // Keep as file:// URI
-                        // finalImagePath = `data:image/jpeg;base64,${fileContent.data}`;
-                    }
-
-                    // Run TFLite inference with the file path
+            
+                    // Add debug logging
+                    console.log('Final image path for native:', finalImagePath);
+            
+                    // Run TFLite inference
                     const tfliteResult = await LeafInference.runInference({
-                        imagePath: imagePath
+                        imagePath: finalImagePath
                     }).catch(error => {
                         console.error('Plugin Error:', error);
                         throw error;  // Re-throw to trigger outer catch
                     });
 
-                    // Map TFLite result to local leaf data
-                    const response = await axios.get<LeafResponse[]>('/data.json');
-                    const leafData = response.data;
-                    
-                    const matchedLeaf = leafData.find(leaf => 
-                        leaf.name.toLowerCase() === tfliteResult.predictedClass.toLowerCase()
-                    );
+              // Add this debug logging
+                    console.log('Raw TFLite Result:', {
+                        classIndex: tfliteResult.classIndex,
+                        confidence: tfliteResult.confidence,
+                        // rawOutput: tfliteResult.rawOutput, // 🔹 Log raw logits before softmax
+                        allClasses: leafData.map((_, index) => ({
+                            id: index + 1,
+                            confidence: tfliteResult.confidence // Changed confidences?.[index] to confidence
+                        }))
+                    });      
+
+                    // Map using the classIndex from native code
+                    // Map class index to leaf name from data.json
+                    const matchedLeaf = leafData.find(leaf => leaf.id === tfliteResult.classIndex);
+                    console.debug('Matched Leaf Data:', matchedLeaf);
 
                     if (!matchedLeaf) {
                         throw new Error('No matching leaf found in local data');
                     }
 
+                    
                     const finalResult = {
                         inference: {
-                            predictedClass: tfliteResult.predictedClass,
+                            predictedClass: matchedLeaf.name,
                             confidence: tfliteResult.confidence
                         },
                         leafInfo: {
@@ -205,19 +226,23 @@ export const inferenceService = {
                             scientificName: matchedLeaf.scientificName,
                             familyName: matchedLeaf.familyName,
                             description: matchedLeaf.description,
-                            habitat: matchedLeaf.habitat
+                            habitat: matchedLeaf.habitat,
+                            // color: matchedLeaf.color
                         }
                     };
+
                     
-                    // Store in SQLite
-                    await sqliteService.saveInferenceResult({
-                        imagePath: finalImagePath,
-                        result: JSON.stringify(finalResult),
-                        timestamp,
-                        synced: 0
-                    });
-                    
-                    // Clean up temporary file if we created one
+                    // if (isTemporaryFile) {
+                    //     try {
+                    //         await Filesystem.deleteFile({
+                    //             path: finalImagePath,
+                    //             directory: Directory.Cache
+                    //         });
+                    //     } catch (e) {
+                    //         console.warn('Error cleaning up temporary file:', e);
+                    //     }
+                    // }
+
                     if (imagePath !== finalImagePath) {
                         try {
                             await Filesystem.deleteFile({
@@ -228,17 +253,44 @@ export const inferenceService = {
                             console.warn('Error cleaning up temporary file:', e);
                         }
                     }
-                    
+
                     return finalResult;
+                    
+                    // Store in SQLite
+                    // await sqliteService.saveInferenceResult({
+                    //     imagePath: finalImagePath,
+                    //     result: JSON.stringify(finalResult),
+                    //     timestamp,
+                    //     synced: 0
+                    // });
+                    
+                    // // Clean up temporary file if we created one
+                    // if (imagePath !== finalImagePath) {
+                    //     try {
+                    //         await Filesystem.deleteFile({
+                    //             path: finalImagePath,
+                    //             directory: Directory.Cache
+                    //         });
+                    //     } catch (e) {
+                    //         console.warn('Error cleaning up temporary file:', e);
+                    //     }
+                    // }
+                    
+                    // return finalResult;
+
                 } catch (error) {
                     console.error('Error processing offline inference:', error);
                     throw new Error('Failed to process offline inference');
                 }
+                    // Add this mock method at the end of the service
+
             }
         } catch (error) {
             console.error('Error in inference:', error);
             throw error;
         }
+
+        
     },
 
     base64ToBlob(base64: string, type: string): Blob {
@@ -259,4 +311,15 @@ export const inferenceService = {
 
         return new Blob(byteArrays, { type: type });
     }
+
 };
+
+// Add this in your root component
+Network.addListener('networkStatusChange', (status) => {
+    console.log('Network status changed:', status);
+    // You might want to update a global store or state here
+});
+
+// function getMockOfflineResult() {
+//     throw new Error('Function not implemented.');
+// }

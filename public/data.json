@@ -1,34 +1,38 @@
 [
   {
-    "id": 1,
+    "id": 0,
     "name": "Jack Fruit",
-    "scientificName": "Broussonetia Papyrifera",
-    "familyName": "dewyfbewgf",
+    "scientificName": "Artocarpus heterophyllus",
+    "familyName": "Moraceae",
     "description": "Maple leaves are palmate, lobed leaves commonly found in temperate regions. They are known for their vibrant red, orange, and yellow fall colors.",
-    "habitat": "Temperate regions, mainly in North America, Europe, and Asia."
+    "habitat": "Temperate regions, mainly in North America, Europe, and Asia.",
+    "imagePath": "images/jackfruit.jpg"
+  },
+  {
+    "id": 1,
+    "name": "Paper Mulberry",
+    "scientificName": "Broussonetia Papyrifera",
+    "familyName": "Moraceae",
+    "description": "Oak leaves are lobed and can vary in shape, with some species having deeply lobed leaves, while others are more rounded. They are typically thick and leathery.",
+    "habitat": "Widespread in the Northern Hemisphere, including Europe, North America, and Asia.",
+    "imagePath": "images/paper_mulberry.jpg"
   },
   {
     "id": 2,
-    "name": "Oak Leaf",
-    "scientificName": "Broussonetia Papyrifera",
-    "familyName": "",
-    "description": "Oak leaves are lobed and can vary in shape, with some species having deeply lobed leaves, while others are more rounded. They are typically thick and leathery.",
-    "habitat": "Widespread in the Northern Hemisphere, including Europe, North America, and Asia."
+    "name": "Cassava",
+    "scientificName": "Manihot Esculenta",
+    "familyName": "Euphorbiaceae",
+    "description": "Pine needles are long, thin, and evergreen. They grow in clusters and can be found in various lengths depending on the species.",
+    "habitat": "Widely distributed in temperate and subtropical regions of the Northern Hemisphere.",
+    "imagePath": "images/cassava.jpg"
   },
   {
     "id": 3,
-    "name": "Jackfruit Leaf",
-    "scientificName": "Manihot Esculenta",
-    "familyName": "ehrewbfg",
-    "description": "Pine needles are long, thin, and evergreen. They grow in clusters and can be found in various lengths depending on the species.",
-    "habitat": "Widely distributed in temperate and subtropical regions of the Northern Hemisphere."
-  },
-  {
-    "id": 4,
-    "name": "Birch Leaf",
+    "name": "Rain tree",
     "scientificName": "Samanea Saman",
-    "familyName": "dweufnewf",
+    "familyName": "Fabaceae",
     "description": "Birch leaves are simple, alternate, and ovate with serrated edges. They are typically bright green, turning yellow in autumn.",
-    "habitat": "Common in cooler regions of the Northern Hemisphere, such as North America, Europe, and Asia."
+    "habitat": "Common in cooler regions of the Northern Hemisphere, such as North America, Europe, and Asia.",
+    "imagePath": "images/raintree.jpg"
   }
 ]

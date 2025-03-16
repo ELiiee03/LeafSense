@@ -28,8 +28,8 @@ const routes: Array<RouteRecordRaw> = [
         component: () => import('../views/Logs.vue'),
       },
       {
-        path: 'geo',
-        component: () => import('../views/SIgnup.vue'),
+        path: 'pins',
+        component: () => import('../views/Pins.vue'),
       },
     ],
   },
@@ -53,7 +53,16 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/LeafInfoPage.vue'),
     props: true,
   },
-
+  {
+    path: '/homecontent',
+    name: 'homecontent',
+    component: () => import('../components/HomeContent.vue'),
+  },
+  // {
+  //   path: '/modal',
+  //   name: 'modal',
+  //   component: () => import('../components/ModalSheet.vue'),
+  // }
 ];
 
 const router = createRouter({
