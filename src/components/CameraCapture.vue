@@ -95,7 +95,7 @@
   import { Network } from '@capacitor/network';
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
-  import axios from 'axios';
+  // import axios from 'axios';
   import { inferenceService } from '@/services/inferenceService';
   import { useInferenceStore } from '@/stores/inferenceStores';
   // import { sqliteService } from '@/services/sqliteService'; // Import sqliteService
@@ -136,7 +136,22 @@ interface InferenceResult {
     familyName: string;
     description: string;
     habitat: string;
+    color?: string;
+    shape?: string;
+    margin?: string;
+    growthHabits?: string;
+    imageData?: string;
+    imageType?: string;
   };
+}
+
+// Define the shape of what the inference service returns
+interface InferenceServiceResult {
+  inference: {
+    predictedClass: string;
+    confidence: number;
+  };
+  leafInfo: any; // Using any to accommodate various possible response structures
 }
 
 // Update the ref to use the new interface
@@ -151,31 +166,58 @@ const takePhoto = async () => {
     const image = await Camera.getPhoto({
       quality: 90,
       allowEditing: false,
-      resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
+      resultType: CameraResultType.DataUrl, // Always request DataUrl to ensure consistent display
       source: CameraSource.Prompt
     });
 
-    let finalImagePath = '';
-    if (networkStatus.connected) {
-      imageSrc.value = image.dataUrl || '';
-    } else {
-      // Convert capacitor file URI to native path
-      finalImagePath = Capacitor.convertFileSrc(image.path || '');
-      imageSrc.value = finalImagePath;
+    // Set the image source directly after capture
+    imageSrc.value = image.dataUrl || '';
+
+    // Don't proceed if we don't have an image
+    if (!imageSrc.value) {
+      await showToast('Failed to capture image', true);
+      return;
     }
 
-    // Use path instead of webPath for native operations
-    const result = await inferenceService.performInference(
-      networkStatus.connected ? image.dataUrl! : finalImagePath
-    );
-    
-    inferenceStore.setInferenceResult(result);
-    inferenceResult.value = result;
+    // Open the modal immediately after capturing the image
     setOpen(true);
 
+    // Then perform the inference
+    try {
+      const result = await inferenceService.performInference(imageSrc.value) as InferenceServiceResult;
+      
+      // Create a properly typed leafInfo object with all required fields
+      const leafInfo = {
+        name: result.leafInfo?.name || '',
+        scientificName: result.leafInfo?.scientificName || '',
+        familyName: result.leafInfo?.familyName || '',
+        description: result.leafInfo?.description || '',
+        habitat: result.leafInfo?.habitat || '',
+        color: result.leafInfo?.color || '',
+        shape: result.leafInfo?.shape || '',
+        margin: result.leafInfo?.margin || '',
+        growthHabits: result.leafInfo?.growthHabits || '',
+        imageData: result.leafInfo?.imageData || '',
+        imageType: result.leafInfo?.imageType || ''
+      };
+      
+      inferenceStore.setInferenceResult({
+        inference: result.inference,
+        leafInfo: leafInfo
+      });
+      
+      inferenceResult.value = {
+        inference: result.inference,
+        leafInfo: leafInfo
+      };
+    } catch (inferenceError) {
+      console.error('Inference error:', inferenceError);
+      showToast(`Error processing image: ${inferenceError}`, true);
+    }
+
   } catch (error) {
-    console.error('Error:', error);
-    showToast(`Error: ${error}`, true);
+    console.error('Camera error:', error);
+    showToast(`Error capturing image: ${error}`, true);
   }
 };
 
