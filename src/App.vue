@@ -12,6 +12,7 @@
 import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
 import { defineComponent, onMounted } from 'vue';
 import { syncService } from '@/services/syncService';
+// import { Network } from '@capacitor/network';
 
 
 export default defineComponent({
@@ -24,6 +25,7 @@ export default defineComponent({
   }
 });
 
+
 onMounted(() => {
     // Initialize sync service
     syncService.init();
@@ -31,7 +33,7 @@ onMounted(() => {
 </script>
 <style>
 :root {
-  --ion-background-color: #DCE6CC;
+  --ion-background-color: #fff;
 }
 
 ion-toolbar {

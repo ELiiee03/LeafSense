@@ -12,6 +12,12 @@ interface InferenceResult {
     familyName: string;
     description: string;
     habitat: string;
+    color: string;
+    shape: string;
+    margin: string;
+    growthHabits: string;
+    imageData?: string;
+    imageType?: string;
   };
 }
 

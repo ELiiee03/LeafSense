@@ -1,16 +1,29 @@
 <template>
     <ion-page>
         <ion-content>
+            <GlobalHeader />
+            <HeroSection />
+            <RecentIdentifications />
+            <ExploreDatabase />
+            <TipCard />
             <CameraCapture />
         </ion-content>
     </ion-page>
 </template>
 
-<script>
-import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/vue';
+<script lang=ts>
+import { IonIcon, IonBreadcrumb, IonBreadcrumbs, IonPage, IonHeader, IonToolbar, IonTitle, IonContent } from '@ionic/vue';
+import { defineComponent } from 'vue';
 import CameraCapture from '@/components/CameraCapture.vue';
+import HomeContent from '@/components/HomeContent.vue';
+import { arrowForwardCircle } from 'ionicons/icons';
+import RecentIdentifications from '@/components/RecentIdentifications.vue';
+import GlobalHeader from '@/components/GlobalHeader.vue';
+import HeroSection from '@/components/HeroSection.vue';
+import ExploreDatabase from '@/components/ExploreDatabase.vue';
+import TipCard from '@/components/TipCard.vue';
 
-export default {
+export default defineComponent({
     name: 'HomePage',
     components: {
         IonPage,
@@ -18,9 +31,17 @@ export default {
         IonToolbar,
         IonTitle,
         IonContent,
-        CameraCapture
+        CameraCapture,
+        IonBreadcrumb,
+        IonBreadcrumbs,
+        IonIcon,
+        RecentIdentifications,
+        HeroSection,
+        GlobalHeader,
+        ExploreDatabase,
+        TipCard
     }
-};
+});
 </script>
 
 <style scoped>

@@ -33,7 +33,7 @@
 
 <style scoped>
 ion-list {
-  margin-top: 15%;
+  margin-top: 8%;
 }
 ion-col {
   text-align: center;
