@@ -17,13 +17,13 @@
           <br>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button2" fill="outline">
-            <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
+            <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end" @click="loginWithGoogle"></ion-icon>Login with Google
           </ion-button>
 
           <ion-grid>
             <ion-row>
               <ion-col></ion-col>
-              <ion-col size="auto">Don't have an account? <b>Sign Up</b></ion-col>
+              <ion-col size="auto">Don't have an account? <b @click="goToSignup" style="cursor: pointer;">Sign Up</b></ion-col>
               <ion-col></ion-col>
             </ion-row>
           </ion-grid>
@@ -37,7 +37,7 @@
 import { defineComponent, ref } from 'vue';
 import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
 import { logoIonic } from 'ionicons/icons';
-// import { supabase } from '@/supabase';
+import { supabase } from '@/supabaseClient';
 import { useRouter } from 'vue-router';
 
 export default defineComponent({
@@ -56,28 +56,65 @@ export default defineComponent({
     IonGrid,
     IonRow
   },
-  // setup() {
-  //   const email = ref('');
-  //   const password = ref('');
-  //   const router = useRouter();
+  setup() {
+    const email = ref('');
+    const password = ref('');
+    const router = useRouter();
 
-  //   const login = async () => {
-  //     try {
-  //       const { error } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value });
-  //       if (error) throw error;
-  //       router.push('/home'); // Redirect to home page on successful login
-  //     } catch (error) {
-  //       console.error('Login error:', error.message);
-  //       // You can display an error message to the user here
-  //     }
-  //   };
+    // Standard email/password login
+    const login = async () => {
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ 
+          email: email.value, 
+          password: password.value 
+        });
+        
+        if (error) throw error;
+        router.push('/home'); // Redirect to home page on successful login
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('Login error:', error.message);
+        } else {
+          console.error('Login error:', String(error));
+        }
+        // You can display an error message to the user here
+      }
+    };
 
-//     return {
-//       email,
-//       password,
-//       login
-//     };
-//   }
+   // Google OAuth login
+   const loginWithGoogle = async () => {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/home'
+          }
+        });
+        
+        if (error) throw error;
+        // No need to redirect here as Supabase OAuth will handle the redirect
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('Google login error:', error.message);
+        } else {
+          console.error('Google login error:', String(error));
+        }
+        // You can display an error message to the user here
+      }
+    };
+
+    const goToSignup = () => {
+      router.push('/signup');
+    };
+
+    return {
+      email,
+      password,
+      login,
+      loginWithGoogle,
+      goToSignup
+    };
+  }
 });
 </script>
 
@@ -89,7 +126,7 @@ export default defineComponent({
   left: 0;
   width: 100%; /* Full width of the viewport */
   height: 70vh; /* 75% of the viewport height */
-  background-color: #DCE6CC;
+  background-color: white;
   display: flex; /* Center content */
   flex-direction: column; /* Stack child elements vertically */
   justify-content: center; /* Center vertically */

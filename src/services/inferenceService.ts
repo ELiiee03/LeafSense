@@ -3,7 +3,7 @@ import { sqliteService } from './sqliteService';
 import axios from 'axios';
 import { Network } from '@capacitor/network';
 import { registerPlugin, Capacitor } from '@capacitor/core';
-// import { Http } from '@capacitor-community/http';
+import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
 import { Directory, Filesystem } from '@capacitor/filesystem';
 // import { LeafInferencePlugin } from '../definitions';
@@ -44,7 +44,7 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (networkStatus.connected && networkStatus.connectionType === 'wifi') {
+            if (networkStatus.connected && networkStatus.connectionType === 'cellular') {
                 // Online: Use Flask API
                 try {
 
@@ -61,13 +61,24 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.1.57:5000/predict', {
+                    const result = await axios.post('http://192.168.139.173:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
                         }
                     });
+                    // const API_URL = "https://6f61-175-176-85-110.ngrok-free.app/predict";
+                    // const result = await Http.post({
+                    //     url: API_URL,
+                    //     headers: {
+                    //         'Content-Type': 'application/json',
+                    //     },
+                    //     data: {
+                    //         image: base64Data.split(',')[1] || '' // Ensure it is not null/undefined
+                    //     }
+                    // });
+
 
                     // 'http://192.168.1.57:5000/predict' http://192.168.218.173:5000/predict
 

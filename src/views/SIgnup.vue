@@ -15,11 +15,14 @@
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button">
             <a href="/home" class="no-blue"><b>Sign In</b></a>
           </ion-button>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button" @click="signUpWithGoogle">
+            <ion-icon name="logo-google" class="ion-margin-end"></ion-icon><b>Sign up using Google</b>
+          </ion-button>
           <br>
           <ion-grid>
             <ion-row>
               <ion-col></ion-col>
-              <ion-col size="12">Already have an account? <b>Sign In</b></ion-col>
+              <ion-col size="12">Already have an account? <b @click="goToLogin" style="cursor: pointer;">Sign In</b></ion-col>
               <ion-col></ion-col>
             </ion-row>
           </ion-grid>
@@ -52,27 +55,67 @@ export default defineComponent({
   setup() {
     const email = ref('');
     const password = ref('');
+    const phone = ref('');
     const router = useRouter();
 
-    const login = async () => {
+    // Standard email/password signup
+    const signUp = async () => {
       try {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value });
+        const { error } = await supabase.auth.signUp({ 
+          email: email.value, 
+          password: password.value,
+          options: {
+            data: {
+              phone: phone.value
+            }
+          } 
+        });
+        
         if (error) throw error;
-        router.push('/home'); // Redirect to home page on successful login
+        router.push('/home'); // Redirect to home page on successful signup
       } catch (error) {
         if (error instanceof Error) {
-          console.error('Login error:', error.message);
+          console.error('Signup error:', error.message);
         } else {
-          console.error('Login error:', error);
+          console.error('Signup error:', error);
         }
         // You can display an error message to the user here
       }
     };
 
+        // Google OAuth signup
+        const signUpWithGoogle = async () => {
+      try {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin + '/home'
+          }
+        });
+        
+        if (error) throw error;
+        // No need to redirect here as Supabase OAuth will handle the redirect
+      } catch (error) {
+        if (error instanceof Error) {
+          console.error('Google signup error:', error.message);
+        } else {
+          console.error('Google signup error:', error);
+        }
+        // You can display an error message to the user here
+      }
+    };
+
+    const goToLogin = () => {
+      router.push('/login');
+    };
+
     return {
       email,
       password,
-      login
+      phone,
+      signUp,
+      signUpWithGoogle,
+      goToLogin
     };
   }
 });
@@ -85,7 +128,7 @@ export default defineComponent({
   left: 0;
   width: 100%; /* Full width of the viewport */
   height: 70vh; /* 75% of the viewport height */
-  background-color: #DCE6CC;
+  background-color: white;
   display: flex; /* Center content */
   flex-direction: column; /* Stack child elements vertically */
   justify-content: center; /* Center vertically */

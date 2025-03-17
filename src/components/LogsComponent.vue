@@ -97,14 +97,14 @@ export default defineComponent({
       loading.value = true;
       try {
         // Always fetch fresh data from Supabase
-        const { data, error } = await supabase
+        const { data, error: supabaseError } = await supabase
           .from('inference_results')
           .select('*')
           .order('created_at', { ascending: false });
 
-        if (error) {
-          console.error('Error fetching logs:', error);
-          error.value = error.message;
+        if (supabaseError) {
+          console.error('Error fetching logs:', supabaseError);
+          error.value = supabaseError.message;
         } else {
           // Update both allLogs and logs with fresh data
           allLogs.value = data || [];
