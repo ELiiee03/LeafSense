@@ -12,8 +12,8 @@
             <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
           </ion-input>
           <br>
-          <ion-button shape="round" expand="full" class="ion-margin-top custom-button">
-            <a href="/home" class="no-blue"><b>Sign In</b></a>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button" @click="signUp">
+            <b>Sign Up</b>
           </ion-button>
           <ion-button shape="round" expand="full" class="ion-margin-top custom-button" @click="signUpWithGoogle">
             <ion-icon name="logo-google" class="ion-margin-end"></ion-icon><b>Sign up using Google</b>
@@ -38,6 +38,8 @@ import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage,
 // import { logoIonic } from 'ionicons/icons';
 import { supabase } from '@/supabaseClient';
 import { useRouter } from 'vue-router';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 export default defineComponent({
   components: {
@@ -59,52 +61,102 @@ export default defineComponent({
     const router = useRouter();
 
     // Standard email/password signup
-    const signUp = async () => {
-      try {
-        const { error } = await supabase.auth.signUp({ 
-          email: email.value, 
-          password: password.value,
-          options: {
-            data: {
-              phone: phone.value
-            }
-          } 
-        });
-        
-        if (error) throw error;
-        router.push('/home'); // Redirect to home page on successful signup
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error('Signup error:', error.message);
-        } else {
-          console.error('Signup error:', error);
-        }
-        // You can display an error message to the user here
+const signUp = async () => {
+  try {
+    // Add loading state
+    const loading = ref(false);
+    loading.value = true;
+    
+    const { data, error } = await supabase.auth.signUp({ 
+      email: email.value, 
+      password: password.value,
+      options: {
+        data: {
+          phone: phone.value
+        },
+        emailRedirectTo: `${window.location.origin}/auth-callback` // Redirect after email verification
       }
-    };
+    });
+    
+    loading.value = false;
+    
+    if (error) throw error;
+    
+    // Check if user needs to confirm their email
+    if (data?.user && data.session === null) {
+      // Show verification message instead of redirecting
+      showToast('Verification email sent! Please check your inbox to confirm your account.');
+      // Optionally route to a "verify your email" page instead of home
+      router.push('/verify-email');
+    } else if (data?.session) {
+      // User is immediately signed in (if Supabase is configured to not require verification)
+      showToast('Sign up successful!');
+      router.push('/home');
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Signup error:', error.message);
+      showToast(`Sign up failed: ${error.message}`);
+    } else {
+      console.error('Signup error:', error);
+      showToast('Sign up failed. Please try again.');
+    }
+  }
+};
 
-        // Google OAuth signup
-        const signUpWithGoogle = async () => {
-      try {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin + '/home'
-          }
-        });
-        
-        if (error) throw error;
-        // No need to redirect here as Supabase OAuth will handle the redirect
-      } catch (error) {
-        if (error instanceof Error) {
-          console.error('Google signup error:', error.message);
-        } else {
-          console.error('Google signup error:', error);
-        }
-        // You can display an error message to the user here
+// Simple toast function (add this to your setup function)
+const showToast = (message: string) => {
+  // Use Ionic Toast or a custom implementation
+  const ionicWindow = window as any;
+  if (ionicWindow?.Ionic?.toastController) {
+    ionicWindow.Ionic.toastController
+      .create({
+        message: message,
+        duration: 3000,
+        position: 'bottom'
+      })
+      .then((toast: any) => toast.present());
+  } else {
+    // Fallback to alert if toast not available
+    alert(message);
+  }
+};
+
+// Google OAuth signup using Capacitor Browser
+const signUpWithGoogle = async () => {
+  try {
+    // Determine the correct redirect URL based on platform
+    let redirectUrl;
+    if (Capacitor.isNativePlatform()) {
+      // Use capacitor:// scheme for native apps
+      redirectUrl = 'capacitor://localhost/auth-callback';
+    } else {
+      // Use your development URL for web
+      redirectUrl = 'http://192.168.1.57:8100/auth-callback';
+    }
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: redirectUrl,
+        skipBrowserRedirect: true, // Important: we'll handle redirect manually
       }
-    };
-
+    });
+    
+    if (error) throw error;
+    
+    if (data?.url) {
+      // Open OAuth URL in the system browser
+      await Browser.open({ url: data.url });
+    }
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error('Google signup error:', error.message);
+    } else {
+      console.error('Google signup error:', error);
+    }
+  }
+};
     const goToLogin = () => {
       router.push('/login');
     };

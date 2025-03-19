@@ -33,6 +33,13 @@ const routes: Array<RouteRecordRaw> = [
       },
     ],
   },
+
+  {
+    path: '/auth-callback',
+    name: 'AuthCallback',
+    component: () => import('@/views/AuthCallback.vue'),
+  },
+
   {
     path: '/signup',
     name: 'signup',

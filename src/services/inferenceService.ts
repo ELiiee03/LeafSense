@@ -3,7 +3,7 @@ import { sqliteService } from './sqliteService';
 import axios from 'axios';
 import { Network } from '@capacitor/network';
 import { registerPlugin, Capacitor } from '@capacitor/core';
-import { Http } from '@capacitor-community/http';
+// import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
 import { Directory, Filesystem } from '@capacitor/filesystem';
 // import { LeafInferencePlugin } from '../definitions';
@@ -61,24 +61,13 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.139.173:5000/predict', {
+                    const result = await axios.post('http://192.168.1.57:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
                         }
                     });
-                    // const API_URL = "https://6f61-175-176-85-110.ngrok-free.app/predict";
-                    // const result = await Http.post({
-                    //     url: API_URL,
-                    //     headers: {
-                    //         'Content-Type': 'application/json',
-                    //     },
-                    //     data: {
-                    //         image: base64Data.split(',')[1] || '' // Ensure it is not null/undefined
-                    //     }
-                    // });
-
 
                     // 'http://192.168.1.57:5000/predict' http://192.168.218.173:5000/predict
 
@@ -187,12 +176,12 @@ export const inferenceService = {
                         // Use the original local file path for native plugins
                         finalImagePath = savedImage.uri;
                         // isTemporaryFile = true;
-                    } else if (imagePath.startsWith('file://') || imagePath.startsWith('content://')) {
+                    } else if (imagePath.startsWith('file://') || imagePath.startsWith('content://') || imagePath.startsWith('https://localhost/_capacitor_file_/')) {
                         // Use the path as-is if it's already a file or content URI
                         finalImagePath = imagePath;
                     } else {
-                        console.error('Unsupported image path format:', imagePath);
-                        throw new Error('Unsupported image path format');
+                        // Try to convert the path using Capacitor's convertFileSrc
+                        finalImagePath = Capacitor.convertFileSrc(imagePath);
                     }
             
                     // Add debug logging

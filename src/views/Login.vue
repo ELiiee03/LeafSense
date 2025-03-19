@@ -39,6 +39,8 @@ import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage,
 import { logoIonic } from 'ionicons/icons';
 import { supabase } from '@/supabaseClient';
 import { useRouter } from 'vue-router';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
 
 export default defineComponent({
   components: {
@@ -70,36 +72,51 @@ export default defineComponent({
         });
         
         if (error) throw error;
-        router.push('/home'); // Redirect to home page on successful login
+        router.push('/home');
       } catch (error) {
         if (error instanceof Error) {
           console.error('Login error:', error.message);
         } else {
           console.error('Login error:', String(error));
         }
-        // You can display an error message to the user here
       }
     };
 
-   // Google OAuth login
-   const loginWithGoogle = async () => {
+   // Google OAuth login using Capacitor Browser
+    const loginWithGoogle = async () => {
       try {
-        const { error } = await supabase.auth.signInWithOAuth({
+        // Generate the OAuth URL from Supabase
+        const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: window.location.origin + '/home'
+            // redirectTo: window.location.origin + '/auth-callback',
+            redirectTo: 'capacitor://localhost/auth-callback',
+            skipBrowserRedirect: true, // Important: we'll handle redirect manually
           }
         });
         
         if (error) throw error;
-        // No need to redirect here as Supabase OAuth will handle the redirect
+        
+        if (data?.url) {
+          // Open OAuth URL in the system browser
+          await Browser.open({ url: data.url });
+          
+          // Listen for the callback from the OAuth provider
+          window.addEventListener('ionBackButton', async () => {
+            await Browser.close();
+            // Check if user is authenticated after browser is closed
+            const { data: user } = await supabase.auth.getUser();
+            if (user) {
+              router.push('/home');
+            }
+          });
+        }
       } catch (error) {
         if (error instanceof Error) {
           console.error('Google login error:', error.message);
         } else {
           console.error('Google login error:', String(error));
         }
-        // You can display an error message to the user here
       }
     };
 
