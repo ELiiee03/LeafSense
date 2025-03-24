@@ -61,7 +61,7 @@
 <script lang="ts">
 import { defineComponent, ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline } from 'ionicons/icons';
-import { IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController } from '@ionic/vue';
+import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController } from '@ionic/vue';
 import { supabase } from '@/supabaseClient';
 import { sqliteService } from '@/services/sqliteService';
 import { Network } from '@capacitor/network';
@@ -84,6 +84,7 @@ export default defineComponent({
     IonIcon,
     IonSpinner,
     IonChip,
+    IonThumbnail,
   },
   
   setup(props, { emit }) {

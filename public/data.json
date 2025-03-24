@@ -10,7 +10,7 @@
     "shape": "Palmate, lobed",
     "margin": "Serrated",
     "growthHabits": "tree",
-    "imagePath": "public/jackfruit.jpg"
+    "imagePath": "jackfruit.jpg"
   },
   {
     "id": 1,
@@ -23,7 +23,7 @@
     "shape": "Palmate, lobed",
     "margin": "Serrated",
     "growthHabits": "tree",
-    "imagePath": "public/paper mulberry.jpg"
+    "imagePath": "paper-mulberry.jpg"
   },
   {
     "id": 2,
@@ -36,7 +36,7 @@
     "shape": "Needle-like",
     "margin": "Smooth",
     "growthHabits": "shrub",
-    "imagePath": "public/cassava.jpg"
+    "imagePath": "cassava.jpg"
   },
   {
     "id": 3,
@@ -49,6 +49,6 @@
     "shape": "Ovate",
     "margin": "Serrated",
     "growthHabits": "tree",
-    "imagePath": "public/saman samanea.jpg"
+    "imagePath": "saman-samanea.jpg"
   }
 ]

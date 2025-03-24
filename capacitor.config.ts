@@ -9,11 +9,11 @@ const config: CapacitorConfig = {
   //   androidScheme: 'https'
   // },
   // capacitor.config.json
-  server: {
-    androidScheme: 'https',
-    url: 'http://192.168.26.173:8100', // Direct URL to your dev machine
-    cleartext: true
-  },
+  // server: {
+  //   androidScheme: 'https',
+  //   url: 'http://192.168.1.57:8100', // Direct URL to your dev machine
+  //   cleartext: true
+  // },
 
   plugins: {
     CapacitorSQLite: {

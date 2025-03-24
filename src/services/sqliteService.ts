@@ -76,6 +76,12 @@ export const sqliteService = {
 
   // Offline-specific methods
   async initializeOfflineTable() {
+    // Drop the table if it exists
+    await this.executeQuery(`
+      DROP TABLE IF EXISTS unsynced_inferences;
+    `);
+
+    // Create the table with the correct schema
     await this.executeQuery(`
       CREATE TABLE IF NOT EXISTS unsynced_inferences (
         id INTEGER PRIMARY KEY AUTOINCREMENT,

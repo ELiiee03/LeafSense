@@ -167,8 +167,8 @@ function updateLeafImage() {
     
     // Handle asset paths properly by checking path type
     if (imagePath.startsWith('assets/')) {
-      // For images in the public/assets folder
-      leafImage.value = `/${imagePath}`; // Add leading slash
+      // For images in the assets folder
+      leafImage.value = `/${imagePath}`;
     } else if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       // For full URLs
       leafImage.value = imagePath;
@@ -176,7 +176,7 @@ function updateLeafImage() {
       // For data URLs
       leafImage.value = imagePath;
     } else {
-      // For other relative paths, assume they're relative to public folder
+      // For images in the public folder
       leafImage.value = `/${imagePath}`;
     }
     

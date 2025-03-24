@@ -1,10 +1,12 @@
 <template>
   <div class="recent-identifications">
     <div class="header">
-      <h4 class="section-title">
-        <ion-icon :icon="timeOutline" class="icon" />
-        Recent Identifications
-      </h4>
+      <div class="header-left">
+        <h4 class="section-title">
+          <ion-icon :icon="timeOutline" class="icon" />
+          Recent Identifications
+        </h4>
+      </div>
       <router-link to="/logs" class="view-all">View All →</router-link>
     </div>
 
@@ -13,7 +15,7 @@
       <p>Loading recent identifications...</p>
     </div>
 
-    <div v-else-if="recentLeaves.length === 0" class="empty-container">
+    <div v-else-if="recentLeaves?.length === 0" class="empty-container">
       <ion-icon :icon="leafOutline" class="empty-icon" />
       <p>No leaf identifications yet</p>
       <p class="empty-subtitle">Identify your first leaf to see it here</p>
@@ -55,6 +57,9 @@ import { supabase } from '@/supabaseClient'
 import { RouterLink } from 'vue-router'
 import { IonSpinner, IonIcon } from '@ionic/vue'
 import defaultLeafImage from '@/assets/pine needle.jpg'
+import { useQuery } from '@tanstack/vue-query'
+import { sqliteService } from '@/services/sqliteService'
+import { Network } from '@capacitor/network'
 
 // Define types for leaf data
 interface LeafData {
@@ -81,11 +86,7 @@ interface GroupedData {
   [key: string]: ExtendedLeafData[];
 }
 
-// Data to store recent identifications
-const recentLeaves = ref<LeafData[]>([])
-
-// Loading state
-const isLoading = ref(true)
+// Loading state (Note: recentLeaves is provided by useQuery below)
 
 // Test leaf for debugging
 const testLeaf: LeafData = {
@@ -141,184 +142,54 @@ const generateRandomId = () => {
   return 'id-' + Math.random().toString(36).substring(2, 15);
 }
 
-// Fallback to a simple query if the complex one fails
-const fetchSimpleRecentIdentifications = async () => {
-  try {
-    console.log('Trying simple fallback query...')
-    const { data, error } = await supabase
-      .from('inference_results')
-      .select('id, created_at, result, scientific_name, confidence, image')
-      .order('created_at', { ascending: false })
-      .limit(5)
-    
-    if (error) {
-      console.error('Error fetching simple identifications:', error)
-      return
-    }
-    
-    console.log('Simple fallback data:', data)
-    
-    if (!data || data.length === 0) {
-      console.log('No data returned from simple query')
-      return
-    }
-    
-    // Simple direct mapping without fancy grouping
-    recentLeaves.value = data.map(item => {
-      // Make sure we have valid data by checking for null/undefined
-      const id = item.id?.toString() || generateRandomId();
-      const created_at = item.created_at || new Date().toISOString();
-      const confidence = typeof item.confidence === 'number' ? item.confidence : 0;
-      const name = item.result || 'Unknown Leaf';
-      const scientificName = item.scientific_name || 'Unknown Species';
+// Get recent identifications with vue-query
+const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentifications } = useQuery({
+  queryKey: ['recentIdentifications'],
+  queryFn: async () => {
+    const isOnline = (await Network.getStatus()).connected;
+    if (isOnline) {
+      const { data, error } = await supabase
+        .from('inference_results')
+        .select('id, created_at, result, scientific_name, confidence, image')
+        .order('created_at', { ascending: false })
+        .limit(5);
       
-      return {
-        id,
-        created_at,
-        formattedDate: formatRelativeDate(created_at),
+      if (error) throw error;
+      return data.map(item => ({
+        id: item.id?.toString() || generateRandomId(),
+        created_at: item.created_at || new Date().toISOString(),
+        formattedDate: formatRelativeDate(item.created_at),
         inference: { 
-          confidence
+          confidence: typeof item.confidence === 'number' ? item.confidence : 0
         },
         leafInfo: {
-          name,
-          scientificName,
+          name: item.result || 'Unknown Leaf',
+          scientificName: item.scientific_name || 'Unknown Species',
           image: item.image || ''
         }
-      };
-    });
-    
-    console.log('Simple recentLeaves value:', recentLeaves.value)
-  } catch (error) {
-    console.error('Failed to fetch simple identifications:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-// Fetch recent identifications from Supabase
-const fetchRecentIdentifications = async () => {
-  isLoading.value = true
-  try {
-    console.log('Fetching identifications...')
-    // Fetch a larger number to ensure we have enough data for grouping
-    const { data, error } = await supabase
-      .from('inference_results')
-      .select('id, created_at, result, scientific_name, confidence, image')
-      .order('created_at', { ascending: false })
-      .limit(30) // Increased limit to have enough data for grouping
-    
-    if (error) {
-      console.error('Error fetching identifications:', error)
-      // Try the simple fallback query
-      await fetchSimpleRecentIdentifications()
-      return
-    }
-    
-    console.log('Raw data from Supabase:', data)
-    if (!data || data.length === 0) {
-      console.log('No data returned from Supabase')
-      isLoading.value = false
-      return
-    }
-    
-    // Transform data to include formatted date
-    const formattedData: ExtendedLeafData[] = data.map(item => {
-      // Make sure we have valid data by checking for null/undefined
-      const id = item.id?.toString() || generateRandomId();
-      const created_at = item.created_at || new Date().toISOString();
-      const confidence = typeof item.confidence === 'number' ? item.confidence : 0;
-      const name = item.result || 'Unknown Leaf';
-      const scientificName = item.scientific_name || 'Unknown Species';
-      
-      return {
-        id,
-        created_at,
-        formattedDate: formatRelativeDate(created_at),
+      }));
+    } else {
+      // Offline mode: fetch from SQLite
+      const offlineResults = await sqliteService.getUnsyncedResults();
+      return offlineResults.map(item => ({
+        id: item.id?.toString() || generateRandomId(),
+        created_at: new Date(item.timestamp).toISOString(),
+        formattedDate: formatRelativeDate(new Date(item.timestamp).toISOString()),
         inference: { 
-          confidence
+          confidence: typeof item.confidence === 'number' ? item.confidence : 0
         },
         leafInfo: {
-          name,
-          scientificName,
-          image: item.image || ''
-        },
-        // Keep the original date info for sorting within groups
-        dateObj: new Date(created_at)
-      };
-    });
-    
-    console.log('Formatted data:', formattedData)
-    
-    // Group by formatted date
-    const groupedByDate: GroupedData = formattedData.reduce<GroupedData>((groups, item) => {
-      const date = item.formattedDate || '';
-      if (!groups[date]) {
-        groups[date] = [];
-      }
-      groups[date].push(item);
-      return groups;
-    }, {})
-    
-    console.log('Grouped by date:', groupedByDate)
-    
-    // Get only the most recent item from each date group
-    const representative = Object.keys(groupedByDate).map(date => {
-      // Sort by dateObj (in case there are multiple entries in a day)
-      const sorted = groupedByDate[date].sort((a, b) => 
-        b.dateObj.getTime() - a.dateObj.getTime()
-      );
-      // Return the most recent entry
-      return sorted[0];
-    });
-    
-    console.log('Representative items:', representative)
-    
-    // Sort by recency order: Today, Yesterday, 3 days ago, A week ago, etc.
-    const dateOrder = ['Today', 'Yesterday', '3 days ago', 'A week ago'];
-    
-    representative.sort((a, b) => {
-      const aIndex = dateOrder.indexOf(a.formattedDate || '');
-      const bIndex = dateOrder.indexOf(b.formattedDate || '');
-      
-      // If both dates are in our predefined order
-      if (aIndex !== -1 && bIndex !== -1) {
-        return aIndex - bIndex;
-      } 
-      // If only a is in the predefined order
-      else if (aIndex !== -1) {
-        return -1;
-      } 
-      // If only b is in the predefined order
-      else if (bIndex !== -1) {
-        return 1;
-      } 
-      // Otherwise sort by date
-      else {
-        return b.dateObj.getTime() - a.dateObj.getTime();
-      }
-    });
-    
-    console.log('Sorted representative items:', representative)
-    
-    // Remove the temporary dateObj property
-    recentLeaves.value = representative.map(({ dateObj, ...item }) => item);
-    
-    console.log('Final recentLeaves value:', recentLeaves.value)
-    
-    // If we ended up with no leaves after all the processing, try the simple fallback
-    if (recentLeaves.value.length === 0) {
-      console.log('Complex query produced no results, trying fallback...')
-      await fetchSimpleRecentIdentifications()
+          name: item.predicted_class || 'Unknown Leaf',
+          scientificName: item.scientific_name || 'Unknown Species',
+          image: item.image_path || ''
+        }
+      }));
     }
-    
-  } catch (error) {
-    console.error('Failed to fetch leaf identifications:', error)
-    // Try the simple fallback query
-    await fetchSimpleRecentIdentifications()
-  } finally {
-    isLoading.value = false
-  }
-}
+  },
+  staleTime: 1000 * 60 * 5, // 5 minutes
+  retry: 1,
+  refetchOnWindowFocus: false
+});
 
 // Set up real-time subscription
 let subscription: any = null;
@@ -350,40 +221,16 @@ const cleanupSubscription = () => {
   }
 }
 
-// Call the fetch function and set up subscription when component mounts
+// Update the onMounted hook
 onMounted(async () => {
   console.log("%c🍃 RecentIdentifications component mounted", "font-size: 14px; color: green; font-weight: bold;");
   
-  // Check Supabase connection
-  try {
-    console.log("Checking Supabase connection...")
-    
-    // Test if Supabase client is initialized
-    if (!supabase) {
-      console.error("Supabase client is not initialized")
-    } else {
-      console.log("Supabase client is initialized")
-      
-      // Check if we can get table info
-      const { data, error } = await supabase
-        .from('inference_results')
-        .select('count()')
-        .limit(1)
-      
-      if (error) {
-        console.error("Error accessing inference_results table:", error)
-      } else {
-        console.log("Successfully accessed inference_results table, count:", data)
-      }
-    }
-  } catch (e) {
-    console.error("Error checking Supabase connection:", e)
+  // Set up real-time subscription only if online
+  const isOnline = (await Network.getStatus()).connected;
+  if (isOnline) {
+    setupRealtimeSubscription();
   }
-  
-  // Proceed with normal initialization
-  fetchRecentIdentifications()
-  setupRealtimeSubscription()
-})
+});
 
 // Clean up subscription when component unmounts
 onUnmounted(() => {
@@ -419,6 +266,12 @@ const openLeafInfo = (leaf: any) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .section-title {
