@@ -1,8 +1,10 @@
 <template>
       <div class="explore-container">
         <div class="header">
-          <ion-icon :icon="leafOutline" class="icon" />
-          <h4>Explore Leaf Database</h4>
+          <div class="header-left">
+            <ion-icon :icon="leafOutline" class="icon" />
+            <h4>Explore Leaf Database</h4>
+          </div>
         </div>
   
         <div class="content">
@@ -17,17 +19,17 @@
               <p>Loading plant data...</p>
             </ion-col>
           </ion-row>
-          <ion-row v-else-if="error">
+          <ion-row v-else-if="queryError">
             <ion-col size="12">
               <ion-card color="danger">
                 <ion-card-content>
-                  Error loading data: {{ error }}
+                  Error loading data: {{ queryError }}
                 </ion-card-content>
               </ion-card>
             </ion-col>
           </ion-row>
           <ion-row v-else>
-            <ion-col v-for="category in displayCategories" :key="category.name" size="6">
+            <ion-col v-for="category in categories" :key="category.name" size="6">
               <ion-card :style="{ background: category.color }" class="category-card">
                 <div class="category-content">
                   <h3>{{ category.name }}</h3>
@@ -46,6 +48,9 @@
   import { leafOutline } from 'ionicons/icons';
   import { ref, onMounted, computed } from 'vue';
   import { supabase } from '@/supabaseClient';
+  import { useQuery } from '@tanstack/vue-query';
+  import { sqliteService } from '@/services/sqliteService';
+  import { Network } from '@capacitor/network';
 
   // Define default categories with colors
   const defaultCategories = [
@@ -82,7 +87,6 @@
     'herbs': 'Herbs',
   };
 
-  const isLoading = ref(true);
   const error = ref<string | null>(null);
   const categories = ref<Array<{ name: string; count: number; color: string }>>(
     // Initialize with default categories showing zero counts
@@ -102,74 +106,65 @@
     });
   });
 
-  // Fetch growth_habits data from Supabase
-  const fetchPlantCategories = async () => {
-    isLoading.value = true;
-    error.value = null;
-    
-    try {
-      // Fetch all records with growth_habits data
-      const { data, error: fetchError } = await supabase
-        .from('inference_results')
-        .select('growth_habits')
-        .not('growth_habits', 'is', null);
+  // Replace the fetchPlantCategories function with a query
+  // Replace the fetchPlantCategories function with a query
+  const { data: categoriesData, isLoading, error: queryError } = useQuery({
+    queryKey: ['plantCategories'],
+    queryFn: async () => {
+      const isOnline = (await Network.getStatus()).connected;
       
-      if (fetchError) {
-        throw fetchError;
-      }
-      
-      console.log('Raw growth_habits data from Supabase:', data);
-      
-      // Count occurrences of each growth habit
-      const counts: Record<string, number> = {};
-      
-      // Initialize counts with default categories set to 0
-      defaultCategories.forEach(cat => {
-        counts[cat.name] = 0;
-      });
-      
-      // Process the data
-      data?.forEach(item => {
-        const habit = item.growth_habits?.trim() || 'Other';
-        console.log('Processing growth habit:', habit);
+      if (isOnline) {
+        const { data, error: fetchError } = await supabase
+          .from('inference_results')
+          .select('growth_habits')
+          .not('growth_habits', 'is', null);
         
-        // If the habit contains multiple values (comma-separated), split and count each
-        if (habit.includes(',')) {
-          const habits = habit.split(',').map((h: string) => h.trim());
-          habits.forEach((h: string) => {
-            processHabit(h, counts);
-          });
-        } else {
-          processHabit(habit, counts);
-        }
-      });
+        if (fetchError) throw fetchError;
+        return processCategories(data);
+      } else {
+        // Offline mode: fetch from SQLite
+        const offlineResults = await sqliteService.getUnsyncedResults();
+        return processCategories(offlineResults);
+      }
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
+    refetchOnWindowFocus: false
+  });
+
+  // Helper function to process categories
+  const processCategories = (data: any[]) => {
+    const counts: Record<string, number> = {};
+    
+    // Initialize counts with default categories set to 0
+    defaultCategories.forEach(cat => {
+      counts[cat.name] = 0;
+    });
+    
+    // Process the data
+    data?.forEach(item => {
+      const habit = item.growth_habits?.trim() || 'Other';
       
-      console.log('Final counts after processing:', counts);
-      
-      // Convert to array format for display
-      const categoryArray = Object.entries(counts)
-        .filter(([name]) => {
-          // Only include default categories and "Other" in the final output
-          return defaultCategories.some(cat => cat.name === name) || name === 'Other';
-        })
-        .map(([name, count]) => ({
-          name,
-          count,
-          color: categoryColors[name as keyof typeof categoryColors] || '#F0F0F0' // Default color if not in mapping
-        }));
-      
-      console.log('Category array before update:', categoryArray);
-      
-      // Update the categories ref
-      categories.value = categoryArray;
-    } catch (err) {
-      console.error('Error fetching growth habits:', err);
-      error.value = err instanceof Error ? err.message : 'Unknown error occurred';
-    } finally {
-      isLoading.value = false;
-    }
+      if (habit.includes(',')) {
+        const habits = habit.split(',').map((h: string) => h.trim());
+        habits.forEach((h: string) => {
+          processHabit(h, counts);
+        });
+      } else {
+        processHabit(habit, counts);
+      }
+    });
+    
+    // Convert to array format for display
+    return Object.entries(counts)
+      .filter(([name]) => defaultCategories.some(cat => cat.name === name))
+      .map(([name, count]) => ({
+        name,
+        count,
+        color: categoryColors[name as keyof typeof categoryColors] || '#F0F0F0'
+      }));
   };
-  
+
   // Helper function to process each habit and increment the right category counter
   const processHabit = (habit: string, counts: Record<string, number>) => {
     // Convert to lowercase for normalization
@@ -189,11 +184,6 @@
       console.log(`No category match for "${habit}", counted in "Other" with count: ${counts[formattedHabit]}`);
     }
   };
-
-  // Fetch data on component mount
-  onMounted(() => {
-    fetchPlantCategories();
-  });
   </script>
   
   <style scoped>
@@ -261,6 +251,12 @@
     align-items: center;
     justify-content: center;
     padding: 24px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   </style>
   

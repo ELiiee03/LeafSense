@@ -95,7 +95,7 @@
   import { Network } from '@capacitor/network';
   import { useRouter } from 'vue-router';
 // import { defineEmits } from 'vue';
-  import axios from 'axios';
+  // import axios from 'axios';
   import { inferenceService } from '@/services/inferenceService';
   import { useInferenceStore } from '@/stores/inferenceStores';
   // import { sqliteService } from '@/services/sqliteService'; // Import sqliteService
@@ -136,6 +136,12 @@ interface InferenceResult {
     familyName: string;
     description: string;
     habitat: string;
+    color: any;
+    shape: any;
+    margin: any;
+    growthHabits: any;
+    imageData: any;
+    imageType: any;
   };
 }
 
@@ -169,8 +175,23 @@ const takePhoto = async () => {
       networkStatus.connected ? image.dataUrl! : finalImagePath
     );
     
-    inferenceStore.setInferenceResult(result);
-    inferenceResult.value = result;
+    // Ensure all required fields are present
+    const completeResult = {
+      ...result,
+      leafInfo: {
+        ...result.leafInfo,
+        // Add missing properties with default values if they don't exist
+        color: result.leafInfo && 'color' in (result.leafInfo as any) ? (result.leafInfo as any).color : '',
+        shape: result.leafInfo && 'shape' in (result.leafInfo as any) ? (result.leafInfo as any).shape : '',
+        margin: result.leafInfo && 'margin' in (result.leafInfo as any) ? (result.leafInfo as any).margin : '',
+        growthHabits: result.leafInfo && 'growthHabits' in (result.leafInfo as any) ? (result.leafInfo as any).growthHabits : '',
+        imageData: result.leafInfo && 'imageData' in (result.leafInfo as any) ? (result.leafInfo as any).imageData : null,
+        imageType: result.leafInfo && 'imageType' in (result.leafInfo as any) ? (result.leafInfo as any).imageType : null
+      }
+    };
+    
+    inferenceStore.setInferenceResult(completeResult);
+    inferenceResult.value = completeResult;
     setOpen(true);
 
   } catch (error) {

@@ -10,20 +10,26 @@
         <div class="login-container">
           <h1><b>Log In</b></h1>
           <br>
-          <ion-input label="Email" label-placement="floating" fill="outline" placeholder="email@example.com"></ion-input>
-          <ion-input label="Password" label-placement="floating" fill="outline" placeholder="password" type="password" >
+          <ion-input v-model="email" label="Email" label-placement="floating" fill="outline" placeholder="email@example.com"></ion-input>
+          <ion-input v-model="password" label="Password" label-placement="floating" fill="outline" placeholder="password" type="password" >
             <!-- <ion-input-password-toggle slot="end"></ion-input-password-toggle> -->
           </ion-input>
           <br>
-          <ion-button shape="round" expand="full" class="ion-margin-top custom-button"><b>Login</b></ion-button>
-          <ion-button shape="round" expand="full" class="ion-margin-top custom-button2" fill="outline">
-            <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button" @click="login" :disabled="loading">
+            <ion-spinner v-if="loading" name="crescent"></ion-spinner>
+            <b v-else>Login</b>
+          </ion-button>
+          <ion-button shape="round" expand="full" class="ion-margin-top custom-button2" fill="outline" @click="loginWithGoogle" :disabled="loading">
+            <ion-spinner v-if="loading" name="crescent" color="success"></ion-spinner>
+            <template v-else>
+              <ion-icon src="/resources/logo-google.svg" name="logo-google" class="ion-margin-end"></ion-icon>Login with Google
+            </template>
           </ion-button>
 
           <ion-grid>
             <ion-row>
               <ion-col></ion-col>
-              <ion-col size="auto">Don't have an account? <b>Sign Up</b></ion-col>
+              <ion-col size="auto">Don't have an account? <b @click="goToSignup" style="cursor: pointer;">Sign Up</b></ion-col>
               <ion-col></ion-col>
             </ion-row>
           </ion-grid>
@@ -34,11 +40,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from 'vue';
-import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow  } from '@ionic/vue';
+import { defineComponent, ref, onMounted, onUnmounted } from 'vue';
+import { IonInput, IonButton, IonLabel, IonItem, IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonIcon, IonCol, IonGrid, IonRow, IonSpinner } from '@ionic/vue';
 import { logoIonic } from 'ionicons/icons';
-// import { supabase } from '@/supabase';
+import { supabase } from '@/supabaseClient';
 import { useRouter } from 'vue-router';
+import { Browser } from '@capacitor/browser';
+import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 
 export default defineComponent({
   components: {
@@ -54,30 +63,160 @@ export default defineComponent({
     IonIcon,
     IonCol,
     IonGrid,
-    IonRow
+    IonRow,
+    IonSpinner
   },
-  // setup() {
-  //   const email = ref('');
-  //   const password = ref('');
-  //   const router = useRouter();
+  setup() {
+    const email = ref('');
+    const password = ref('');
+    const loading = ref(false);
+    const router = useRouter();
 
-  //   const login = async () => {
-  //     try {
-  //       const { error } = await supabase.auth.signInWithPassword({ email: email.value, password: password.value });
-  //       if (error) throw error;
-  //       router.push('/home'); // Redirect to home page on successful login
-  //     } catch (error) {
-  //       console.error('Login error:', error.message);
-  //       // You can display an error message to the user here
-  //     }
-  //   };
+    // Add DeepLink listener for handling the OAuth callback
+    const setupDeepLinkListener = () => {
+      App.addListener('appUrlOpen', async (data: { url: string }) => {
+        console.log('App URL opened:', data.url);
+        
+        // Check if the URL is our auth callback URL
+        if (data.url.includes('auth-callback')) {
+          // Close the browser after handling the auth URL
+          await Browser.close();
+          
+          // Get the current session to see if user is authenticated
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('Error getting session:', error.message);
+            showToast(`Authentication error: ${error.message}`);
+            return;
+          }
+          
+          if (session) {
+            showToast('Google login successful!');
+            router.push('/home');
+          } else {
+            showToast('Authentication failed. Please try again.');
+          }
+        }
+      });
+    };
+    
+    // Set up DeepLink listener on component mount
+    onMounted(() => {
+      setupDeepLinkListener();
+    });
+    
+    // Clean up listener on unmount
+    onUnmounted(() => {
+      App.removeAllListeners();
+    });
 
-//     return {
-//       email,
-//       password,
-//       login
-//     };
-//   }
+    // Standard email/password login
+    const login = async () => {
+      try {
+        loading.value = true;
+        
+        const { error } = await supabase.auth.signInWithPassword({ 
+          email: email.value, 
+          password: password.value 
+        });
+        
+        loading.value = false;
+        
+        if (error) throw error;
+        showToast('Login successful!');
+        router.push('/home');
+      } catch (error) {
+        loading.value = false;
+        if (error instanceof Error) {
+          console.error('Login error:', error.message);
+          showToast(`Login failed: ${error.message}`);
+        } else {
+          console.error('Login error:', String(error));
+          showToast('Login failed. Please try again.');
+        }
+      }
+    };
+
+   // Google OAuth login using Capacitor Browser
+    const loginWithGoogle = async () => {
+      try {
+        // Determine the correct redirect URL based on platform
+        let redirectUrl;
+        if (Capacitor.isNativePlatform()) {
+          // Use capacitor:// scheme for native apps
+          redirectUrl = 'capacitor://localhost/auth-callback';
+        } else {
+          // Use full origin for web - this is a critical change
+          redirectUrl = `${window.location.origin}/auth-callback`;
+        }
+        
+        // Show loading indicator
+        loading.value = true;
+
+        // Generate the OAuth URL from Supabase
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: redirectUrl,
+            skipBrowserRedirect: true, // Important: we'll handle redirect manually
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data?.url) {
+          // Open OAuth URL in the system browser
+          await Browser.open({ 
+            url: data.url,
+            windowName: '_self' // Try to open in same window if possible
+          });
+          
+          // Note: loading will be reset by the callback handler
+        }
+      } catch (error) {
+        loading.value = false;
+        if (error instanceof Error) {
+          console.error('Google login error:', error.message);
+          showToast(`Google login failed: ${error.message}`);
+        } else {
+          console.error('Google login error:', String(error));
+          showToast('Google login failed. Please try again.');
+        }
+      }
+    };
+
+    // Simple toast function
+    const showToast = (message: string) => {
+      // Use Ionic Toast or a custom implementation
+      const ionicWindow = window as any;
+      if (ionicWindow?.Ionic?.toastController) {
+        ionicWindow.Ionic.toastController
+          .create({
+            message: message,
+            duration: 3000,
+            position: 'bottom'
+          })
+          .then((toast: any) => toast.present());
+      } else {
+        // Fallback to alert if toast not available
+        alert(message);
+      }
+    };
+
+    const goToSignup = () => {
+      router.push('/signup');
+    };
+
+    return {
+      email,
+      password,
+      loading,
+      login,
+      loginWithGoogle,
+      goToSignup
+    };
+  }
 });
 </script>
 
@@ -89,7 +228,7 @@ export default defineComponent({
   left: 0;
   width: 100%; /* Full width of the viewport */
   height: 70vh; /* 75% of the viewport height */
-  background-color: #DCE6CC;
+  background-color: white;
   display: flex; /* Center content */
   flex-direction: column; /* Stack child elements vertically */
   justify-content: center; /* Center vertically */

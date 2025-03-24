@@ -82,7 +82,7 @@ export const useGeoStore = defineStore('geolocation', {
         
         console.log('Updated currentLocation:', this.currentLocation);
         
-        // If the location is pinned, add it to pinnedLocations
+        // If the location is pinned, add it to pinnedLocations and save to Supabase
         if (locationData.isPinned) {
           // Check if it already exists in pinnedLocations
           const existingIndex = this.pinnedLocations.findIndex(loc => 
@@ -96,6 +96,34 @@ export const useGeoStore = defineStore('geolocation', {
           } else {
             // Add new entry
             this.pinnedLocations.push({ ...this.currentLocation });
+          }
+          
+          // Save to Supabase
+          try {
+            console.log('Saving pinned location to Supabase');
+            
+            const locationToSave = {
+              user_id: null, // Update with actual user ID if available
+              zgeom: `POINT(${this.currentLocation.lng} ${this.currentLocation.lat})`,
+              title: this.currentLocation.title || '',
+              note: this.currentLocation.note || '',
+              address: this.currentLocation.address || ''
+            };
+            
+            console.log('Data being sent to Supabase:', locationToSave);
+            
+            const { data, error } = await supabase
+              .from('pinned_locations')
+              .insert(locationToSave)
+              .select();
+              
+            if (error) {
+              console.error('Error saving location to Supabase:', error);
+            } else {
+              console.log('Location saved to Supabase successfully:', data);
+            }
+          } catch (error) {
+            console.error('Exception when saving to Supabase:', error);
           }
         }
         
@@ -130,22 +158,41 @@ export const useGeoStore = defineStore('geolocation', {
           for (const item of data) {
             console.log('Processing item:', item);
             
-            // Add hardcoded coordinates for testing if no valid ones found
-            // You can remove this in production
-            locations.push({
-              id: item.id || 'temp-id',
-              lat: 8.9475, // Hardcoded for testing
-              lng: 125.5406, // Hardcoded for testing
-              note: item.note || '',
-              title: item.title || '',
-              isPinned: true,
-              address: item.address || ''
-            });
+            // Extract lat/lng from the geom column or use direct columns if available
+            let lat, lng;
             
-            console.log('Added hardcoded location for testing');
+            if (item.geom) {
+              // If using PostGIS POINT format, parse it
+              const match = item.geom.match(/POINT\(([^ ]+) ([^)]+)\)/);
+              if (match) {
+                lng = parseFloat(match[1]);
+                lat = parseFloat(match[2]);
+              }
+            }
+            
+            // Use direct lat/lng columns if available or if geom parsing failed
+            if (!lat && item.lat) lat = parseFloat(item.lat);
+            if (!lng && item.lng) lng = parseFloat(item.lng);
+            
+            // Only add the location if we have valid coordinates
+            if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+              locations.push({
+                id: item.id || 'temp-id',
+                lat: lat,
+                lng: lng,
+                note: item.note || '',
+                title: item.title || '',
+                isPinned: true,
+                address: item.address || ''
+              });
+              
+              console.log('Added location with coordinates:', lat, lng);
+            } else {
+              console.warn('Skipping item with invalid coordinates:', item);
+            }
           }
           
-          console.log('Added', locations.length, 'locations with hardcoded coordinates for testing');
+          console.log('Added', locations.length, 'locations with actual coordinates');
         }
         
         this.pinnedLocations = locations;

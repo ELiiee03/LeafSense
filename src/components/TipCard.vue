@@ -3,7 +3,7 @@
         <!-- Header -->
         <div class="header">
           <ion-icon :icon="bulbOutline" class="icon" />
-          <h2>Tips & Facts</h2>
+          <h4>Tips & Facts</h4>
         </div>
   
         <!-- Tip Card -->

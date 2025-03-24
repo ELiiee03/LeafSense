@@ -44,7 +44,7 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (networkStatus.connected && networkStatus.connectionType === 'wifi') {
+            if (networkStatus.connected && networkStatus.connectionType === 'cellular') {
                 // Online: Use Flask API
                 try {
 
@@ -61,7 +61,7 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.1.57:5000/predict', {
+                    const result = await axios.post('http://192.168.26.173:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
@@ -125,7 +125,8 @@ export const inferenceService = {
                             growthHabits: result.data.growthHabits,
                             // Add image data from server response if available
                             imageData: result.data.imageData || null,
-                            imageType: result.data.imageType || 'jpeg'
+                            imageType: result.data.imageType || 'jpeg',
+                            imagePath: result.data.imagePath || null,
                         },
                 
                     };
@@ -176,12 +177,12 @@ export const inferenceService = {
                         // Use the original local file path for native plugins
                         finalImagePath = savedImage.uri;
                         // isTemporaryFile = true;
-                    } else if (imagePath.startsWith('file://') || imagePath.startsWith('content://')) {
+                    } else if (imagePath.startsWith('file://') || imagePath.startsWith('content://') || imagePath.startsWith('https://localhost/_capacitor_file_/')) {
                         // Use the path as-is if it's already a file or content URI
                         finalImagePath = imagePath;
                     } else {
-                        console.error('Unsupported image path format:', imagePath);
-                        throw new Error('Unsupported image path format');
+                        // Try to convert the path using Capacitor's convertFileSrc
+                        finalImagePath = Capacitor.convertFileSrc(imagePath);
                     }
             
                     // Add debug logging
@@ -227,7 +228,11 @@ export const inferenceService = {
                             familyName: matchedLeaf.familyName,
                             description: matchedLeaf.description,
                             habitat: matchedLeaf.habitat,
-                            // color: matchedLeaf.color
+                            color: matchedLeaf.color,
+                            shape: matchedLeaf.shape,
+                            margin: matchedLeaf.margin,
+                            growthHabits: matchedLeaf.growthHabits,
+                            imagePath: matchedLeaf.imagePath
                         }
                     };
 

@@ -45,44 +45,6 @@
               {{ leafData?.leafInfo?.description || 'No description available' }}
             </ion-card-content>
           </ion-card>
-<!-- 
-          <ion-card class="card-container2">
-            <ion-card-header>
-              <ion-card-title>Characteristics</ion-card-title>
-              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle>
-            </ion-card-header>
-        
-            <ion-card-content>
-              <ion-grid>
-                <ion-row class="characteristics-card">
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                      <h2><b>Color</b></h2>
-
-                    </ion-text>
-                  </ion-col>
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                      <h2><b>Shape</b></h2>
-
-                    </ion-text>
-                  </ion-col>
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                      <h2><b>Margin</b></h2>
-
-                    </ion-text>
-                  </ion-col>
-                  <ion-col size="6" size-md="4" size-lg="2">
-                    <ion-text>
-                    <h2><b>Size</b></h2>
-
-                  </ion-text></ion-col>
-
-                </ion-row>
-              </ion-grid>
-            </ion-card-content>
-          </ion-card> -->
 
           <CharacteristicsCard />
 
@@ -110,13 +72,14 @@
             </ion-card-content>
           </ion-card> -->
 
+
              <!-- save button -->
             <div class="button-container">
                 <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
                 <ion-button class="pin"  @click="handlePinClick">
                 <ion-icon size="medium" :icon="locationSharp"></ion-icon>
                     </ion-button>
-                  
+      
                   <LocationModal 
                     :is-open="showModal" 
                     @did-dismiss="showModal = false"
@@ -137,7 +100,6 @@ import { Network } from '@capacitor/network';
 import { supabase } from '@/supabaseClient';
 import { ref, defineProps, onMounted, computed, watch } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
-import { dbService } from '@/services/dbService';
 import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
 import CharacteristicsCard from '@/components/CharacteristicsCard.vue';
@@ -148,6 +110,7 @@ const showModal = ref(false);
 const locationNote = ref(''); 
 const geoStore = useGeoStore();
 const leafImage = ref<string | null>(null); // New ref for the leaf image
+const isOnline = ref(true);
 
 // onMounted(async () => {
 //   await geoStore.setCurrentLocation(); // Changed from updateLocation
@@ -165,13 +128,68 @@ const inferenceStore = useInferenceStore();
 // const leafData = ref<LeafData | null>(null);
 const leafData = computed(() => inferenceStore.result);
 
-// Set the leaf image when data changes
-watch(() => leafData.value, (newData) => {
-    if (newData?.leafInfo?.imageData && newData?.leafInfo?.imageType) {
-        leafImage.value = `data:image/${newData.leafInfo.imageType};base64,${newData.leafInfo.imageData}`;
-    } else {
-        leafImage.value = null;
+// Check network status on mount
+onMounted(async () => {
+  // Check network status
+  const status = await Network.getStatus();
+  isOnline.value = status.connected;
+  
+  // Listen for network changes
+  Network.addListener('networkStatusChange', async (status) => {
+    isOnline.value = status.connected;
+    updateLeafImage();
+    
+    // Existing sync code
+    if (status.connected) {
+      try {
+        // Sync any offline data when coming back online
+        await sqliteService.syncWithSupabase();
+      } catch (error) {
+        console.error('Error syncing with Supabase:', error);
+      }
     }
+  });
+
+  // Initial image update
+  updateLeafImage();
+});
+
+// Update leaf image based on network status
+function updateLeafImage() {
+  console.log('Updating leaf image with data:', leafData.value?.leafInfo);
+  if (isOnline.value && leafData.value?.leafInfo?.imageData && leafData.value?.leafInfo?.imageType) {
+    // Online mode with base64 image data
+    leafImage.value = `data:image/${leafData.value.leafInfo.imageType};base64,${leafData.value.leafInfo.imageData}`;
+    console.log('Using online image from server (base64)');
+  } else if (leafData.value?.leafInfo?.imagePath) {
+    // Using image path (works in both online and offline mode)
+    const imagePath = leafData.value.leafInfo.imagePath;
+    
+    // Handle asset paths properly by checking path type
+    if (imagePath.startsWith('assets/')) {
+      // For images in the assets folder
+      leafImage.value = `/${imagePath}`;
+    } else if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      // For full URLs
+      leafImage.value = imagePath;
+    } else if (imagePath.startsWith('data:')) {
+      // For data URLs
+      leafImage.value = imagePath;
+    } else {
+      // For images in the public folder
+      leafImage.value = `/${imagePath}`;
+    }
+    
+    console.log('Using image from path:', leafImage.value);
+  } else {
+    leafImage.value = null;
+    console.log('No image available');
+  }
+}
+
+// Update leaf image when data changes
+watch(() => leafData.value, () => {
+  updateLeafImage();
 }, { immediate: true });
 
 interface LeafData {
@@ -191,6 +209,7 @@ interface LeafData {
         growthHabits: string;
         imageData?: string;
         imageType?: string;
+        imagePath?: string;
     };
 }
 
@@ -349,22 +368,24 @@ async function saveLeafInfo() {
             }
         } else {
             // Offline: Save to SQLite for later sync
-            await dbService.saveLeaf({
+            await sqliteService.saveOfflineResult({
                 imagePath: leafData.value.leafInfo?.imageData 
                     ? `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`
                     : imageSrc.value,
-                leafInfo: JSON.stringify({
-                    result: leafData.value?.inference?.predictedClass ?? '',
-                    scientificName: leafData.value?.leafInfo?.scientificName ?? '',
-                    familyName: leafData.value?.leafInfo?.familyName ?? '',
-                    description: leafData.value?.leafInfo?.description ?? '',
-                    habitat: leafData.value?.leafInfo?.habitat ?? '',
-                }),
-                // timestamp: timestamp,
-                synced: false
+                predictedClass: leafData.value.inference.predictedClass || '',
+                scientificName: leafData.value.leafInfo.scientificName || '',
+                familyName: leafData.value.leafInfo.familyName || '',
+                description: leafData.value.leafInfo.description || '',
+                habitat: leafData.value.leafInfo.habitat || '',
+                color: leafData.value.leafInfo.color || '',
+                shape: leafData.value.leafInfo.shape || '',
+                margin: leafData.value.leafInfo.margin || '',
+                growthHabits: leafData.value.leafInfo.growthHabits || '',
+                confidence: leafData.value.inference.confidence || 0
             });
             await showToast('Leaf information saved offline');
             console.log('Leaf info saved to SQLite (offline mode)');
+            router.back();
         }
     } catch (error) {
         console.error('Error saving leaf info:', error);
@@ -372,24 +393,19 @@ async function saveLeafInfo() {
     }
 }
 
-onMounted(() => {
-  // Add network listener
-  Network.addListener('networkStatusChange', async (status) => {
-    if (status.connected) {
-      try {
-        // Sync any offline data when coming back online
-        await sqliteService.syncWithSupabase();
-      } catch (error) {
-        console.error('Error syncing with Supabase:', error);
-      }
-    }
-  });
-});
-
-
 </script>
 
 <style scoped>
+
+/* Remove the custom-grid1 class that was creating the overlay */
+/* .custom-grid1 {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  margin-top: 70px;
+  top: 30px;
+  left: 0;
+} */
 
 .characteristics-card {
   background-color: #135d54;
