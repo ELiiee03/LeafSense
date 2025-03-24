@@ -5,7 +5,7 @@
         <ion-icon :icon="timeOutline" class="icon" />
         Recent Identifications
       </h4>
-      <router-link to="/history" class="view-all">View All →</router-link>
+      <router-link to="/logs" class="view-all">View All →</router-link>
     </div>
 
     <div v-if="isLoading" class="loading-container">

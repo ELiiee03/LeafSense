@@ -85,6 +85,11 @@ export const sqliteService = {
         family_name TEXT NOT NULL,
         description TEXT NOT NULL,
         habitat TEXT NOT NULL,
+        color TEXT,
+        shape TEXT,
+        margin TEXT,
+        growth_habits TEXT,
+        confidence REAL,
         timestamp INTEGER NOT NULL,
         synced BOOLEAN DEFAULT 0
       );
@@ -98,12 +103,18 @@ export const sqliteService = {
     familyName: string;
     description: string;
     habitat: string;
+    color?: string;
+    shape?: string;
+    margin?: string;
+    growthHabits?: string;
+    confidence?: number;
   }) {
     return this.executeQuery(
       `INSERT INTO unsynced_inferences (
         image_path, predicted_class, scientific_name,
-        family_name, description, habitat, timestamp
-      ) VALUES (?,?,?,?,?,?,?)`,
+        family_name, description, habitat, 
+        color, shape, margin, growth_habits, confidence, timestamp
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [
         data.imagePath,
         data.predictedClass,
@@ -111,6 +122,11 @@ export const sqliteService = {
         data.familyName,
         data.description,
         data.habitat,
+        data.color || null,
+        data.shape || null,
+        data.margin || null,
+        data.growthHabits || null,
+        data.confidence || null,
         Date.now()
       ]
     );
@@ -147,20 +163,25 @@ export const sqliteService = {
   async syncWithSupabase() {
     try {
       const unsyncedResults = await this.getUnsyncedResults();
+      console.log(`Found ${unsyncedResults.length} unsynced results to sync`);
+      
       for (const result of unsyncedResults) {
+        console.log(`Syncing result ID: ${result.id}`);
         const { error } = await supabase
           .from('inference_results')
           .insert({
-            image_path: result.image_path,
-            result: JSON.stringify({
-              predictedClass: result.predicted_class,
-              scientificName: result.scientific_name,
-              familyName: result.family_name,
-              description: result.description,
-              habitat: result.habitat,
-            }),
-            timestamp: result.timestamp,
-            synced: 1
+            image: result.image_path,
+            scientific_name: result.scientific_name,
+            family_name: result.family_name,
+            description: result.description,
+            habitat: result.habitat,
+            result: result.predicted_class,
+            color: result.color,
+            shape: result.shape,
+            margin: result.margin,
+            growth_habits: result.growth_habits,
+            confidence: result.confidence,
+            timestamp: result.timestamp
           });
 
         if (!error) {
@@ -170,8 +191,10 @@ export const sqliteService = {
           console.error('Error syncing result:', error);
         }
       }
+      console.log('Sync with Supabase completed');
     } catch (error) {
       console.error('Error syncing with Supabase:', error);
+      throw error;
     }
   }
 };

@@ -71,6 +71,7 @@
     margin: 0;
     cursor: pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 10px;
   }
   
   .leaf-card:hover {
@@ -94,7 +95,7 @@
     position: absolute;
     bottom: 8px;
     right: 8px;
-    background: rgba(0, 0, 0, 0.7);
+    background: #416d3f;
     color: white;
     padding: 4px 8px;
     border-radius: 12px;

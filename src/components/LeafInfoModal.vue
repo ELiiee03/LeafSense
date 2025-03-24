@@ -118,13 +118,21 @@
               </div>
             </ion-card-content>
           </ion-card>
+
+          <ion-grid>
+            <ion-row>
+              <ion-col></ion-col>
+              <ion-col></ion-col>
+              <ion-col></ion-col>
+            </ion-row>
+          </ion-grid>
       </ion-content>
     </ion-modal>
   <!-- </ion-content> -->
 </template>
 
 <script lang="ts" setup>
-  import { IonButtons, IonButton, IonModal, IonFab, IonHeader, IonToolbar, IonContent, IonTitle, IonCol, IonGrid, IonRow, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonCardSubtitle } from '@ionic/vue';
+  import { IonButton, IonModal, IonFab, IonHeader, IonToolbar, IonContent, IonTitle, IonCol, IonGrid, IonRow, IonCard, IonCardContent, IonCardHeader, IonCardTitle, IonCardSubtitle } from '@ionic/vue';
   import { watch, ref, computed } from 'vue';
   import { defineProps } from 'vue';
   import axios from 'axios';
@@ -294,7 +302,7 @@ ion-content {
     text-align: left; 
   color: #fff;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
-  border: 2px solid red;
+  border: none;
 }
 
 .custom-grid {
@@ -304,7 +312,7 @@ ion-content {
   top: 110px; /* Adjust the top position as needed */
   bottom: 0; /* Position at bottom */
   z-index: 2; /* Position above the image */
-  border: 2px solid red;
+  border: none;
 }
 
 ion-fab-button {
@@ -312,7 +320,7 @@ ion-fab-button {
     --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
   .card-container1 {
-    margin-top: 80%;
+    margin-top: 85%;
     background: white;
     border-radius: 15px;
   }
@@ -334,7 +342,6 @@ ion-fab-button {
   margin-left: 5px;
   z-index: 3; 
   width: 100%;
-  border: 2px solid red;
 }
 .leaf-image {
   width: 100%; /* Full width of container */
@@ -387,7 +394,6 @@ ion-fab-button {
   /*border-top-right-radius: 95px;*/
    border-bottom-right-radius: 30px;
    border-bottom-left-radius: 30px;
-    border: 2px solid red;
   --background-color: white;
   }
 </style>

@@ -6,7 +6,11 @@
     "familyName": "Moraceae",
     "description": "Maple leaves are palmate, lobed leaves commonly found in temperate regions. They are known for their vibrant red, orange, and yellow fall colors.",
     "habitat": "Temperate regions, mainly in North America, Europe, and Asia.",
-    "imagePath": "images/jackfruit.jpg"
+    "color": "Green to red in autumn",
+    "shape": "Palmate, lobed",
+    "margin": "Serrated",
+    "growthHabits": "tree",
+    "imagePath": "public/jackfruit.jpg"
   },
   {
     "id": 1,
@@ -15,7 +19,11 @@
     "familyName": "Moraceae",
     "description": "Oak leaves are lobed and can vary in shape, with some species having deeply lobed leaves, while others are more rounded. They are typically thick and leathery.",
     "habitat": "Widespread in the Northern Hemisphere, including Europe, North America, and Asia.",
-    "imagePath": "images/paper_mulberry.jpg"
+    "color": "Green to red in autumn",
+    "shape": "Palmate, lobed",
+    "margin": "Serrated",
+    "growthHabits": "tree",
+    "imagePath": "public/paper mulberry.jpg"
   },
   {
     "id": 2,
@@ -24,7 +32,11 @@
     "familyName": "Euphorbiaceae",
     "description": "Pine needles are long, thin, and evergreen. They grow in clusters and can be found in various lengths depending on the species.",
     "habitat": "Widely distributed in temperate and subtropical regions of the Northern Hemisphere.",
-    "imagePath": "images/cassava.jpg"
+    "color": "Green",
+    "shape": "Needle-like",
+    "margin": "Smooth",
+    "growthHabits": "shrub",
+    "imagePath": "public/cassava.jpg"
   },
   {
     "id": 3,
@@ -33,6 +45,10 @@
     "familyName": "Fabaceae",
     "description": "Birch leaves are simple, alternate, and ovate with serrated edges. They are typically bright green, turning yellow in autumn.",
     "habitat": "Common in cooler regions of the Northern Hemisphere, such as North America, Europe, and Asia.",
-    "imagePath": "images/raintree.jpg"
+    "color": "Green to yellow in autumn",
+    "shape": "Ovate",
+    "margin": "Serrated",
+    "growthHabits": "tree",
+    "imagePath": "public/saman samanea.jpg"
   }
 ]

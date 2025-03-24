@@ -36,8 +36,15 @@ function addPinMarkers() {
   
   console.log('Adding markers for pins:', geoStore.pinnedLocations);
   
-  geoStore.pinnedLocations.forEach(pin => {
-    if (pin && pin.lat && pin.lng) {
+  if (!geoStore.pinnedLocations || geoStore.pinnedLocations.length === 0) {
+    console.warn('No pinned locations available to add markers for');
+    return;
+  }
+  
+  geoStore.pinnedLocations.forEach((pin, index) => {
+    if (pin && pin.lat && pin.lng && !isNaN(pin.lat) && !isNaN(pin.lng)) {
+      console.log(`Creating marker ${index + 1} at position:`, pin.lat, pin.lng);
+      
       const marker = new google.maps.Marker({
         position: { lat: pin.lat, lng: pin.lng },
         map,
@@ -49,18 +56,24 @@ function addPinMarkers() {
       
       // Add click listener to marker to show InfoWindow
       marker.addListener('click', () => {
-        infoWindow.setContent(`
+        const content = `
           <div class="info-window">
             <h3>${pin.title || 'Pinned Leaf'}</h3>
             ${pin.note ? `<p><strong>Note:</strong> ${pin.note}</p>` : ''}
             <p><strong>Address:</strong> ${pin.address || 'Not available'}</p>
             <p><strong>Coordinates:</strong> ${pin.lat.toFixed(6)}, ${pin.lng.toFixed(6)}</p>
           </div>
-        `);
+        `;
+        console.log(`Opening info window for marker ${index + 1} with content:`, content);
+        infoWindow.setContent(content);
         infoWindow.open(map, marker);
       });
+    } else {
+      console.warn(`Invalid pin data for index ${index}:`, pin);
     }
   });
+  
+  console.log(`Added ${markers.length} markers to the map`);
 }
 
 onMounted(async () => {
@@ -156,6 +169,18 @@ onMounted(async () => {
           icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
         });
         
+        // Add click listener to current location marker
+        currentLocationMarker.addListener('click', () => {
+          infoWindow.setContent(`
+            <div class="info-window">
+              <h3>Current Location</h3>
+              ${geoStore.currentLocation?.address ? `<p><strong>Address:</strong> ${geoStore.currentLocation.address}</p>` : ''}
+              <p><strong>Coordinates:</strong> ${geoStore.currentLocation?.lat.toFixed(6)}, ${geoStore.currentLocation?.lng.toFixed(6)}</p>
+            </div>
+          `);
+          infoWindow.open(map, currentLocationMarker);
+        });
+        
         markers.push(currentLocationMarker);
         console.log('Added current location marker');
       }
@@ -176,9 +201,51 @@ onMounted(async () => {
 });
 
 // Watch for changes to pinnedLocations and update markers
-watch(() => geoStore.pinnedLocations, () => {
+watch(() => geoStore.pinnedLocations, (newPins, oldPins) => {
+  console.log('pinnedLocations changed:', newPins);
+  
   if (map) {
     addPinMarkers();
+    
+    // If we have pins, update the map's bounds to include all pins
+    if (newPins && newPins.length > 0) {
+      const bounds = new google.maps.LatLngBounds();
+      let hasValidPins = false;
+      
+      // Add each pin to bounds
+      newPins.forEach(pin => {
+        if (pin && pin.lat && pin.lng && !isNaN(pin.lat) && !isNaN(pin.lng)) {
+          bounds.extend({ lat: pin.lat, lng: pin.lng });
+          hasValidPins = true;
+        }
+      });
+      
+      // Add current location to bounds if available
+      if (geoStore.currentLocation && 
+          geoStore.currentLocation.lat && 
+          geoStore.currentLocation.lng) {
+        bounds.extend({ 
+          lat: geoStore.currentLocation.lat, 
+          lng: geoStore.currentLocation.lng 
+        });
+        hasValidPins = true;
+      }
+      
+      // Fit the map to the bounds if we have valid pins
+      if (hasValidPins) {
+        map.fitBounds(bounds);
+        
+        // Zoom out slightly to give context
+        setTimeout(() => {
+          const currentZoom = map.getZoom();
+          if (currentZoom !== undefined && currentZoom > 15) {
+            map.setZoom(15);
+          }
+        }, 100);
+      }
+    }
+  } else {
+    console.warn('Map not initialized when pins changed');
   }
 }, { deep: true });
 </script>
@@ -188,6 +255,7 @@ html, body, #app {
   height: 100%;
   margin: 0;
   padding: 0;
+  --background: transparent;
 }
 
 .map-container {

@@ -49,8 +49,11 @@
 
   .characteristics-container {
     --background: #f8faf5;
-    padding: 10px;
-    margin: 5px;
+    margin: 0;
+    border: none;
+    padding-left: 0px;
+    padding-right: 0;
+    padding-bottom: 0;
   }
   
   .header {
@@ -58,7 +61,12 @@
     align-items: center;
     gap: 8px;
     margin-bottom: 0;
+    margin-top: 0;
     color: black;
+    margin-left: 18px;
+    padding-bottom: 2px;
+    padding-top: 2px;
+    border: none;
   }
   
   .icon {
@@ -75,6 +83,9 @@
   .characteristics-grid {
     display: flex;
     justify-content: center;
+    margin-left: 2px;
+    margin-right: 2px;
+    border: none;
   }
   
   .characteristic-card {
@@ -85,6 +96,7 @@
     width: 100%;
     text-align: left;
     background: #E6F4E6;
+    border: none;
   }
   
   .char-content h3 {

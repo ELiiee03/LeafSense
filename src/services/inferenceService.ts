@@ -61,7 +61,7 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.1.57:5000/predict', {
+                    const result = await axios.post('http://192.168.26.173:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
@@ -125,7 +125,8 @@ export const inferenceService = {
                             growthHabits: result.data.growthHabits,
                             // Add image data from server response if available
                             imageData: result.data.imageData || null,
-                            imageType: result.data.imageType || 'jpeg'
+                            imageType: result.data.imageType || 'jpeg',
+                            imagePath: result.data.imagePath || null,
                         },
                 
                     };
@@ -227,7 +228,11 @@ export const inferenceService = {
                             familyName: matchedLeaf.familyName,
                             description: matchedLeaf.description,
                             habitat: matchedLeaf.habitat,
-                            // color: matchedLeaf.color
+                            color: matchedLeaf.color,
+                            shape: matchedLeaf.shape,
+                            margin: matchedLeaf.margin,
+                            growthHabits: matchedLeaf.growthHabits,
+                            imagePath: matchedLeaf.imagePath
                         }
                     };
 

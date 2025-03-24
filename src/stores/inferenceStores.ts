@@ -18,6 +18,7 @@ interface InferenceResult {
     growthHabits: string;
     imageData?: string;
     imageType?: string;
+    imagePath?: string;
   };
 }
 
