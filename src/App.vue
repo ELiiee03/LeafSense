@@ -130,58 +130,117 @@ export default defineComponent({
         let accessToken = null;
         let refreshToken = null;
         
-        // Check for hash or query parameters
-        const url = new URL(appData.url);
-        
-        if (url.hash && url.hash.includes('access_token')) {
-          const hashParams = new URLSearchParams(url.hash.substring(1));
-          accessToken = hashParams.get('access_token');
-          refreshToken = hashParams.get('refresh_token');
-          console.log('Found tokens in hash fragment');
-        } else if (url.searchParams.has('access_token')) {
-          accessToken = url.searchParams.get('access_token');
-          refreshToken = url.searchParams.get('refresh_token');
-          console.log('Found tokens in query parameters');
-        }
-        
-        // Check if this is our OAuth callback
-        if (appData.url.includes('/auth-callback') || accessToken) {
-          console.log('Processing auth callback URL');
+        try {
+          // Check for hash or query parameters
+          const url = new URL(appData.url);
           
-          try {
-            // Try to close the browser
-            await Browser.close().catch(e => 
-              console.log('Browser may already be closed:', e)
-            );
+          if (url.hash && url.hash.includes('access_token')) {
+            const hashParams = new URLSearchParams(url.hash.substring(1));
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
+            console.log('Found tokens in hash fragment');
             
-            // Set session if we have tokens
-            if (accessToken) {
-              const { error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken || '',
-              });
+            // Dump all token info for debugging (remove sensitive data in production)
+            console.log('Access token available:', !!accessToken);
+            console.log('Refresh token available:', !!refreshToken);
+            const hashParamsArray = Array.from(hashParams.entries());
+            console.log('Hash params:', hashParamsArray.map(entry => {
+              const [key, value] = entry;
+              return key === 'access_token' || key === 'refresh_token' 
+                ? `${key}: [hidden]` 
+                : `${key}: ${value}`;
+            }));
+          } else if (url.searchParams.has('access_token')) {
+            accessToken = url.searchParams.get('access_token');
+            refreshToken = url.searchParams.get('refresh_token');
+            console.log('Found tokens in query parameters');
+          }
+          
+          // Check if this is our OAuth callback
+          if (appData.url.includes('/auth-callback') || accessToken) {
+            console.log('Processing auth callback URL');
+            
+            try {
+              // Don't close the browser immediately to ensure the user can complete authentication
+              // We'll add a small delay first
+              console.log('Waiting for auth to complete...');
+              await new Promise(resolve => setTimeout(resolve, 3000));
               
-              if (error) {
-                console.error('Error setting session:', error);
-                setTimeout(() => router.replace('/login'), 500);
-                return;
+              // Set session if we have tokens
+              if (accessToken) {
+                console.log('Setting session with access token');
+                const { error } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken || '',
+                });
+                
+                if (error) {
+                  console.error('Error setting session:', error);
+                  
+                  // Now close the browser after auth attempt
+                  if (Capacitor.isNativePlatform()) {
+                    try {
+                      console.log('Closing browser after auth error...');
+                      await Browser.close();
+                    } catch (e) {
+                      console.log('Browser may already be closed:', e);
+                    }
+                  }
+                  
+                  setTimeout(() => router.replace('/login'), 500);
+                  return;
+                }
               }
+              
+              // Check authentication status
+              console.log('Checking authentication status...');
+              const { data: authData, error } = await supabase.auth.getSession();
+              console.log('Auth check result:', !!authData?.session, error ? error.message : 'No error');
+              
+              // Now try to close the browser after auth check
+              if (Capacitor.isNativePlatform()) {
+                try {
+                  console.log('Closing browser after auth check...');
+                  await Browser.close();
+                } catch (e) {
+                  console.log('Browser may already be closed:', e);
+                }
+              }
+              
+              if (authData?.session) {
+                console.log('Successfully authenticated, redirecting to home');
+                // Store user info
+                localStorage.setItem('userInfo', JSON.stringify({
+                  id: authData.session.user.id,
+                  email: authData.session.user.email,
+                  lastLogin: new Date().toISOString()
+                }));
+                setTimeout(() => router.replace('/home'), 500);
+              } else {
+                console.log('No session found, redirecting to login');
+                setTimeout(() => router.replace('/login'), 500);
+              }
+            } catch (e) {
+              console.error('Error handling auth callback:', e);
+              // Try to close browser before redirecting
+              try {
+                await Browser.close();
+              } catch (browserError) {
+                console.log('Browser may already be closed');
+              }
+              router.replace('/login');
             }
-            
-            // Check authentication status
-            const { data: authData, error } = await supabase.auth.getSession();
-            console.log('Auth check result:', authData, error);
-            
-            if (authData?.session) {
-              console.log('Successfully authenticated, redirecting to home');
-              setTimeout(() => router.replace('/home'), 500);
-            } else {
-              console.log('No session found, redirecting to login');
-              setTimeout(() => router.replace('/login'), 500);
+          }
+        } catch (urlError) {
+          console.error('Error parsing URL:', urlError);
+          
+          // Close browser on error
+          if (Capacitor.isNativePlatform()) {
+            try {
+              await Browser.close();
+            } catch (e) {
+              console.log('Browser may already be closed');
             }
-          } catch (e) {
-            console.error('Error handling auth callback:', e);
-            router.replace('/login');
           }
         }
       });
@@ -199,7 +258,7 @@ export default defineComponent({
 </script>
 <style>
 :root {
-  --ion-background-color: #fff;
+  --ion-background-color: #E4EFE7;
 }
 
 ion-toolbar {

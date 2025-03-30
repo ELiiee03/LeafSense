@@ -245,9 +245,8 @@ function closePage() {
 // }
 
 
-async function handlePinClick() {
+async function handlePinClick(  ) {
   try {
-    await requestPermissions();
     await geoStore.setCurrentLocation('');
     showModal.value = true;
   } catch (error) {
@@ -425,7 +424,7 @@ ion-chip {
 
 .card-container1 {
   margin-top: 80%;
-  --background: #fff;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 
@@ -437,29 +436,32 @@ ion-chip {
 
 .card-container3 {
   margin-top: 15px;
-  --background: #fff;
+  margin-bottom: 80px;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 .card-container4 {
   margin-top: 15px;
-  --background: #fff;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 
 .modalSheet {
-  --background: #fff;
+  --background: #F8F8FF;
   --border-radius: 25px;
 }
 
 .button-container {
   display: flex;
-  justify-content: space-between; /* Center the button horizontally */
-  width: 100%; /* Full width of the container */
-  position: fixed; /* Fix the position */
-  bottom: 0; /* Position at the bottom */
-  left: 0; /* Align to the left */
-  padding: 5px; /* Optional padding for aesthetics */
-
+  justify-content: space-between;
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: 10px;
+  --background: #F8F8FF;
+  backdrop-filter: blur(0px);
+  z-index: 1000;
 }
 
 .save {
@@ -587,7 +589,7 @@ ion-fab-button {
     --ion-background-color: transparent;
     width: 100%;
     height: 100vh;
-    --background: #f8faf5
+    --background: #E4EFE7;
     overflow: hidden;
   }
 

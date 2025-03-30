@@ -11,4 +11,4 @@ public class MainActivity extends BridgeActivity {
         this.registerPlugin(LeafInferencePlugin.class);
         super.onCreate(savedInstanceState);
     }
-}
+} 

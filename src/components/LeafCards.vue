@@ -70,18 +70,45 @@
     flex-direction: column;
     margin: 0;
     cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
     border-radius: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    background: #F8F8FF;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
   
   .leaf-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-8px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+  }
+  
+  .leaf-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 10px;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.1) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  .leaf-card:hover::after {
+    opacity: 1;
   }
   
   .image-container {
     position: relative;
     height: 100px;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
   }
   
   .leaf-image {
@@ -89,13 +116,18 @@
     height: 100%;
     object-fit: cover;
     border-radius: 8px 8px 0 0;
+    transition: transform 0.3s ease;
+  }
+  
+  .leaf-card:hover .leaf-image {
+    transform: scale(1.05);
   }
   
   .confidence-badge {
     position: absolute;
     bottom: 8px;
     right: 8px;
-    background: #416d3f;
+    background: #4c8c4a;
     color: white;
     padding: 4px 8px;
     border-radius: 12px;

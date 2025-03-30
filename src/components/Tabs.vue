@@ -49,7 +49,7 @@ ion-router-outlet {
   border: none;
   border-top-left-radius: 30px;
   border-top-right-radius: 30px;
-  --background: #F5F5F5;
+  background: #F5F5F5;
 }
 
 .full-height {
@@ -65,13 +65,14 @@ ion-router-outlet {
   height: 50px; /* Adjust the height as needed */
   padding: 0;
   margin: 0;
-    --background: #F5F5F5;
+    --background: #99BC85;
     border-top-left-radius: 30px;
     border-top-right-radius: 30px;
     border: none;
 }
 ion-tabs {
   --background: #F5F5F5;
+
 }
 
 ion-tab-button {

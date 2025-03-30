@@ -21,10 +21,10 @@
       <p class="empty-subtitle">Identify your first leaf to see it here</p>
       
       <!-- Test card to verify LeafCard component works -->
-      <div class="test-card-section">
+      <!-- <div class="test-card-section">
         <p>Test card below:</p>
         <LeafCard :leaf="testLeaf" class="card-item" />
-      </div>
+      </div> -->
     </div>
 
     <div v-else class="scroll-wrapper">
@@ -43,7 +43,7 @@
     <LeafInfoModal 
       :isOpen="isModalOpen" 
       :onClose="() => setModalOpen(false)" 
-      :leaf="selectedLeaf" 
+      :leaf="selectedLeafData" 
     />
   </div>
 </template>
@@ -245,10 +245,37 @@ const setModalOpen = (open: boolean) => {
   isModalOpen.value = open
 }
 
-// Add function to open leaf info
-const openLeafInfo = (leaf: any) => {
-  selectedLeaf.value = leaf
-  setModalOpen(true)
+// Add this query function
+const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
+  queryKey: ['leafData', selectedLeaf],
+  queryFn: async () => {
+    if (!selectedLeaf.value?.id) return null;
+    
+    const isOnline = (await Network.getStatus()).connected;
+    if (isOnline) {
+      const { data, error } = await supabase
+        .from('inference_results')
+        .select('*')
+        .eq('id', selectedLeaf.value.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } else {
+      // Offline mode: fetch from SQLite
+      const offlineResults = await sqliteService.getUnsyncedResults();
+      return offlineResults.find(result => result.id === selectedLeaf.value.id);
+    }
+  },
+  enabled: false, // Don't run automatically
+  staleTime: 1000 * 60 * 5, // 5 minutes
+});
+
+// Modify the openLeafInfo function
+const openLeafInfo = async (leaf: any) => {
+  selectedLeaf.value = leaf;
+  setModalOpen(true);
+  await fetchLeafData();
 }
 </script>
 

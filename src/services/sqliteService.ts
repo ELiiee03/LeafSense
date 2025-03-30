@@ -152,6 +152,13 @@ export const sqliteService = {
     );
   },
 
+  async deleteUnsyncedRecord(id: number) {
+    return this.executeQuery(
+      `DELETE FROM unsynced_inferences WHERE id = ?`,
+      [id]
+    );
+  },
+
   // Existing methods
   async saveLeaf(data: {
     imagePath: string;

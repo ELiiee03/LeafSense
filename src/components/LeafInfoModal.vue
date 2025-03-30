@@ -234,7 +234,7 @@ watch(
 
 ion-content {
   --ion-background-color: transparent;
-  --background: #f8faf5
+  --background: #E4EFE7;
 }
 
 .button-container {
@@ -265,7 +265,7 @@ ion-content {
 /* Characteristics styles */
 .card-container2 {
   margin-top: 15px;
-  --background: #fff;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 
@@ -321,13 +321,13 @@ ion-fab-button {
   }
   .card-container1 {
     margin-top: 85%;
-    background: white;
+    background: #F8F8FF;
     border-radius: 15px;
   }
 
   .card-container3 {
     margin-top: 15px;
-    --background: #fff;
+    --background: #F8F8FF;
     border-radius: 15px;
   }
 

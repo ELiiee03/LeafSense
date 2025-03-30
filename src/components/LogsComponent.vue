@@ -214,6 +214,9 @@ export default defineComponent({
                 try {
                   await deleteMutation.mutateAsync(log);
                   
+                  // Update the local logs array to remove the deleted item
+                  logs.value = logs.value.filter(item => item.id !== log.id);
+                  
                   const toast = await toastController.create({
                     message: 'Item deleted successfully',
                     duration: 2000,
@@ -223,9 +226,22 @@ export default defineComponent({
                   await toast.present();
                 } catch (err) {
                   console.error('Error deleting log:', err);
+                  
+                  // Check for specific error types
+                  let errorMessage = 'Failed to delete';
+                  
+                  if (err instanceof Error) {
+                    errorMessage = err.message;
+                    
+                    // Handle special cases
+                    if (errorMessage.includes('409') || errorMessage.includes('constraint')) {
+                      errorMessage = 'Cannot delete this item because it is referenced by other data';
+                    }
+                  }
+                  
                   const toast = await toastController.create({
-                    message: err instanceof Error ? err.message : 'Failed to delete',
-                    duration: 2000,
+                    message: errorMessage,
+                    duration: 3000,
                     color: 'danger',
                     position: 'top'
                   });
@@ -366,7 +382,7 @@ img {
 }
 
 ion-item {
-  --background: #F7F7F7;
+  --background: #F8F8FF;
 }
 
 /* Empty state styles */
@@ -393,6 +409,10 @@ ion-item {
 
 ion-text-wrap {
   margin-top: 20px;
+}
+
+ion-card {
+  border-radius: 15px;
 }
 
 ion-note {

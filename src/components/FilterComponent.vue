@@ -111,7 +111,7 @@ watch(() => props.allLogs, () => {
 /* Container */
 .filter-container {
   padding: 12px;
-  background: #f8faf5;
+  background: #E4EFE7;
   border-radius: 12px;
 }
 
@@ -142,7 +142,7 @@ watch(() => props.allLogs, () => {
   display: flex;
   gap: 8px;
   flex-wrap: nowrap;
-  background: white;
+  background: #E4EFE7;
   border-radius: 12px;
   padding: 6px;
   min-width: max-content;
@@ -157,7 +157,7 @@ ion-segment-button {
   min-width: 90px;
   padding: 8px 12px;
   border-radius: 12px;
-  background: #f8faf5;
+  background: #F8F8FF;
   color: #416d3f;
   transition: all 0.3s ease;
   height: 5px;

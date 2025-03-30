@@ -48,7 +48,7 @@
   }
 
   .characteristics-container {
-    --background: #f8faf5;
+    background: #F8F8FF;
     margin: 0;
     border: none;
     padding-left: 0px;

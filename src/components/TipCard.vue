@@ -3,7 +3,7 @@
         <!-- Header -->
         <div class="header">
           <ion-icon :icon="bulbOutline" class="icon" />
-          <h4>Tips & Facts</h4>
+          <h4><b>Tips & Facts</b></h4>
         </div>
   
         <!-- Tip Card -->
@@ -67,7 +67,7 @@
   }
   
   .tip-card {
-    background: white;
+    background: #F8F8FF ;
     padding: 16px;
     border-radius: 12px;
     text-align: left;
