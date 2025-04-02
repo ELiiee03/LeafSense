@@ -3,6 +3,8 @@
   <FilterComponent :allLogs="allLogs" @filter-changed="handleFilterChange" />
   
   <ion-list>
+    <NetworkAwareComponent @online="handleNetworkOnline" @offline="handleNetworkOffline" @refresh="refreshLogs">
+      <template #online>
     <ion-card v-for="log in logs" :key="log.id">
       <ion-item-sliding>
         <ion-item button @click="openLeafInfo(log)" :detail="false">
@@ -52,6 +54,56 @@
     <div v-if="loading" class="loading-state">
       <ion-spinner></ion-spinner>
     </div>
+      </template>
+      
+      <template #offline>
+        <div class="offline-logs-container">
+          <div class="offline-header">
+            <ion-icon :icon="cloudOfflineOutline" size="large"></ion-icon>
+            <h3>Offline Mode</h3>
+            <p>Showing locally stored data</p>
+          </div>
+          
+          <ion-card v-for="log in offlineLogs" :key="log.id">
+            <ion-item-sliding>
+              <ion-item button @click="openLeafInfo(log)" :detail="false">
+                <ion-thumbnail>
+                  <img 
+                    :alt="log.result || 'Leaf image'" 
+                    :src="log.image || 'https://ionicframework.com/docs/img/demos/thumbnail.svg'" 
+                    @error="handleImageError"
+                  />
+                </ion-thumbnail>
+                <ion-label>
+                  <strong>{{ log.result }}</strong>
+                  <br />
+                  <i><ion-text>{{ log.scientific_name }}</ion-text></i>
+                  <div class="timestamp-wrapper">
+                    <ion-icon :icon="timeOutline" size="small"></ion-icon>
+                    <ion-note color="medium" class="ion-text-wrap">
+                      {{ formatTimestamp(log.created_at) }}
+                    </ion-note>
+                  </div>
+                </ion-label>
+                <div class="metadata-end-wrapper" slot="end">
+                  <ion-chip color="warning" class="sync-status-chip">
+                    <ion-icon :icon="cloudOfflineOutline"></ion-icon>
+                    Pending
+                  </ion-chip>
+                  <ion-icon color="medium" :icon="chevronForward"></ion-icon>
+                </div>
+              </ion-item>
+            </ion-item-sliding>
+          </ion-card>
+          
+          <!-- Empty offline state -->
+          <div class="empty-state" v-if="offlineLogs.length === 0 && !loading">
+            <ion-icon :icon="leafOutline" size="large"></ion-icon>
+            <p>No offline data available</p>
+          </div>
+        </div>
+      </template>
+    </NetworkAwareComponent>
 
     <!-- Use LeafInfoModal as a reusable component -->
     <LeafInfoModal :isOpen="isOpen" :onClose="() => setOpen(false)" :leaf="selectedLeaf" />
@@ -64,10 +116,11 @@ import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDon
 import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController } from '@ionic/vue';
 import { supabase } from '@/supabaseClient';
 import { sqliteService } from '@/services/sqliteService';
-import { Network } from '@capacitor/network';
+import { networkState, initNetworkService } from '@/services/networkService';
 import LeafInfoModal from './LeafInfoModal.vue';
 import FilterComponent from './FilterComponent.vue';
 import { useLogsQuery, useDeleteLogMutation, useSyncMutation } from '@/services/queryService';
+import NetworkAwareComponent from './NetworkAwareComponent.vue';
 
 export default defineComponent({
   components: {
@@ -85,6 +138,7 @@ export default defineComponent({
     IonSpinner,
     IonChip,
     IonThumbnail,
+    NetworkAwareComponent,
   },
   
   setup(props, { emit }) {
@@ -105,7 +159,71 @@ export default defineComponent({
     const isOpen = ref(false);
     const selectedLeaf = ref<Log | null>(null);
     const error = ref<string | null>(null);
-    const isOnline = ref(true);
+    const isOnline = computed(() => networkState.isOnline.value);
+    const offlineLogs = ref<Log[]>([]);
+    
+    // Network handling methods
+    const handleNetworkOnline = async () => {
+      console.log('Network is online, reloading data from server');
+      await syncPendingData();
+      refreshLogs();
+    };
+    
+    const handleNetworkOffline = () => {
+      console.log('Network is offline, loading data from local storage');
+      loadOfflineData();
+    };
+    
+    const syncPendingData = async () => {
+      try {
+        await syncMutation.mutateAsync();
+        console.log('Pending data synced');
+      } catch (error) {
+        console.error('Error syncing data:', error);
+      }
+    };
+    
+    const loadOfflineData = async () => {
+      try {
+        // Load logs from SQLite
+        const localLogs = await sqliteService.getInferenceResults();
+        offlineLogs.value = localLogs.map(log => {
+          // Parse the result JSON if stored as string
+          let parsedResult;
+          try {
+            parsedResult = typeof log.result === 'string' ? JSON.parse(log.result) : log.result;
+          } catch (e) {
+            parsedResult = { leafInfo: { name: 'Unknown' } };
+          }
+          
+          return {
+            id: log.id,
+            result: parsedResult?.leafInfo?.name || 'Unknown',
+            scientific_name: parsedResult?.leafInfo?.scientificName || '',
+            family_name: parsedResult?.leafInfo?.familyName || '',
+            description: parsedResult?.leafInfo?.description || '',
+            created_at: log.timestamp || new Date().toISOString(),
+            habitat: parsedResult?.leafInfo?.habitat || '',
+            growthHabits: parsedResult?.leafInfo?.growthHabits || '',
+            image: log.imagePath || '',
+            synced: false,
+          };
+        });
+      } catch (error) {
+        console.error('Error loading offline data:', error);
+        offlineLogs.value = [];
+      }
+    };
+    
+    const refreshLogs = async () => {
+      // Reset pagination and reload data
+      page.value = 1;
+      await useLogsQuery(page.value).refetch();
+      
+      if (!isOnline.value) {
+        await loadOfflineData();
+      }
+    };
 
     // Use TanStack Query hooks
     const { data: logsData, isLoading, isError } = useLogsQuery(page.value);
@@ -134,41 +252,6 @@ export default defineComponent({
 
     const setOpen = (open: boolean) => {
       isOpen.value = open;
-    };
-
-    // Monitor network status
-    const checkNetworkStatus = async () => {
-      const status = await Network.getStatus();
-      isOnline.value = status.connected;
-      return status.connected;
-    };
-
-    // Set up real-time subscription
-    let subscription: any = null;
-
-    const setupRealtimeSubscription = () => {
-      if (subscription) {
-        supabase.removeChannel(subscription);
-      }
-
-      subscription = supabase
-        .channel('inference_results_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'inference_results'
-          },
-          (payload) => {
-            // Add new item to the beginning of the list
-            if (logs.value) {
-              const newLog = payload.new as Log;
-              logs.value = [newLog, ...logs.value];
-            }
-          }
-        )
-        .subscribe();
     };
 
     const openLeafInfo = (log: Log) => {
@@ -258,8 +341,40 @@ export default defineComponent({
       }
     };
 
+    // Set up real-time subscription
+    let subscription: any = null;
+
+    const setupRealtimeSubscription = () => {
+      if (!isOnline.value) return;
+      
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+
+      subscription = supabase
+        .channel('inference_results_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'inference_results'
+          },
+          (payload) => {
+            // Add new item to the beginning of the list
+            if (logs.value) {
+              const newLog = payload.new as Log;
+              logs.value = [newLog, ...logs.value];
+            }
+          }
+        )
+        .subscribe();
+    };
+
     // Add scroll handler for infinite loading
     const handleScroll = async (event: Event) => {
+      if (!isOnline.value) return; // Don't load more in offline mode
+      
       const target = event.target as HTMLElement;
       if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
         if (!isLoading.value) {
@@ -269,27 +384,14 @@ export default defineComponent({
     };
 
     onMounted(async () => {
-      // Set up network listener
-      Network.addListener('networkStatusChange', async (status) => {
-        console.log('Network status changed:', status);
-        isOnline.value = status.connected;
-        
-        if (status.connected) {
-          try {
-            await syncMutation.mutateAsync();
-            console.log('Data synced with Supabase');
-          } catch (error) {
-            console.error('Error syncing with Supabase:', error);
-          }
-          setupRealtimeSubscription();
-        }
-      });
+      // Initialize network service
+      await initNetworkService();
       
       // Check current network status and initialize
-      await checkNetworkStatus();
-      
       if (isOnline.value) {
         setupRealtimeSubscription();
+      } else {
+        await loadOfflineData();
       }
 
       // Add scroll event listener
@@ -303,9 +405,6 @@ export default defineComponent({
       if (subscription) {
         supabase.removeChannel(subscription);
       }
-      
-      // Remove network listener
-      Network.removeAllListeners();
 
       // Remove scroll event listener
       const content = document.querySelector('ion-content');
@@ -321,6 +420,7 @@ export default defineComponent({
       cloudOfflineOutline,
       cloudDoneOutline,
       logs,
+      offlineLogs,
       allLogs,
       isOpen,
       setOpen,
@@ -332,7 +432,10 @@ export default defineComponent({
       handleFilterChange,
       resetFilters,
       handleImageError,
-      deleteLog
+      deleteLog,
+      refreshLogs,
+      handleNetworkOnline,
+      handleNetworkOffline
     };
   },
   emits: ['loading-changed']
@@ -405,6 +508,48 @@ ion-item {
 .empty-state p {
   margin: 8px 0;
   font-size: 16px;
+}
+
+/* Offline mode styles */
+.offline-logs-container {
+  padding: 10px;
+}
+
+.offline-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.offline-header ion-icon {
+  font-size: 32px;
+  color: var(--ion-color-warning);
+  margin-bottom: 10px;
+}
+
+.offline-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ion-color-dark);
+}
+
+.offline-header p {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+/* Loading state */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
 }
 
 ion-text-wrap {

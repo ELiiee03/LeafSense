@@ -159,6 +159,37 @@ export const sqliteService = {
     );
   },
 
+  // Get all inference results for offline viewing
+  async getInferenceResults() {
+    try {
+      // First try to get results from the unsynced_inferences table
+      const result = await this.executeQuery(
+        `SELECT 
+          id,
+          image_path as imagePath,
+          predicted_class as result,
+          scientific_name,
+          family_name,
+          description,
+          habitat,
+          color,
+          shape,
+          margin,
+          growth_habits as growthHabits,
+          confidence,
+          timestamp,
+          synced
+        FROM unsynced_inferences
+        ORDER BY timestamp DESC`
+      );
+      
+      return result.values || [];
+    } catch (error) {
+      console.error('Error getting inference results:', error);
+      return [];
+    }
+  },
+
   // Existing methods
   async saveLeaf(data: {
     imagePath: string;

@@ -1,7 +1,7 @@
 import { sqliteService } from './sqliteService';
 // import { supabase } from '@/supabaseClient';
 import axios from 'axios';
-import { Network } from '@capacitor/network';
+import { networkState } from '@/services/networkService';
 import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
@@ -35,8 +35,11 @@ interface LeafResponse {
 export const inferenceService = {
     async performInference(imagePath: string) {
         try {
-            const networkStatus = await Network.getStatus();
-               // Temporarily force online mode for testing
+            // Use network state from our service
+            const isConnected = networkState.isOnline.value;
+            const connectionType = networkState.connectionType.value;
+            
+            // Temporarily force online mode for testing
             // const networkStatus = { connected: true }; // Force online mode
             // const networkStatus = { connected: false }; // Force offline mode
             // Remove this after testing!
@@ -44,10 +47,9 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (networkStatus.connected && networkStatus.connectionType === 'cellular') {
+            if (isConnected && connectionType === 'cellular') {
                 // Online: Use Flask API
                 try {
-
                     // Convert blob URL to base64
                     const response = await fetch(imagePath);
                     const blob = await response.blob();    
@@ -147,7 +149,6 @@ export const inferenceService = {
                         throw new Error('Online inference failed: Unknown error');
                     }
                 }
-
             } else {
                 // Offline implementation with platform check
                 // if (Capacitor.isNativePlatform()) {
@@ -294,8 +295,6 @@ export const inferenceService = {
             console.error('Error in inference:', error);
             throw error;
         }
-
-        
     },
 
     base64ToBlob(base64: string, type: string): Blob {
@@ -319,11 +318,11 @@ export const inferenceService = {
 
 };
 
-// Add this in your root component
-Network.addListener('networkStatusChange', (status) => {
-    console.log('Network status changed:', status);
-    // You might want to update a global store or state here
-});
+// No need to add a listener here as we're using our network service
+// Network.addListener('networkStatusChange', (status) => {
+//     console.log('Network status changed:', status);
+//     // You might want to update a global store or state here
+// });
 
 // function getMockOfflineResult() {
 //     throw new Error('Function not implemented.');

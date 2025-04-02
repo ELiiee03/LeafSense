@@ -3,10 +3,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { cloudDoneOutline, cloudOfflineOutline } from 'ionicons/icons';
-import { Network } from '@capacitor/network';
 import { toastController } from '@ionic/vue';
+import { networkState, onNetworkChange, initNetworkService, cleanupNetworkService } from '@/services/networkService';
 
 const isOnline = ref(true);
 let previousState = true;
@@ -46,7 +46,7 @@ const showOfflineToast = async () => {
   await offlineToast.present();
 };
 
-const updateNetworkStatus = async (status: any) => {
+const updateNetworkStatus = async (status: { connected: boolean }) => {
   // Only process when the status changes
   if (previousState !== status.connected) {
     isOnline.value = status.connected;
@@ -67,24 +67,37 @@ const updateNetworkStatus = async (status: any) => {
 };
 
 onMounted(async () => {
-  const status = await Network.getStatus();
-  isOnline.value = status.connected;
-  previousState = status.connected;
+  // Initialize the network service if it hasn't been initialized yet
+  await initNetworkService();
+  
+  // Set initial state from network service
+  isOnline.value = networkState.isOnline.value;
+  previousState = networkState.isOnline.value;
   
   // Only show initial toast if offline
-  if (!status.connected) {
+  if (!networkState.isOnline.value) {
     showOfflineToast();
   }
   
-  Network.addListener('networkStatusChange', updateNetworkStatus);
-});
-
-onUnmounted(() => {
-  // Clean up any remaining toast when component is unmounted
-  if (offlineToast) {
-    offlineToast.dismiss();
-  }
-  Network.removeAllListeners();
+  // Subscribe to network changes
+  const unsubscribe = onNetworkChange(updateNetworkStatus);
+  
+  // Also watch the reactive state
+  watch(() => networkState.isOnline.value, (newValue) => {
+    if (previousState !== newValue) {
+      updateNetworkStatus({ connected: newValue });
+    }
+  });
+  
+  onUnmounted(() => {
+    // Clean up listeners
+    unsubscribe();
+    
+    // Clean up any remaining toast when component is unmounted
+    if (offlineToast) {
+      offlineToast.dismiss();
+    }
+  });
 });
 </script>
 

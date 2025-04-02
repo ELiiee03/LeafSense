@@ -13,7 +13,7 @@ import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
 import { defineComponent, onMounted } from 'vue';
 import { syncService } from '@/services/syncService';
 import { sqliteService } from '@/services/sqliteService';
-import { Network } from '@capacitor/network';
+import { initNetworkService, networkState, onNetworkChange, cleanupNetworkService } from '@/services/networkService';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './supabaseClient';
@@ -34,6 +34,10 @@ export default defineComponent({
     onMounted(async () => {
       console.log('Setting up deep link handler in App.vue');
       
+      // Initialize network service
+      console.log('Initializing network service...');
+      await initNetworkService();
+      
       // Initialize SQLite database
       try {
         console.log('Initializing SQLite database...');
@@ -41,7 +45,7 @@ export default defineComponent({
         console.log('SQLite database initialized successfully');
 
         // Set up network listener for syncing when back online
-        Network.addListener('networkStatusChange', async (status) => {
+        const unsubscribe = onNetworkChange(async (status) => {
           console.log('Network status changed:', status);
           if (status.connected) {
             console.log('Network connected, syncing with Supabase...');
@@ -55,8 +59,7 @@ export default defineComponent({
         });
 
         // Check if we're online now and sync any pending data
-        const networkStatus = await Network.getStatus();
-        if (networkStatus.connected) {
+        if (networkState.isOnline.value) {
           console.log('Network is connected on startup, syncing...');
           await sqliteService.syncWithSupabase();
         }

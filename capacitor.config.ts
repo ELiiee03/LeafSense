@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
-    // url: 'http://192.168.1.57:8100', // Direct URL to your dev machine
+    // url: ' http://192.168.1.57:8100', // Direct URL to your dev machine
     cleartext: true,
     allowNavigation: ['*', 'localhost', '*.supabase.co']
   },
