@@ -31,12 +31,15 @@
                   </ion-row>
               </ion-grid>
 
-              </div>
-
-             
+            </div>
 
           </div>
-          <ion-card class="card-container1">
+
+          <div class="plant-details-container">
+            <PlantDetails :leaf-data="leafData" />
+          </div>
+
+          <!-- <ion-card class="card-container1">
             <ion-card-header>
               <ion-card-title>Description</ion-card-title>
               <ion-card-subtitle><b>Family Name: </b> {{ leafData?.leafInfo?.familyName || 'No family name available' }}</ion-card-subtitle>
@@ -44,21 +47,21 @@
             <ion-card-content>
               {{ leafData?.leafInfo?.description || 'No description available' }}
             </ion-card-content>
-          </ion-card>
+          </ion-card> -->
 
-          <CharacteristicsCard />
+          <!-- <CharacteristicsCard /> -->
 
 
-          <ion-card class="card-container3">
+          <!-- <ion-card class="card-container3">
             <ion-card-header>
               <ion-card-title>Habitat</ion-card-title>
-              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> -->
+              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> 
             </ion-card-header>
         
             <ion-card-content>
               {{ leafData?.leafInfo?.habitat || 'No habitat information available' }}
             </ion-card-content>
-          </ion-card>
+          </ion-card> -->
 
 
           <!-- <ion-card class="card-container3">
@@ -104,7 +107,7 @@ import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
 import CharacteristicsCard from '@/components/CharacteristicsCard.vue';
 import { requestPermissions, getCurrentPosition, geocodeLocation } from '@/services/geolocationService';
-
+import PlantDetails from '@/components/Plant details/PlantDetails.vue';
 // Add this reactive state
 const showModal = ref(false);
 const locationNote = ref(''); 
@@ -210,6 +213,25 @@ interface LeafData {
         imageData?: string;
         imageType?: string;
         imagePath?: string;
+        aliases?: string[];
+        foliage?: string;
+        bark?: string;
+        fruit?: string;
+        crown?: string;
+        trunk?: string;
+        retention?: string;
+        texture?: string;
+        edibleUses?: string;
+        medicinalUses?: string;
+        timberUses?: string;
+        otherUses?: string;
+        climate?: string;
+        lifespan?: string;
+        lightNeeds?: string;
+        waterNeeds?: string;
+        soilRequirements?: string;
+        foliarVenation?: string;
+        uniqueBehavior?: string;
     };
 }
 
@@ -423,7 +445,7 @@ ion-chip {
 }
 
 .card-container1 {
-  margin-top: 80%;
+  margin-top: 20px;
   --background: #F8F8FF;
   border-radius: 15px;
 }
@@ -600,5 +622,10 @@ ion-fab-button {
   
   ion-content {
     overflow: hidden;
+  }
+
+  .plant-details-container {
+    margin-top: 38vh;
+    padding: 0 10px;
   }
 </style>
