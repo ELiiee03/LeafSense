@@ -47,7 +47,7 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (isConnected && connectionType === 'cellular') {
+            if (isConnected && connectionType === 'wifi') {
                 // Online: Use Flask API
                 try {
                     // Convert blob URL to base64
@@ -63,7 +63,7 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.26.173:5000/predict', {
+                    const result = await axios.post('http://192.168.1.57:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
@@ -137,6 +137,7 @@ export const inferenceService = {
                             // Shape & structure properties
                             crown: typeof result.data.shape === 'object' ? result.data.shape.crown : undefined,
                             trunk: typeof result.data.shape === 'object' ? result.data.shape.trunk : undefined,
+                            leaves: typeof result.data.shape === 'object' ? result.data.shape.leaves : result.data.shape,
                             // Ethnobotanical uses
                             edibleUses: result.data.ethnobotanicalUses?.edible,
                             medicinalUses: result.data.ethnobotanicalUses?.medicinal,
@@ -257,7 +258,6 @@ export const inferenceService = {
                             habitat: matchedLeaf.habitat,
                             color: matchedLeaf.color,
                             shape: matchedLeaf.shape,
-                            margin: matchedLeaf.margin,
                             growthHabits: matchedLeaf.growthHabits,
                             imagePath: matchedLeaf.imagePath,
                             // Add new properties from data.json
@@ -268,6 +268,7 @@ export const inferenceService = {
                             // Shape & structure properties
                             crown: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.crown : undefined,
                             trunk: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.trunk : undefined,
+                            leaves: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.leaves : matchedLeaf.shape,
                             // Ethnobotanical uses
                             edibleUses: matchedLeaf.ethnobotanicalUses?.edible,
                             medicinalUses: matchedLeaf.ethnobotanicalUses?.medicinal,

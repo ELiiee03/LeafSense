@@ -27,6 +27,7 @@ interface InferenceResult {
     // Shape & structure properties
     crown?: string;
     trunk?: string;
+    leaves?: string;
     // Ethnobotanical uses
     edibleUses?: string;
     medicinalUses?: string;

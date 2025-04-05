@@ -8,7 +8,6 @@
     "habitat": "Tropical Asia",
     "color": "Green foliage, dark grey to greyish brown bark",
     "shape": "Obovate-elliptic to elliptic",
-    "margin": "Serrated",
     "growthHabits": "tree",
     "foliage": "Thin-leathery and obovate-elliptic to elliptic leaves, smooth on surface and rough on undersides",
     "bark": "Rough or scaly, dark grey to greyish brown in colour",
@@ -45,7 +44,6 @@
     "habitat": "Native to eastern Asia, including Japan, China, Korea, and Taiwan. Naturalized in many parts of the world.",
     "color": "Green to dark green foliage, grayish-brown bark, greenish flowers, orange-red fruit",
     "shape": "Palmate, lobed",
-    "margin": "Serrated",
     "growthHabits": "tree",
     "foliage": "Large, rough-textured leaves with varying shapes - heart-shaped, oval, or deeply lobed",
     "bark": "Grayish-brown, fibrous bark with excellent papermaking qualities",
@@ -91,6 +89,7 @@
     "bark": "Grayish-brown, smooth when young with large conical spines, becoming rougher with age",
     "flowers": "White to pink, appearing when the tree is leafless",
     "fruit": "Elliptical woody capsules containing seeds embedded in fluffy kapok fiber",
+    "growthHabits": "tree",
     "shape": {
       "crown": "Umbrella-shaped, broad and spreading in mature trees",
       "trunk": "Massive, buttressed at base, often with thorns or spines, especially when young",
@@ -123,7 +122,7 @@
         ]
       }
     },
-    "imagePath": "public/ceiba_pentandra.jpg"
+    "imagePath": "kapok.jpg"
   },
   {
     "id": 3,
@@ -137,6 +136,7 @@
     "bark": "Light grayish-brown trunk with distinctive ring marks where old fronds were attached",
     "flowers": "Small, cream to yellow, arranged on branching inflorescences enclosed in a woody spathe",
     "fruit": "Large drupe with fibrous husk surrounding hard, brown seed with white endosperm and coconut water",
+    "growthHabits": "tree",
     "shape": {
       "crown": "Radiating arrangement of arching fronds at the top of the trunk",
       "trunk": "Slender, unbranched, often curved or leaning, marked with rings",
@@ -168,7 +168,7 @@
         ]
       }
     },
-    "imagePath": "public/cocos_nucifera.jpg"
+    "imagePath": "coconut.jpg"
   },
   {
     "id": 4,
@@ -187,6 +187,7 @@
       "trunk": "Straight with buttresses at base in mature specimens",
       "leaves": "Elliptical to oblong, alternate arrangement, 10-15 cm long"
     },
+    "growthHabits": "tree",
     "ethnobotanicalUses": {
       "edible": "Fruit pulp consumed fresh or used in desserts, ice cream, and candies; seeds can be roasted and eaten",
       "medicinal": "Traditional use for fever reduction, anti-inflammatory properties, and as a tonic for various ailments",
@@ -207,7 +208,7 @@
         "commonNames": ["King of Fruits", "Civet Fruit", "Duren"]
       }
     },
-    "imagePath": "/images/durio_zibethinus.jpg"
+    "imagePath": "durian.jpg"
   },
   {
     "id": 5,
@@ -226,6 +227,7 @@
       "trunk": "Single, straight, unbranched trunk with prominent leaf scars",
       "leaves": "Pinnate fronds 3-5 meters long with 200-300 leaflets"
     },
+    "growthHabits": "tree",
     "ethnobotanicalUses": {
       "edible": "Mesocarp yields palm oil; kernels yield palm kernel oil; palm hearts eaten as vegetable; sap fermented into palm wine",
       "medicinal": "Traditional uses for treating various ailments; palm oil rich in vitamin A and E",
@@ -246,7 +248,7 @@
         "commonNames": ["African Oil Palm", "Macaw-fat", "Dendê Palm"]
       }
     },
-    "imagePath": "/images/elaeis_guineensis.jpg"
+    "imagePath": "oil-palm.jpg"
   },
   {
     "id": 6,
@@ -265,6 +267,7 @@
       "trunk": "Multiple stems, somewhat woody near base",
       "leaves": "Alternate arrangement, 7-16 cm long with pointed tips"
     },
+    "growthHabits": "shrub",
     "ethnobotanicalUses": {
       "edible": "Not edible; contains latex that can be irritating",
       "medicinal": "Used in Mexican traditional medicine for treating skin infections, warts, and to increase lactation",
@@ -285,7 +288,7 @@
         "commonNames": ["Christmas Star", "Christmas Flower", "Mexican Flame Leaf", "Noche Buena"]
       }
     },
-    "imagePath": "/images/euphorbia_pulcherrima.jpg"
+    "imagePath": "poinsettia.jpg"
   },
   {
     "id": 7,
@@ -296,7 +299,6 @@
     "habitat": "Native to South America, now cultivated throughout tropical and subtropical regions",
     "color": "Green to reddish-green stems with green foliage",
     "shape": "Needle-like",
-    "margin": "Smooth",
     "growthHabits": "shrub",
     "foliage": "Palmate leaves with 5-9 deep lobes, glossy green",
     "bark": "Young stems green to reddish, becoming woody and grayish-brown with age",
@@ -333,7 +335,6 @@
     "habitat": "Native to Northern tropical South America, found in terrestrial environments including primary rainforests, grasslands, and savannahs",
     "color": "Green foliage, dark brown bark, pink and white flowers, black and brown fruit",
     "shape": "Ovate",
-    "margin": "Serrated",
     "growthHabits": "tree",
     "foliage": "Bipinnately-compound with small asymmetrical leaflets, green in color",
     "bark": "Dark brown, woody, becoming more fissured with age",
@@ -386,6 +387,7 @@
       "trunk": "Short main trunk (typically 2-4 m before branching)",
       "leaves": "Oblong, 15-30 cm long with pointed tips and smooth margins"
     },
+    "growthHabits": "tree",
     "ethnobotanicalUses": {
       "edible": "Seeds processed for chocolate production; pulp consumed fresh or fermented into beverages",
       "medicinal": "Traditional uses include treating fatigue, fever, heart problems; cacao contains antioxidants and mood-enhancing compounds",
@@ -406,6 +408,6 @@
         "commonNames": ["Cocoa Tree", "Chocolate Tree", "Food of the Gods"]
       }
     },
-    "imagePath": "/images/theobroma_cacao.jpg"
+    "imagePath": "cacao.jpg"
   }
-]
+] 

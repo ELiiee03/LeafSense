@@ -94,7 +94,7 @@
                 </div>
                 <div class="feature-row">
                   <div class="feature-label">Leaves</div>
-                  <div class="feature-value">{{ leafData?.leafInfo?.shape || 'Obovate-elliptic to elliptic' }}</div>
+                  <div class="feature-value">{{ leafData?.leafInfo?.leaves || 'Obovate-elliptic to elliptic' }}</div>
                 </div>
               </div>
             </ion-card-content>
@@ -122,6 +122,10 @@
                   <div class="feature-label">Behavior</div>
                   <div class="feature-value">{{ leafData?.leafInfo?.uniqueBehavior || 'Leaves often have variable shapes on the same plant' }}</div>
                 </div>
+                <div class="feature-row">
+                  <div class="feature-label">Growth Habits</div>
+                  <div class="feature-value">{{ leafData?.leafInfo?.growthHabits || 'Leaves often have variable shapes on the same plant' }}</div>
+                </div>
               </div>
             </ion-card-content>
           </ion-card>
@@ -131,7 +135,7 @@
             <ion-card-content>
               <div class="use-section">
                 <div class="use-header">
-                  <ion-icon name="restaurant-outline" class="use-icon edible-icon"></ion-icon>
+                  <ion-icon :icon="restaurantOutline" class="use-icon edible-icon"></ion-icon>
                   <h3>Edible Uses</h3>
                 </div>
                 <p class="use-description">{{ leafData?.leafInfo?.edibleUses || 'Young fruit cooked as vegetable, ripe fruit eaten fresh or made into delicacies; seeds edible after boiling/roasting or ground into flour' }}</p>
@@ -143,7 +147,7 @@
             <ion-card-content>
               <div class="use-section">
                 <div class="use-header">
-                  <ion-icon name="medkit-outline" class="use-icon medicinal-icon"></ion-icon>
+                  <ion-icon :icon="medkitOutline" class="use-icon medicinal-icon"></ion-icon>
                   <h3>Medicinal Uses</h3>
                 </div>
                 <p class="use-description">{{ leafData?.leafInfo?.medicinalUses || 'Pulp and seeds as cooling tonic; latex treats abscesses and snakebites; root treats skin diseases and asthma; extract for fever and diarrhea, leaves for wounds' }}</p>
@@ -155,7 +159,7 @@
             <ion-card-content>
               <div class="use-section">
                 <div class="use-header">
-                  <ion-icon name="construct-outline" class="use-icon timber-icon"></ion-icon>
+                  <ion-icon :icon="constructOutline" class="use-icon timber-icon"></ion-icon>
                   <h3>Timber Uses</h3>
                 </div>
                 <p class="use-description">{{ leafData?.leafInfo?.timberUses || 'Superior hardwood resistant to termites and decay; used for furniture, construction, musical instruments; takes polish well' }}</p>
@@ -167,7 +171,7 @@
             <ion-card-content>
               <div class="use-section">
                 <div class="use-header">
-                  <ion-icon name="ellipsis-horizontal-circle-outline" class="use-icon other-icon"></ion-icon>
+                  <ion-icon :icon="ellipsisHorizontalCircleOutline" class="use-icon other-icon"></ion-icon>
                   <h3>Other Uses</h3>
                 </div>
                 <p class="use-description">{{ leafData?.leafInfo?.otherUses || 'Wood particles yield yellow dye for silk and cotton' }}</p>
@@ -180,7 +184,7 @@
             <ion-card class="ecology-card">
               <ion-card-content>
                 <div class="ecology-icon-container">
-                  <ion-icon name="thermometer-outline" class="ecology-icon"></ion-icon>
+                  <ion-icon :icon="thermometerOutline" class="ecology-icon"></ion-icon>
                 </div>
                 <h4 class="ecology-title">Climate</h4>
                 <p class="ecology-value">{{ leafData?.leafInfo?.climate || 'Tropical' }}</p>
@@ -190,7 +194,7 @@
             <ion-card class="ecology-card">
               <ion-card-content>
                 <div class="ecology-icon-container">
-                  <ion-icon name="sync-outline" class="ecology-icon"></ion-icon>
+                  <ion-icon :icon="syncOutline" class="ecology-icon"></ion-icon>
                 </div>
                 <h4 class="ecology-title">Lifespan</h4>
                 <p class="ecology-value">{{ leafData?.leafInfo?.lifespan || 'Perennial' }}</p>
@@ -200,7 +204,7 @@
             <ion-card class="ecology-card">
               <ion-card-content>
                 <div class="ecology-icon-container">
-                  <ion-icon name="sunny-outline" class="ecology-icon"></ion-icon>
+                  <ion-icon :icon="sunnyOutline" class="ecology-icon"></ion-icon>
                 </div>
                 <h4 class="ecology-title">Light Needs</h4>
                 <p class="ecology-value">{{ leafData?.leafInfo?.lightNeeds || 'Full Sun' }}</p>
@@ -210,7 +214,7 @@
             <ion-card class="ecology-card">
               <ion-card-content>
                 <div class="ecology-icon-container">
-                  <ion-icon name="water-outline" class="ecology-icon"></ion-icon>
+                  <ion-icon :icon="waterOutline" class="ecology-icon"></ion-icon>
                 </div>
                 <h4 class="ecology-title">Water Needs</h4>
                 <p class="ecology-value">{{ leafData?.leafInfo?.waterNeeds || 'Moderate Water' }}</p>
@@ -232,7 +236,10 @@
   <script setup lang="ts">
   import { ref } from 'vue';
   import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonSegment, IonSegmentButton, IonLabel, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonChip, IonIcon } from '@ionic/vue';
-  
+  import { arrowBack, leafOutline, restaurantOutline, 
+           medkitOutline, constructOutline, ellipsisHorizontalCircleOutline,
+           thermometerOutline, syncOutline, sunnyOutline, waterOutline, pricetagOutline } from 'ionicons/icons';
+
   interface LeafData {
     inference?: {
         predictedClass: string;
@@ -270,6 +277,7 @@
         soilRequirements?: string;
         foliarVenation?: string;
         uniqueBehavior?: string;
+        leaves?: string;
     };
   }
 
@@ -355,7 +363,7 @@
   }
 
   .alias-chip {
-    --background: #f9f9e0;
+    --background: #A1EEBD;
     --color: #333;
     font-size: 12px;
     height: 26px;
