@@ -19,6 +19,7 @@ export interface PinLocation {
     name: string;
     scientificName: string;
     familyName: string;
+    aliases?: string[];
   };
 }
 
@@ -276,32 +277,128 @@ export const useLogsQuery = (page: number) => {
       const isOnline = (await Network.getStatus()).connected;
       
       if (isOnline) {
+        // Use a join to get both inference_results and plant_details data
         const { data, error } = await supabase
           .from('inference_results')
-          .select('*')
+          .select(`
+            *,
+            plant_details(*)
+          `)
           .order('created_at', { ascending: false })
           .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
         if (error) throw error;
-        return data.map(item => ({
-          ...item,
-          synced: true,
-          image: item.image || null
-        }));
+        console.log('Data from Supabase with plant details:', data);
+        
+        // Transform data to match the expected structure in components
+        return data.map(item => {
+          // Get plant details if available (could be null or an array with one item)
+          const details = item.plant_details && item.plant_details.length > 0 
+                        ? item.plant_details[0] 
+                        : null;
+          
+          return {
+            id: item.id,
+            created_at: item.created_at,
+            synced: true,
+            // For LeafCards (top-level properties)
+            result: item.result || 'Unknown Plant',
+            scientific_name: item.scientific_name || '',
+            family_name: item.family_name || '',
+            description: item.description || '',
+            image: item.image || null,
+            confidence: item.confidence || 0.8,
+            
+            // Add detailed fields from plant_details table
+            color: details?.color || '',
+            foliage: details?.foliage || '',
+            bark: details?.bark || '',
+            fruit: details?.fruit || '',
+            crown: details?.crown || '',
+            trunk: details?.trunk || '',
+            leaves: details?.leaves || '',
+            retention: details?.retention || '',
+            texture: details?.texture || '',
+            venation: details?.venation || '',
+            behavior: details?.behavior || '',
+            edible_uses: details?.edible_uses || '',
+            med_uses: details?.med_uses || '',
+            timber_uses: details?.timber_uses || '',
+            other_uses: details?.other_uses || '',
+            climate: details?.climate || '',
+            lifespan: details?.lifespan || '',
+            light_needs: details?.light_needs || '',
+            water_needs: details?.water_needs || '',
+            soil_req: details?.soil_req || '',
+            
+            // Add nested structure for LeafCards
+            inference: {
+              confidence: item.confidence || 0.8
+            },
+            
+            // Add nested leafInfo structure for LeafInfoModal
+            leafInfo: {
+              name: item.result || 'Unknown Plant',
+              scientificName: item.scientific_name || '',
+              familyName: item.family_name || '',
+              description: item.description || '',
+              habitat: item.habitat || '',
+              image: item.image || null,
+              // Additional fields from plant_details
+              color: details?.color || '',
+              foliage: details?.foliage || '',
+              bark: details?.bark || '',
+              fruit: details?.fruit || '',
+              crown: details?.crown || '',
+              trunk: details?.trunk || '',
+              leaves: details?.leaves || '',
+              growthHabits: item.growth_habits || '',
+              retention: details?.retention || '',
+              texture: details?.texture || '',
+              venation: details?.venation || '',
+              behavior: details?.behavior || '',
+              edibleUses: details?.edible_uses || '',
+              medicinalUses: details?.med_uses || '',
+              timberUses: details?.timber_uses || '',
+              otherUses: details?.other_uses || '',
+              climate: details?.climate || '',
+              lifespan: details?.lifespan || '',
+              lightNeeds: details?.light_needs || '',
+              waterNeeds: details?.water_needs || '',
+              soilRequirements: details?.soil_req || '',
+              aliases: details?.aliases ? (Array.isArray(details.aliases) ? details.aliases : [details.aliases]) : []
+            }
+          };
+        });
       } else {
         // When offline, get data from SQLite
         const offlineResults = await sqliteService.getUnsyncedResults();
         return offlineResults.map(item => ({
           id: item.id,
-          result: item.predicted_class,
-          scientific_name: item.scientific_name,
-          family_name: item.family_name,
-          description: item.description,
           created_at: new Date(item.timestamp).toISOString(),
-          habitat: item.habitat,
-          growthHabits: item.growth_habits,
-          image: item.image_path,
-          synced: false
+          synced: false,
+          // For LeafCards (top-level properties)
+          result: item.predicted_class || 'Unknown Plant',
+          scientific_name: item.scientific_name || '',
+          family_name: item.family_name || '',
+          description: item.description || '',
+          image: item.image_path || null,
+          confidence: item.confidence || 0.8,
+          // Add nested structure for LeafCards
+          inference: {
+            confidence: item.confidence || 0.8
+          },
+          // Add nested leafInfo structure for LeafInfoModal
+          leafInfo: {
+            name: item.predicted_class || 'Unknown Plant',
+            scientificName: item.scientific_name || '',
+            familyName: item.family_name || '',
+            description: item.description || '',
+            habitat: item.habitat || '',
+            image: item.image_path || null,
+            growthHabits: item.growth_habits || '',
+            aliases: item.aliases ? (Array.isArray(item.aliases) ? item.aliases : [item.aliases]) : []
+          }
         }));
       }
     },
@@ -338,6 +435,32 @@ export const useDeleteLogMutation = () => {
               if (deleteError) {
                 console.error('Error deleting pinned locations:', deleteError);
                 throw new Error(`Unable to delete pinned locations: ${deleteError.message}`);
+              }
+            }
+            
+            // Next, check for and delete related plant_details records
+            console.log('Checking for plant_details records for inference_result_id:', log.id);
+            const { data: plantDetails, error: plantDetailsError } = await supabase
+              .from('plant_details')
+              .select('id')
+              .eq('inference_result_id', log.id);
+              
+            if (plantDetailsError) {
+              console.error('Error checking plant_details:', plantDetailsError);
+            }
+            
+            if (plantDetails && plantDetails.length > 0) {
+              console.log(`Found ${plantDetails.length} plant_details records to delete`);
+              
+              // Delete all plant_details records for this inference result
+              const { error: deleteDetailsError } = await supabase
+                .from('plant_details')
+                .delete()
+                .eq('inference_result_id', log.id);
+                
+              if (deleteDetailsError) {
+                console.error('Error deleting plant_details:', deleteDetailsError);
+                throw new Error(`Unable to delete plant details: ${deleteDetailsError.message}`);
               }
             }
             

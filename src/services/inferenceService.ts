@@ -47,7 +47,7 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (isConnected && connectionType === 'cellular') {
+            if (isConnected && connectionType === 'wifi') {
                 // Online: Use Flask API
                 try {
                     // Convert blob URL to base64
@@ -63,7 +63,7 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.26.173:5000/predict', {
+                    const result = await axios.post('http://192.168.1.57:5000/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
@@ -129,8 +129,35 @@ export const inferenceService = {
                             imageData: result.data.imageData || null,
                             imageType: result.data.imageType || 'jpeg',
                             imagePath: result.data.imagePath || null,
+                            // Additional properties 
+                            foliage: result.data.foliage,
+                            bark: result.data.bark,
+                            fruit: result.data.fruit,
+                            flowers: result.data.flowers,
+                            // Shape & structure properties
+                            crown: typeof result.data.shape === 'object' ? result.data.shape.crown : undefined,
+                            trunk: typeof result.data.shape === 'object' ? result.data.shape.trunk : undefined,
+                            leaves: typeof result.data.shape === 'object' ? result.data.shape.leaves : result.data.shape,
+                            // Ethnobotanical uses
+                            edibleUses: result.data.ethnobotanicalUses?.edible,
+                            medicinalUses: result.data.ethnobotanicalUses?.medicinal,
+                            timberUses: result.data.ethnobotanicalUses?.timber,
+                            otherUses: result.data.ethnobotanicalUses?.other,
+                            // Additional details
+                            climate: result.data.additionalDetails?.climate,
+                            lifespan: result.data.additionalDetails?.lifespan,
+                            lightNeeds: result.data.additionalDetails?.lightPreference,
+                            waterNeeds: result.data.additionalDetails?.waterPreference,
+                            soilRequirements: result.data.additionalDetails?.soilRequirements,
+                            // Leaf characteristics
+                            retention: result.data.additionalDetails?.leafCharacteristics?.retention,
+                            texture: result.data.additionalDetails?.leafCharacteristics?.texture,
+                            foliarVenation: result.data.additionalDetails?.leafCharacteristics?.foliarVenation,
+                            uniqueBehavior: result.data.additionalDetails?.leafCharacteristics?.uniqueBehavior,
+                            // Common names as aliases - check both possible locations in data structure
+                            aliases: result.data.additionalDetails?.commonNames || 
+                                    result.data.additionalDetails?.leafCharacteristics?.commonNames || []
                         },
-                
                     };
 
                     // // Store in Supabase
@@ -231,9 +258,36 @@ export const inferenceService = {
                             habitat: matchedLeaf.habitat,
                             color: matchedLeaf.color,
                             shape: matchedLeaf.shape,
-                            margin: matchedLeaf.margin,
                             growthHabits: matchedLeaf.growthHabits,
-                            imagePath: matchedLeaf.imagePath
+                            imagePath: matchedLeaf.imagePath,
+                            // Add new properties from data.json
+                            foliage: matchedLeaf.foliage,
+                            bark: matchedLeaf.bark,
+                            fruit: matchedLeaf.fruit,
+                            flowers: matchedLeaf.flowers,
+                            // Shape & structure properties
+                            crown: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.crown : undefined,
+                            trunk: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.trunk : undefined,
+                            leaves: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.leaves : matchedLeaf.shape,
+                            // Ethnobotanical uses
+                            edibleUses: matchedLeaf.ethnobotanicalUses?.edible,
+                            medicinalUses: matchedLeaf.ethnobotanicalUses?.medicinal,
+                            timberUses: matchedLeaf.ethnobotanicalUses?.timber,
+                            otherUses: matchedLeaf.ethnobotanicalUses?.other,
+                            // Additional details
+                            climate: matchedLeaf.additionalDetails?.climate,
+                            lifespan: matchedLeaf.additionalDetails?.lifespan,
+                            lightNeeds: matchedLeaf.additionalDetails?.lightPreference,
+                            waterNeeds: matchedLeaf.additionalDetails?.waterPreference,
+                            soilRequirements: matchedLeaf.additionalDetails?.soilRequirements,
+                            // Leaf characteristics
+                            retention: matchedLeaf.additionalDetails?.leafCharacteristics?.retention,
+                            texture: matchedLeaf.additionalDetails?.leafCharacteristics?.texture,
+                            foliarVenation: matchedLeaf.additionalDetails?.leafCharacteristics?.foliarVenation,
+                            uniqueBehavior: matchedLeaf.additionalDetails?.leafCharacteristics?.uniqueBehavior,
+                            // Common names as aliases - check both possible locations in data structure
+                            aliases: matchedLeaf.additionalDetails?.commonNames || 
+                                    matchedLeaf.additionalDetails?.leafCharacteristics?.commonNames || []
                         }
                     };
 

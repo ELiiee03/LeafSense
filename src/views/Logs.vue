@@ -3,7 +3,7 @@
       <!-- <GlobalHeader /> -->
       <ion-header class="ion-no-border">
         <ion-toolbar>
-          <ion-title><b><h3>History</h3></b></ion-title>
+          <ion-title><b><h1>History</h1></b></ion-title>
         </ion-toolbar>
       </ion-header>
         <ion-content>

@@ -121,6 +121,8 @@ import LeafInfoModal from './LeafInfoModal.vue';
 import FilterComponent from './FilterComponent.vue';
 import { useLogsQuery, useDeleteLogMutation, useSyncMutation } from '@/services/queryService';
 import NetworkAwareComponent from './NetworkAwareComponent.vue';
+import { Network } from '@capacitor/network';
+import { useQueryClient } from '@tanstack/vue-query';
 
 export default defineComponent({
   components: {
@@ -162,15 +164,25 @@ export default defineComponent({
     const isOnline = computed(() => networkState.isOnline.value);
     const offlineLogs = ref<Log[]>([]);
     
+    // Add queryClient
+    const queryClient = useQueryClient();
+    
     // Network handling methods
     const handleNetworkOnline = async () => {
       console.log('Network is online, reloading data from server');
+      // Set up realtime subscription when we come online
+      setupRealtimeSubscription();
       await syncPendingData();
       refreshLogs();
     };
     
     const handleNetworkOffline = () => {
       console.log('Network is offline, loading data from local storage');
+      // Clean up subscriptions when we go offline
+      if (subscription) {
+        supabase.removeChannel(subscription);
+        subscription = null;
+      }
       loadOfflineData();
     };
     
@@ -216,12 +228,32 @@ export default defineComponent({
     };
     
     const refreshLogs = async () => {
-      // Reset pagination and reload data
-      page.value = 1;
-      await useLogsQuery(page.value).refetch();
-      
-      if (!isOnline.value) {
-        await loadOfflineData();
+      try {
+        console.log('Refreshing logs data');
+        // Reset pagination
+        page.value = 1;
+        
+        // Invalidate the cache for logs
+        queryClient.invalidateQueries({ queryKey: ['logs'] });
+        
+        // Force refetch from the server if online
+        if (isOnline.value) {
+          await useLogsQuery(page.value).refetch({ 
+            cancelRefetch: true, // Cancel any ongoing requests
+            throwOnError: true   // Throw errors instead of returning cached data
+          });
+          
+          // Update the local logs array
+          if (logsData.value) {
+            logs.value = [...logsData.value];
+          }
+        } else {
+          await loadOfflineData();
+        }
+        
+        console.log('Logs data refreshed successfully');
+      } catch (error) {
+        console.error('Error refreshing logs:', error);
       }
     };
 
@@ -255,6 +287,7 @@ export default defineComponent({
     };
 
     const openLeafInfo = (log: Log) => {
+      console.log('Opening leaf info with data:', log);
       selectedLeaf.value = log;
       setOpen(true);
     };
@@ -347,28 +380,53 @@ export default defineComponent({
     const setupRealtimeSubscription = () => {
       if (!isOnline.value) return;
       
+      // Clean up any existing subscriptions first
       if (subscription) {
         supabase.removeChannel(subscription);
+        subscription = null;
       }
 
+      console.log('Setting up realtime subscriptions for logs...');
+
+      // Subscribe to inference_results changes
       subscription = supabase
-        .channel('inference_results_changes')
+        .channel('logs_inference_changes')
         .on(
           'postgres_changes',
           {
-            event: 'INSERT',
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
             schema: 'public',
             table: 'inference_results'
           },
           (payload) => {
-            // Add new item to the beginning of the list
-            if (logs.value) {
-              const newLog = payload.new as Log;
-              logs.value = [newLog, ...logs.value];
-            }
+            console.log('Realtime logs update (inference):', payload.eventType, payload);
+            // Immediately refresh data when changes occur
+            refreshLogs();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Logs subscription status (inference):', status);
+        });
+        
+      // Also subscribe to plant_details changes in a separate channel
+      const detailsSubscription = supabase
+        .channel('logs_details_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events
+            schema: 'public',
+            table: 'plant_details'
+          },
+          (payload) => {
+            console.log('Plant details update in logs:', payload.eventType, payload);
+            // Refresh logs when plant details change
+            refreshLogs();
+          }
+        )
+        .subscribe((status) => {
+          console.log('Logs subscription status (details):', status);
+        });
     };
 
     // Add scroll handler for infinite loading
@@ -386,6 +444,20 @@ export default defineComponent({
     onMounted(async () => {
       // Initialize network service
       await initNetworkService();
+      
+      // Add network change listener
+      Network.addListener('networkStatusChange', (status) => {
+        console.log('Network status changed:', status);
+        // Update the networkState directly
+        networkState.isOnline.value = status.connected;
+        networkState.lastUpdated.value = new Date();
+        
+        if (status.connected) {
+          handleNetworkOnline();
+        } else {
+          handleNetworkOffline();
+        }
+      });
       
       // Check current network status and initialize
       if (isOnline.value) {
@@ -411,6 +483,9 @@ export default defineComponent({
       if (content) {
         content.removeEventListener('scroll', handleScroll);
       }
+      
+      // Remove network listeners
+      Network.removeAllListeners();
     });
 
     return {

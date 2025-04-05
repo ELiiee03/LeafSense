@@ -43,13 +43,14 @@
     <LeafInfoModal 
       :isOpen="isModalOpen" 
       :onClose="() => setModalOpen(false)" 
-      :leaf="selectedLeafData" 
+      :leaf="selectedLeafData"
+      :onDataChange="handleLeafDataChange"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watchEffect } from 'vue'
 import { timeOutline, leafOutline } from 'ionicons/icons'
 import LeafCard from './LeafCards.vue'
 import LeafInfoModal from './LeafInfoModal.vue'
@@ -200,17 +201,19 @@ const setupRealtimeSubscription = () => {
     .on(
       'postgres_changes',
       {
-        event: 'INSERT',
+        event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
         schema: 'public',
         table: 'inference_results'
       },
       (payload) => {
-        console.log('New inference result:', payload)
-        // Refresh the data when a new record is added
+        console.log('Realtime inference result change:', payload.eventType, payload)
+        // Refresh the data when any change occurs
         fetchRecentIdentifications()
       }
     )
-    .subscribe()
+    .subscribe((status) => {
+      console.log('Realtime subscription status:', status)
+    })
 }
 
 // Cleanup function for subscription
@@ -221,20 +224,52 @@ const cleanupSubscription = () => {
   }
 }
 
+// Add network status ref
+const isNetworkConnected = ref(true);
+
+// Add network change handler
+const handleNetworkChange = async (status: { connected: boolean }) => {
+  console.log('Network status changed:', status);
+  isNetworkConnected.value = status.connected;
+  
+  if (status.connected) {
+    // If we're coming back online
+    console.log('Network is back online, refreshing data');
+    setupRealtimeSubscription();
+    await fetchRecentIdentifications();
+  } else {
+    // If we're going offline
+    console.log('Network is offline, cleaning up subscription');
+    cleanupSubscription();
+    await fetchRecentIdentifications(); // Fetch from local storage
+  }
+};
+
 // Update the onMounted hook
 onMounted(async () => {
   console.log("%c🍃 RecentIdentifications component mounted", "font-size: 14px; color: green; font-weight: bold;");
   
+  // Check initial network status
+  const initialStatus = await Network.getStatus();
+  isNetworkConnected.value = initialStatus.connected;
+  
+  // Set up network change listener
+  Network.addListener('networkStatusChange', handleNetworkChange);
+  
   // Set up real-time subscription only if online
-  const isOnline = (await Network.getStatus()).connected;
-  if (isOnline) {
+  if (isNetworkConnected.value) {
     setupRealtimeSubscription();
   }
+  
+  // Fetch initial data
+  await fetchRecentIdentifications();
 });
 
-// Clean up subscription when component unmounts
+// Update onUnmounted to clean up network listener
 onUnmounted(() => {
-  cleanupSubscription()
+  cleanupSubscription();
+  // Remove network listener
+  Network.removeAllListeners();
 })
 
 // Add modal state
@@ -245,6 +280,19 @@ const setModalOpen = (open: boolean) => {
   isModalOpen.value = open
 }
 
+// Function to handle data changes from LeafInfoModal
+const handleLeafDataChange = async (leafId: string) => {
+  console.log('Leaf data changed, refreshing data for ID:', leafId);
+  
+  // Refresh the specific leaf data
+  if (selectedLeaf.value?.id === leafId) {
+    await fetchLeafData();
+  }
+  
+  // Also refresh the list of recent identifications
+  await fetchRecentIdentifications();
+}
+
 // Add this query function
 const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
   queryKey: ['leafData', selectedLeaf],
@@ -253,13 +301,62 @@ const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
     
     const isOnline = (await Network.getStatus()).connected;
     if (isOnline) {
+      // Updated query to join with plant_details table
       const { data, error } = await supabase
         .from('inference_results')
-        .select('*')
+        .select(`
+          *,
+          plant_details(*)
+        `)
         .eq('id', selectedLeaf.value.id)
         .single();
       
       if (error) throw error;
+      
+      // Transform data to include plant_details fields
+      if (data) {
+        // Get plant details from the joined query
+        const details = data.plant_details && data.plant_details.length > 0 
+                      ? data.plant_details[0] 
+                      : null;
+        
+        // Return a complete object with both inference and details data
+        return {
+          ...data,
+          // Add leafInfo structure with all needed fields
+          leafInfo: {
+            name: data.result || 'Unknown Plant',
+            scientificName: data.scientific_name || '',
+            description: data.description || '',
+            habitat: data.habitat || '',
+            image: data.image || null,
+            growthHabits: data.growth_habits || '',
+            // Fields from plant_details
+            color: details?.color || '',
+            foliage: details?.foliage || '',
+            bark: details?.bark || '',
+            fruit: details?.fruit || '',
+            crown: details?.crown || '',
+            trunk: details?.trunk || '',
+            leaves: details?.leaves || '',
+            retention: details?.retention || '',
+            texture: details?.texture || '',
+            venation: details?.venation || '',
+            behavior: details?.behavior || '',
+            edibleUses: details?.edible_uses || '',
+            medicinalUses: details?.med_uses || '',
+            timberUses: details?.timber_uses || '',
+            otherUses: details?.other_uses || '',
+            climate: details?.climate || '',
+            lifespan: details?.lifespan || '',
+            lightNeeds: details?.light_needs || '',
+            waterNeeds: details?.water_needs || '',
+            soilRequirements: details?.soil_req || '',
+            aliases: details?.aliases || []
+          }
+        };
+      }
+      
       return data;
     } else {
       // Offline mode: fetch from SQLite
