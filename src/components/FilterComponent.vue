@@ -76,9 +76,17 @@ const applyFilters = (filter: string) => {
     const selectedHabit = commonHabits.value.find(h => h.name === filter);
     if (selectedHabit) {
       filtered = filtered.filter(log => {
-        // Check growthHabits for exact match
-        const growthHabit = log.growth_habits?.toLowerCase() || '';
-        return growthHabit === selectedHabit.value;
+        // Check both growth_habits and growthHabits, use includes() instead of exact match
+        const growthHabit1 = (log.growth_habits || '').toLowerCase();
+        const growthHabit2 = (log.growthHabits || '').toLowerCase();
+        // Also check leafInfo structure for growthHabits
+        const growthHabit3 = (log.leafInfo?.growthHabits || '').toLowerCase();
+        
+        const habitValue = selectedHabit.value.toLowerCase();
+        
+        return growthHabit1.includes(habitValue) || 
+               growthHabit2.includes(habitValue) || 
+               growthHabit3.includes(habitValue);
       });
     }
   }
@@ -86,12 +94,17 @@ const applyFilters = (filter: string) => {
   if (searchTerm.value) {
     filtered = filtered.filter(log => {
       const searchLower = searchTerm.value.toLowerCase();
-      const growthHabit = log.growthHabits?.toLowerCase() || '';
-      const description = log.description?.toLowerCase() || '';
-      const result = log.result?.toLowerCase() || '';
-      const scientificName = log.scientific_name?.toLowerCase() || '';
+      // Check all possible property paths
+      const growthHabit1 = (log.growth_habits || '').toLowerCase();
+      const growthHabit2 = (log.growthHabits || '').toLowerCase();
+      const growthHabit3 = (log.leafInfo?.growthHabits || '').toLowerCase();
+      const description = (log.description || log.leafInfo?.description || '').toLowerCase();
+      const result = (log.result || log.leafInfo?.name || '').toLowerCase();
+      const scientificName = (log.scientific_name || log.leafInfo?.scientificName || '').toLowerCase();
       
-      return growthHabit.includes(searchLower) || 
+      return growthHabit1.includes(searchLower) || 
+             growthHabit2.includes(searchLower) ||
+             growthHabit3.includes(searchLower) ||
              description.includes(searchLower) ||
              result.includes(searchLower) ||
              scientificName.includes(searchLower);
@@ -111,7 +124,7 @@ watch(() => props.allLogs, () => {
 /* Container */
 .filter-container {
   padding: 12px;
-  background: #f8faf5;
+  background: #E4EFE7;
   border-radius: 12px;
 }
 
@@ -142,7 +155,7 @@ watch(() => props.allLogs, () => {
   display: flex;
   gap: 8px;
   flex-wrap: nowrap;
-  background: white;
+  background: #E4EFE7;
   border-radius: 12px;
   padding: 6px;
   min-width: max-content;
@@ -157,7 +170,7 @@ ion-segment-button {
   min-width: 90px;
   padding: 8px 12px;
   border-radius: 12px;
-  background: #f8faf5;
+  background: #F8F8FF;
   color: #416d3f;
   transition: all 0.3s ease;
   height: 5px;

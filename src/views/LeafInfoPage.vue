@@ -31,12 +31,15 @@
                   </ion-row>
               </ion-grid>
 
-              </div>
-
-             
+            </div>
 
           </div>
-          <ion-card class="card-container1">
+
+          <div class="plant-details-container">
+            <PlantDetails v-if="leafData" :leaf-data="leafData" />
+          </div>
+
+          <!-- <ion-card class="card-container1">
             <ion-card-header>
               <ion-card-title>Description</ion-card-title>
               <ion-card-subtitle><b>Family Name: </b> {{ leafData?.leafInfo?.familyName || 'No family name available' }}</ion-card-subtitle>
@@ -44,21 +47,21 @@
             <ion-card-content>
               {{ leafData?.leafInfo?.description || 'No description available' }}
             </ion-card-content>
-          </ion-card>
+          </ion-card> -->
 
-          <CharacteristicsCard />
+          <!-- <CharacteristicsCard /> -->
 
 
-          <ion-card class="card-container3">
+          <!-- <ion-card class="card-container3">
             <ion-card-header>
               <ion-card-title>Habitat</ion-card-title>
-              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> -->
+              <!-- <ion-card-subtitle>Card Subtitle</ion-card-subtitle> 
             </ion-card-header>
         
             <ion-card-content>
               {{ leafData?.leafInfo?.habitat || 'No habitat information available' }}
             </ion-card-content>
-          </ion-card>
+          </ion-card> -->
 
 
           <!-- <ion-card class="card-container3">
@@ -72,17 +75,20 @@
             </ion-card-content>
           </ion-card> -->
 
+
              <!-- save button -->
             <div class="button-container">
-                <ion-button class="save" @click="saveLeafInfo">Save</ion-button>
-                <ion-button class="pin"  @click="handlePinClick">
-                <ion-icon size="medium" :icon="locationSharp"></ion-icon>
-                    </ion-button>
-                  
-                  <LocationModal 
-                    :is-open="showModal" 
-                    @did-dismiss="showModal = false"
-                    />
+                <ion-button class="save" :disabled="leafDataService.isSaving.value" @click="saveLeafInfo">
+                  {{ leafDataService.isSaving.value ? 'Saving...' : 'Save' }}
+                </ion-button>
+                <ion-button class="pin" :disabled="leafDataService.isSaving.value" @click="handlePinClick">
+                  <ion-icon size="medium" :icon="locationSharp"></ion-icon>
+                </ion-button>
+      
+                <LocationModal 
+                  :is-open="showModal" 
+                  @did-dismiss="showModal = false"
+                />
            </div>
 
         </ion-content>
@@ -91,106 +97,91 @@
 </template>
 
 <script setup lang="ts">
-import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController, IonChip } from '@ionic/vue';
+import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController, IonChip, IonButton } from '@ionic/vue';
 import { arrowBack, locationSharp } from 'ionicons/icons';
-import { useRouter, useRoute } from 'vue-router';
-import { sqliteService } from '@/services/sqliteService';
-import { Network } from '@capacitor/network';
-import { supabase } from '@/supabaseClient';
-import { ref, defineProps, onMounted, computed, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { ref, onMounted, computed, watch } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
-import { dbService } from '@/services/dbService';
 import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
-import CharacteristicsCard from '@/components/CharacteristicsCard.vue';
-import { requestPermissions, getCurrentPosition, geocodeLocation } from '@/services/geolocationService';
+import PlantDetails from '@/components/Plant details/PlantDetails.vue';
+import { useLeafData } from '@/composables/useLeafData';
+import { supabase } from '@/supabaseClient';
 
-// Add this reactive state
+// State
 const showModal = ref(false);
-const locationNote = ref(''); 
 const geoStore = useGeoStore();
-const leafImage = ref<string | null>(null); // New ref for the leaf image
-
-// onMounted(async () => {
-//   await geoStore.setCurrentLocation(); // Changed from updateLocation
-// });
-
-// const togglePin = () => {
-//   geoStore.togglePin();
-// };
-
-// const router = useRouter();
-const route = useRoute();
-// const router = useRouter();
-
+const leafImage = ref<string | null>(null);
+const imageSrc = ref<string>('');
+const router = useRouter();
 const inferenceStore = useInferenceStore();
-// const leafData = ref<LeafData | null>(null);
 const leafData = computed(() => inferenceStore.result);
+const leafDataService = useLeafData();
 
-// Set the leaf image when data changes
-watch(() => leafData.value, (newData) => {
-    if (newData?.leafInfo?.imageData && newData?.leafInfo?.imageType) {
-        leafImage.value = `data:image/${newData.leafInfo.imageType};base64,${newData.leafInfo.imageData}`;
+// Watch network status and sync when online
+watch(() => leafDataService.isOnline.value, (isOnline) => {
+  if (isOnline) {
+    leafDataService.syncOfflineData();
+  }
+  updateLeafImage();
+});
+
+// Update leaf image
+function updateLeafImage() {
+  console.log('Updating leaf image with data:', leafData.value?.leafInfo);
+  if (leafDataService.isOnline.value && leafData.value?.leafInfo?.imageData && leafData.value?.leafInfo?.imageType) {
+    // Online mode with base64 image data
+    leafImage.value = `data:image/${leafData.value.leafInfo.imageType};base64,${leafData.value.leafInfo.imageData}`;
+    console.log('Using online image from server (base64)');
+  } else if (leafData.value?.leafInfo?.imagePath) {
+    // Using image path (works in both online and offline mode)
+    const imagePath = leafData.value.leafInfo.imagePath;
+    
+    // Handle asset paths properly by checking path type
+    if (imagePath.startsWith('assets/')) {
+      // For images in the assets folder
+      leafImage.value = `/${imagePath}`;
+    } else if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      // For full URLs
+      leafImage.value = imagePath;
+    } else if (imagePath.startsWith('data:')) {
+      // For data URLs
+      leafImage.value = imagePath;
     } else {
-        leafImage.value = null;
+      // For images in the public folder
+      leafImage.value = `/${imagePath}`;
     }
-}, { immediate: true });
-
-interface LeafData {
-    inference?: {
-        predictedClass: string;
-        confidence: number;
-    };
-    leafInfo?: {
-        name: string;
-        scientificName: string;
-        familyName: string;
-        description: string;
-        habitat: string;
-        color: string;
-        shape: string;
-        margin: string;
-        growthHabits: string;
-        imageData?: string;
-        imageType?: string;
-    };
+    
+    console.log('Using image from path:', leafImage.value);
+  } else {
+    leafImage.value = null;
+    console.log('No image available');
+  }
 }
 
-const props = defineProps<{
-    leafData: LeafData;
+// Update leaf image when data changes
+watch(() => leafData.value, () => {
+  updateLeafImage();
+}, { immediate: true });
 
-}>();
+// Lifecycle
+onMounted(() => {
+  updateLeafImage();
+});
 
-// const leafData = ref<LeafData | null>(props.leafData);
-
-
-const router = useRouter();
-// const leafData = ref<LeafData | null>(null);
+// Utility functions
 const formatConfidence = (confidence: number) => {
     return (confidence * 100).toFixed(2);
 };
 
-const getConfidence = (): number | null => {
-    return props.leafData?.inference?.confidence || null;
-};
-
-const imageSrc = ref<string>('');
-
-// function to close page
+// Navigation
 function closePage() {
   router.back();
 }
 
-// Save functionality
-// function saveLeafInfo() {
-//     // Implement save functionality
-//     console.log('Saving leaf info:', leafData.value);
-// }
-
-
+// Handle location operations
 async function handlePinClick() {
   try {
-    await requestPermissions();
     await geoStore.setCurrentLocation('');
     showModal.value = true;
   } catch (error) {
@@ -200,158 +191,159 @@ async function handlePinClick() {
   }
 }
 
-
+// Toast notifications
 async function showToast(message: string, isError = false) {
-    const toast = await toastController.create({
-        message: message,
-        duration: 2000,
-        color: isError ? 'danger' : 'success',
-        position: 'top'
-    });
-    await toast.present();
+  const toast = await toastController.create({
+    message: message,
+    duration: 2000,
+    color: isError ? 'danger' : 'success',
+    position: 'top'
+  });
+  await toast.present();
 }
 
+// Save plant data
 async function saveLeafInfo() {
-    try {
-        // Validate required data
-        if (!leafData.value?.leafInfo || !leafData.value?.inference) {
-            await showToast('Missing plant data', true);
-            return;
-        }
-
-        // Check network status
-        const networkStatus = await Network.getStatus();
-        
-        if (networkStatus.connected) {
-            try {
-                console.log('Starting to save plant data...');
-                
-                // Prepare image data for Supabase
-                let imageToSave = '';
-                
-                // Use the image from the server if available
-                if (leafData.value.leafInfo?.imageData) {
-                    imageToSave = `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`;
-                } else if (imageSrc.value) {
-                    // Fallback to the image captured
-                    imageToSave = imageSrc.value;
-                }
-                
-                // Save plant data - no longer requiring location
-                const { data: inferenceData, error: infError } = await supabase
-                    .from('inference_results')
-                    .insert({
-                        image: imageToSave, // Save the image from the server or captured image
-                        scientific_name: leafData.value.leafInfo?.scientificName ?? '',
-                        family_name: leafData.value.leafInfo?.familyName ?? '',
-                        description: leafData.value.leafInfo?.description ?? '',
-                        habitat: leafData.value.leafInfo?.habitat ?? '',
-                        result: leafData.value.inference?.predictedClass ?? '',
-                        color: leafData.value.leafInfo?.color ?? '',
-                        shape: leafData.value.leafInfo.shape ?? '',
-                        margin: leafData.value.leafInfo.margin ?? '',
-                        growth_habits: leafData.value.leafInfo.growthHabits ?? '',
-                        confidence: leafData.value.inference.confidence ?? ''
-                    })
-                    .select();
-
-                if (infError) {
-                    console.error('Error saving inference data:', infError);
-                    throw infError;
-                }
-
-                console.log('Inference data saved successfully:', inferenceData);
-
-                // Check if we have any pinned location from geoStore
-                const pinnedLocation = geoStore.currentLocation;
-                console.log('Current location from geoStore:', pinnedLocation);
-                console.log('Is location pinned?', pinnedLocation?.isPinned);
-                
-                if (pinnedLocation && pinnedLocation.isPinned) {
-                    console.log('Attempting to save pinned location...');
-                    
-                    try {
-                        // First approach: Direct insert with POINT format
-                        const geographyData = {
-                            user_id: null,
-                            leaf_id: inferenceData[0].id,
-                            geom: `POINT(${pinnedLocation.lng} ${pinnedLocation.lat})`,
-                            title: pinnedLocation.title || '',
-                            note: pinnedLocation.note
-                        };
-                        
-                        console.log('Geography data being sent to Supabase:', geographyData);
-                        
-                        const { data: locationResult, error: locError } = await supabase
-                            .from('pinned_locations')
-                            .insert(geographyData)
-                            .select();
-
-                        if (locError) {
-                            console.error('Error saving location data - likely a permission/RLS policy issue');
-                            throw locError;
-                        }
-                        
-                        console.log('Location saved successfully:', locationResult);
-                    } catch (locError) {
-                        console.error('Detailed location save error - check RLS policies in Supabase');
-                        const errorMessage = locError instanceof Error ? locError.message : 'Permission error - check RLS policy';
-                        await showToast('Leaf saved but location failed: ' + errorMessage, true);
-                    }
-                } else {
-                    console.log('Location not being saved - either null or not pinned');
-                }
-
-                await showToast('Data saved successfully');
-                router.back();
-            } catch (error) {
-                console.error('Save error details:', error);
-                const message = error instanceof Error ? error.message : 'Failed to save data';
-                await showToast(message, true);
-            }
-        } else {
-            // Offline: Save to SQLite for later sync
-            await dbService.saveLeaf({
-                imagePath: leafData.value.leafInfo?.imageData 
-                    ? `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`
-                    : imageSrc.value,
-                leafInfo: JSON.stringify({
-                    result: leafData.value?.inference?.predictedClass ?? '',
-                    scientificName: leafData.value?.leafInfo?.scientificName ?? '',
-                    familyName: leafData.value?.leafInfo?.familyName ?? '',
-                    description: leafData.value?.leafInfo?.description ?? '',
-                    habitat: leafData.value?.leafInfo?.habitat ?? '',
-                }),
-                // timestamp: timestamp,
-                synced: false
-            });
-            await showToast('Leaf information saved offline');
-            console.log('Leaf info saved to SQLite (offline mode)');
-        }
-    } catch (error) {
-        console.error('Error saving leaf info:', error);
-        await showToast('Error saving leaf information', true);
+  try {
+    // Validate required data
+    if (!leafData.value?.leafInfo || !leafData.value?.inference) {
+      await showToast('Missing plant data', true);
+      return;
     }
-}
 
-onMounted(() => {
-  // Add network listener
-  Network.addListener('networkStatusChange', async (status) => {
-    if (status.connected) {
+    console.log("Starting save process...");
+    
+    // Prepare image data - use leafImage directly to ensure we save what's displayed
+    let imageToSave = '';
+    if (leafImage.value) {
+      imageToSave = leafImage.value; // Use the actual image shown in the UI
+      console.log("Using leafImage.value for save");
+    } else if (leafData.value.leafInfo?.imageData) {
+      imageToSave = `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`;
+      console.log("Using leafData.value.leafInfo.imageData for save");
+    } else if (imageSrc.value) {
+      imageToSave = imageSrc.value;
+      console.log("Using imageSrc.value for save");
+    }
+
+    // Log image data being saved
+    console.log('Saving image data:', imageToSave ? 'Image data available' : 'No image available');
+
+    // Prepare inference data
+    const inferenceData = {
+      predictedClass: leafData.value.inference.predictedClass,
+      scientificName: leafData.value.leafInfo.scientificName,
+      familyName: leafData.value.leafInfo.familyName,
+      description: leafData.value.leafInfo.description,
+      habitat: leafData.value.leafInfo.habitat,
+      confidence: leafData.value.inference.confidence,
+      growthHabits: leafData.value.leafInfo.growthHabits
+    };
+
+    // Prepare plant details data
+    const aliases = computed(() => {
+      if (!leafData.value?.leafInfo?.aliases) return [];
+      
+      // If aliases is a string (from JSON), parse it
+      if (typeof leafData.value.leafInfo.aliases === 'string') {
+        try {
+          return JSON.parse(leafData.value.leafInfo.aliases);
+        } catch (e) {
+          console.error('Error parsing aliases:', e);
+          return [leafData.value.leafInfo.aliases]; // Return as single item if can't parse
+        }
+      }
+      
+      // If already an array, return it
+      if (Array.isArray(leafData.value.leafInfo.aliases)) {
+        return leafData.value.leafInfo.aliases;
+      }
+      
+      // If single value, wrap in array
+      return [leafData.value.leafInfo.aliases];
+    });
+      
+    const plantDetails = {
+      aliases: Array.isArray(aliases.value) ? aliases.value : [],
+      color: leafData.value.leafInfo?.color ?? '',
+      foliage: leafData.value.leafInfo?.foliage ?? '',
+      bark: leafData.value.leafInfo?.bark ?? '',
+      fruit: leafData.value.leafInfo?.fruit ?? '',
+      crown: leafData.value.leafInfo?.crown ?? '',
+      trunk: leafData.value.leafInfo?.trunk ?? '',
+      leaves: leafData.value.leafInfo?.leaves ?? '',
+      retention: leafData.value.leafInfo?.retention ?? '',
+      texture: leafData.value.leafInfo?.texture ?? '',
+      venation: leafData.value.leafInfo?.foliarVenation ?? '',
+      behavior: leafData.value.leafInfo?.uniqueBehavior ?? '',
+      edible_uses: leafData.value.leafInfo?.edibleUses ?? '',
+      med_uses: leafData.value.leafInfo?.medicinalUses ?? '',
+      timber_uses: leafData.value.leafInfo?.timberUses ?? '',
+      other_uses: leafData.value.leafInfo?.otherUses ?? '',
+      climate: leafData.value.leafInfo?.climate ?? '',
+      lifespan: leafData.value.leafInfo?.lifespan ?? '',
+      light_needs: leafData.value.leafInfo?.lightNeeds ?? '',
+      water_needs: leafData.value.leafInfo?.waterNeeds ?? '',
+      soil_req: leafData.value.leafInfo?.soilRequirements ?? ''
+    };
+
+    // Save the data
+    const result = await leafDataService.savePlantData({
+      imageData: imageToSave,
+      inferenceData,
+      plantDetails
+    });
+
+    console.log("Save result:", result);
+
+    // Handle location data if needed
+    const pinnedLocation = geoStore.currentLocation;
+    if (result && leafDataService.isOnline.value && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
       try {
-        // Sync any offline data when coming back online
-        await sqliteService.syncWithSupabase();
+        const { error } = await supabase
+          .from('pinned_locations')
+          .insert({
+            user_id: null,
+            leaf_id: result[0].id,
+            geom: `POINT(${pinnedLocation.lng} ${pinnedLocation.lat})`,
+            title: pinnedLocation.title || '',
+            note: pinnedLocation.note
+          });
+
+        if (error) {
+          console.error('Error saving location:', error);
+          await showToast('Leaf saved but location failed', true);
+        }
       } catch (error) {
-        console.error('Error syncing with Supabase:', error);
+        console.error('Location save error:', error);
+        await showToast('Leaf saved but location failed', true);
       }
     }
-  });
-});
 
-
+    await showToast('Leaf information saved successfully');
+    router.back();
+  } catch (error) {
+    console.error('Error saving leaf info:', error);
+    if (error instanceof Error) {
+      await showToast(`Error: ${error.message}`, true);
+    } else {
+      await showToast('Error saving leaf information', true);
+    }
+  }
+}
 </script>
 
 <style scoped>
+
+/* Remove the custom-grid1 class that was creating the overlay */
+/* .custom-grid1 {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  margin-top: 70px;
+  top: 30px;
+  left: 0;
+} */
 
 .characteristics-card {
   background-color: #135d54;
@@ -370,8 +362,8 @@ ion-chip {
 }
 
 .card-container1 {
-  margin-top: 80%;
-  --background: #fff;
+  margin-top: 20px;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 
@@ -383,29 +375,32 @@ ion-chip {
 
 .card-container3 {
   margin-top: 15px;
-  --background: #fff;
+  margin-bottom: 80px;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 .card-container4 {
   margin-top: 15px;
-  --background: #fff;
+  --background: #F8F8FF;
   border-radius: 15px;
 }
 
 .modalSheet {
-  --background: #fff;
+  --background: #F8F8FF;
   --border-radius: 25px;
 }
 
 .button-container {
   display: flex;
-  justify-content: space-between; /* Center the button horizontally */
-  width: 100%; /* Full width of the container */
-  position: fixed; /* Fix the position */
-  bottom: 0; /* Position at the bottom */
-  left: 0; /* Align to the left */
-  padding: 5px; /* Optional padding for aesthetics */
-
+  justify-content: space-between;
+  width: 100%;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  padding: 10px;
+  --background: #F8F8FF;
+  backdrop-filter: blur(0px);
+  z-index: 1000;
 }
 
 .save {
@@ -527,14 +522,13 @@ ion-fab-button {
     /*border-top-right-radius: 95px;*/
      border-bottom-right-radius: 30px;
      border-bottom-left-radius: 30px;
-     border: 2px solid red;
   }
 
   .ion-page {
     --ion-background-color: transparent;
     width: 100%;
     height: 100vh;
-    --background: #f8faf5
+    --background: #E4EFE7;
     overflow: hidden;
   }
 
@@ -545,5 +539,10 @@ ion-fab-button {
   
   ion-content {
     overflow: hidden;
+  }
+
+  .plant-details-container {
+    margin-top: 38vh;
+    padding: 0 10px;
   }
 </style>

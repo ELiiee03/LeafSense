@@ -2,6 +2,7 @@
     <ion-page>
         <ion-content>
             <GlobalHeader />
+            <NetworkStatusIndicator />
             <HeroSection />
             <RecentIdentifications />
             <ExploreDatabase />
@@ -22,6 +23,7 @@ import GlobalHeader from '@/components/GlobalHeader.vue';
 import HeroSection from '@/components/HeroSection.vue';
 import ExploreDatabase from '@/components/ExploreDatabase.vue';
 import TipCard from '@/components/TipCard.vue';
+import NetworkStatusIndicator from '@/components/NetworkStatusIndicator.vue';
 
 export default defineComponent({
     name: 'HomePage',
@@ -39,12 +41,12 @@ export default defineComponent({
         HeroSection,
         GlobalHeader,
         ExploreDatabase,
-        TipCard
+        TipCard,
+        NetworkStatusIndicator
     }
 });
 </script>
 
 <style scoped>
-/* Add your styles here */
-
+/* Network status container removed as it's now using toast notifications */
 </style>

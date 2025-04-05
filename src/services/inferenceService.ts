@@ -1,7 +1,7 @@
 import { sqliteService } from './sqliteService';
 // import { supabase } from '@/supabaseClient';
 import axios from 'axios';
-import { Network } from '@capacitor/network';
+import { networkState } from '@/services/networkService';
 import { registerPlugin, Capacitor } from '@capacitor/core';
 // import { Http } from '@capacitor-community/http';
 import leafData from '../../public/data.json'; // Adjust path as needed
@@ -35,8 +35,11 @@ interface LeafResponse {
 export const inferenceService = {
     async performInference(imagePath: string) {
         try {
-            const networkStatus = await Network.getStatus();
-               // Temporarily force online mode for testing
+            // Use network state from our service
+            const isConnected = networkState.isOnline.value;
+            const connectionType = networkState.connectionType.value;
+            
+            // Temporarily force online mode for testing
             // const networkStatus = { connected: true }; // Force online mode
             // const networkStatus = { connected: false }; // Force offline mode
             // Remove this after testing!
@@ -44,10 +47,9 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (networkStatus.connected && networkStatus.connectionType === 'cellular') {
+            if (isConnected && connectionType === 'wifi') {
                 // Online: Use Flask API
                 try {
-
                     // Convert blob URL to base64
                     const response = await fetch(imagePath);
                     const blob = await response.blob();    
@@ -125,9 +127,37 @@ export const inferenceService = {
                             growthHabits: result.data.growthHabits,
                             // Add image data from server response if available
                             imageData: result.data.imageData || null,
-                            imageType: result.data.imageType || 'jpeg'
+                            imageType: result.data.imageType || 'jpeg',
+                            imagePath: result.data.imagePath || null,
+                            // Additional properties 
+                            foliage: result.data.foliage,
+                            bark: result.data.bark,
+                            fruit: result.data.fruit,
+                            flowers: result.data.flowers,
+                            // Shape & structure properties
+                            crown: typeof result.data.shape === 'object' ? result.data.shape.crown : undefined,
+                            trunk: typeof result.data.shape === 'object' ? result.data.shape.trunk : undefined,
+                            leaves: typeof result.data.shape === 'object' ? result.data.shape.leaves : result.data.shape,
+                            // Ethnobotanical uses
+                            edibleUses: result.data.ethnobotanicalUses?.edible,
+                            medicinalUses: result.data.ethnobotanicalUses?.medicinal,
+                            timberUses: result.data.ethnobotanicalUses?.timber,
+                            otherUses: result.data.ethnobotanicalUses?.other,
+                            // Additional details
+                            climate: result.data.additionalDetails?.climate,
+                            lifespan: result.data.additionalDetails?.lifespan,
+                            lightNeeds: result.data.additionalDetails?.lightPreference,
+                            waterNeeds: result.data.additionalDetails?.waterPreference,
+                            soilRequirements: result.data.additionalDetails?.soilRequirements,
+                            // Leaf characteristics
+                            retention: result.data.additionalDetails?.leafCharacteristics?.retention,
+                            texture: result.data.additionalDetails?.leafCharacteristics?.texture,
+                            foliarVenation: result.data.additionalDetails?.leafCharacteristics?.foliarVenation,
+                            uniqueBehavior: result.data.additionalDetails?.leafCharacteristics?.uniqueBehavior,
+                            // Common names as aliases - check both possible locations in data structure
+                            aliases: result.data.additionalDetails?.commonNames || 
+                                    result.data.additionalDetails?.leafCharacteristics?.commonNames || []
                         },
-                
                     };
 
                     // // Store in Supabase
@@ -146,7 +176,6 @@ export const inferenceService = {
                         throw new Error('Online inference failed: Unknown error');
                     }
                 }
-
             } else {
                 // Offline implementation with platform check
                 // if (Capacitor.isNativePlatform()) {
@@ -227,7 +256,38 @@ export const inferenceService = {
                             familyName: matchedLeaf.familyName,
                             description: matchedLeaf.description,
                             habitat: matchedLeaf.habitat,
-                            // color: matchedLeaf.color
+                            color: matchedLeaf.color,
+                            shape: matchedLeaf.shape,
+                            growthHabits: matchedLeaf.growthHabits,
+                            imagePath: matchedLeaf.imagePath,
+                            // Add new properties from data.json
+                            foliage: matchedLeaf.foliage,
+                            bark: matchedLeaf.bark,
+                            fruit: matchedLeaf.fruit,
+                            flowers: matchedLeaf.flowers,
+                            // Shape & structure properties
+                            crown: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.crown : undefined,
+                            trunk: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.trunk : undefined,
+                            leaves: typeof matchedLeaf.shape === 'object' ? matchedLeaf.shape.leaves : matchedLeaf.shape,
+                            // Ethnobotanical uses
+                            edibleUses: matchedLeaf.ethnobotanicalUses?.edible,
+                            medicinalUses: matchedLeaf.ethnobotanicalUses?.medicinal,
+                            timberUses: matchedLeaf.ethnobotanicalUses?.timber,
+                            otherUses: matchedLeaf.ethnobotanicalUses?.other,
+                            // Additional details
+                            climate: matchedLeaf.additionalDetails?.climate,
+                            lifespan: matchedLeaf.additionalDetails?.lifespan,
+                            lightNeeds: matchedLeaf.additionalDetails?.lightPreference,
+                            waterNeeds: matchedLeaf.additionalDetails?.waterPreference,
+                            soilRequirements: matchedLeaf.additionalDetails?.soilRequirements,
+                            // Leaf characteristics
+                            retention: matchedLeaf.additionalDetails?.leafCharacteristics?.retention,
+                            texture: matchedLeaf.additionalDetails?.leafCharacteristics?.texture,
+                            foliarVenation: matchedLeaf.additionalDetails?.leafCharacteristics?.foliarVenation,
+                            uniqueBehavior: matchedLeaf.additionalDetails?.leafCharacteristics?.uniqueBehavior,
+                            // Common names as aliases - check both possible locations in data structure
+                            aliases: matchedLeaf.additionalDetails?.commonNames || 
+                                    matchedLeaf.additionalDetails?.leafCharacteristics?.commonNames || []
                         }
                     };
 
@@ -289,8 +349,6 @@ export const inferenceService = {
             console.error('Error in inference:', error);
             throw error;
         }
-
-        
     },
 
     base64ToBlob(base64: string, type: string): Blob {
@@ -314,11 +372,11 @@ export const inferenceService = {
 
 };
 
-// Add this in your root component
-Network.addListener('networkStatusChange', (status) => {
-    console.log('Network status changed:', status);
-    // You might want to update a global store or state here
-});
+// No need to add a listener here as we're using our network service
+// Network.addListener('networkStatusChange', (status) => {
+//     console.log('Network status changed:', status);
+//     // You might want to update a global store or state here
+// });
 
 // function getMockOfflineResult() {
 //     throw new Error('Function not implemented.');

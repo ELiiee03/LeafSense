@@ -9,6 +9,7 @@ if (typeof window !== 'undefined') {
 import { createApp } from 'vue'
 import { createPinia } from 'pinia';
 import { IonicVue } from '@ionic/vue';
+import { VueQueryPlugin } from '@tanstack/vue-query';
 
 import App from './App.vue';
 import router from './router';
@@ -78,7 +79,22 @@ db.open().catch(err => {
 // });
 
 
-const app = createApp(App).use(IonicVue).use(router);
+const app = createApp(App)
+  .use(IonicVue)
+  .use(router)
+  .use(VueQueryPlugin, {
+    queryClientConfig: {
+      defaultOptions: {
+        queries: {
+          staleTime: 1000 * 60 * 5, // 5 minutes
+          gcTime: 1000 * 60 * 30, // 30 minutes
+          retry: 1,
+          refetchOnWindowFocus: false,
+        },
+      },
+    },
+  });
+
 const pinia = createPinia();
 app.use(pinia);
 

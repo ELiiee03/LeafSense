@@ -24,7 +24,7 @@ import java.io.InputStream;
 public class LeafInferencePlugin extends Plugin {
 
     private Interpreter tflite;
-    private static final int NUM_CLASSES = 4;
+    private static final int NUM_CLASSES = 10;
 
     @Override
     public void load() {

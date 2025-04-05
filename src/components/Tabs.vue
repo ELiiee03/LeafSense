@@ -45,20 +45,36 @@
 </script>
 <style scoped>
 
+ion-router-outlet {
+  border: none;
+  border-top-left-radius: 30px;
+  border-top-right-radius: 30px;
+  background: #F5F5F5;
+}
+
 .full-height {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  --border-top-left-radius: 30px;
+  --border-top-right-radius: 30px;
+  border: none;
 }
 
 .custom-tab-bar {
-  height: 55px; /* Adjust the height as needed */
+  height: 50px; /* Adjust the height as needed */
   padding: 0;
   margin: 0;
-    --background: #c1d5abbc;
+    --background: #99BC85;
     border-top-left-radius: 30px;
     border-top-right-radius: 30px;
+    border: none;
 }
+ion-tabs {
+  --background: #F5F5F5;
+
+}
+
 ion-tab-button {
 
   --color-selected: #416d3f;
