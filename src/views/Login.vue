@@ -125,7 +125,10 @@ export default defineComponent({
         
         if (error) throw error;
         showToast('Login successful!');
-        router.push('/home');
+        
+        // Check if there's a redirect path in the query params
+        const redirectPath = router.currentRoute.value.query.redirect as string || '/home';
+        router.push(redirectPath);
       } catch (error) {
         loading.value = false;
         if (error instanceof Error) {
@@ -141,6 +144,9 @@ export default defineComponent({
    // Google OAuth login using Capacitor Browser
     const loginWithGoogle = async () => {
       try {
+        // Get the redirect path if it exists
+        const redirectPath = router.currentRoute.value.query.redirect as string || '/home';
+        
         // Determine the correct redirect URL based on platform
         let redirectUrl;
         if (Capacitor.isNativePlatform()) {
@@ -148,7 +154,7 @@ export default defineComponent({
           redirectUrl = 'capacitor://localhost/auth-callback';
         } else {
           // Use full origin for web
-          redirectUrl = `${window.location.origin}/auth-callback`;
+          redirectUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirectPath)}`;
         }
         
         console.log('Using redirect URL:', redirectUrl);

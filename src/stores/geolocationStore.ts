@@ -114,8 +114,15 @@ export const useGeoStore = defineStore('geolocation', {
           try {
             console.log('Saving pinned location to Supabase');
             
+            // Get current user
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            
+            if (userError) {
+              console.error('Error getting current user for location:', userError);
+            }
+            
             const locationToSave = {
-              user_id: null, // Update with actual user ID if available
+              user_id: user?.id || null, // Use the authenticated user's ID
               zgeom: `POINT(${this.currentLocation.lng} ${this.currentLocation.lat})`,
               title: this.currentLocation.title || '',
               note: this.currentLocation.note || '',

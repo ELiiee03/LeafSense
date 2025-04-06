@@ -34,27 +34,56 @@
   const defaultImage = defaultLeafImage
   
   const props = defineProps<{
-    leaf: {
-      id: string
-      created_at: string
-      formattedDate?: string
-      inference: {
-        confidence: number
-      }
-      leafInfo: {
-        name: string
-        scientificName: string
+      leaf: {
+        id: string
+        created_at: string
+        formattedDate?: string
+        inference: {
+          confidence: number
+        }
+        leafInfo: {
+          name: string
+          scientificName: string
+          image?: string
+          familyName?: string
+        }
         image?: string
+        result?: string
+        scientific_name?: string
+        family_name?: string
       }
-      image?: string
-      result?: string
-      scientific_name?: string
-    }
-  }>()
+    }>()
   
   const navigateToDetail = () => {
     console.log('Navigating to leaf detail with ID:', props.leaf.id);
-    router.push(`/leaf/${props.leaf.id}`)
+    
+    // Ensure the leaf data is properly formatted before navigation
+    // This helps with consistent display regardless of data source
+    const formattedLeaf = {
+      ...props.leaf,
+      result: props.leaf.result || props.leaf.leafInfo?.name,
+      scientific_name: props.leaf.scientific_name || props.leaf.leafInfo?.scientificName,
+      family_name: props.leaf.family_name || props.leaf.leafInfo?.familyName,
+      image: props.leaf.image || props.leaf.leafInfo?.image,
+      
+      // Ensure leafInfo is always present and properly formatted
+      leafInfo: {
+        name: props.leaf.leafInfo?.name || props.leaf.result || 'Unknown Plant',
+        scientificName: props.leaf.leafInfo?.scientificName || props.leaf.scientific_name || '',
+        familyName: props.leaf.leafInfo?.familyName || props.leaf.family_name || '',
+        image: props.leaf.leafInfo?.image || props.leaf.image || '',
+        // Add other fields as needed
+      }
+    };
+    
+    // Store the formatted leaf in sessionStorage for consistent access
+    try {
+      sessionStorage.setItem(`leaf_${props.leaf.id}`, JSON.stringify(formattedLeaf));
+    } catch (e) {
+      console.error('Failed to store leaf data in sessionStorage:', e);
+    }
+    
+    router.push(`/leaf/${props.leaf.id}`);
   }
   
   const formatDate = (dateString: string) => {

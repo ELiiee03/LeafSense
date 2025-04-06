@@ -275,6 +275,7 @@
            medkitOutline, constructOutline, ellipsisHorizontalCircleOutline,
            thermometerOutline, syncOutline, sunnyOutline, waterOutline, pricetagOutline } from 'ionicons/icons';
   import { supabase } from '@/supabaseClient';
+  import { Network } from '@capacitor/network';
   
 // Define props
 const props = defineProps<{
@@ -327,6 +328,30 @@ interface Leaf {
 
 const leaf = ref(props.leaf);
 const selectedTab = ref('overview');
+const isOnline = ref(true);
+
+// Check network status on component mount
+const checkNetworkStatus = async () => {
+  const status = await Network.getStatus();
+  isOnline.value = status.connected;
+  console.log('LeafInfoModal network status:', isOnline.value ? 'Online' : 'Offline');
+};
+
+// Listen for network status changes
+const setupNetworkListeners = () => {
+  Network.addListener('networkStatusChange', (status) => {
+    isOnline.value = status.connected;
+    console.log('LeafInfoModal network changed:', isOnline.value ? 'Online' : 'Offline');
+    
+    // If we come back online and have a leaf ID, set up subscription
+    if (isOnline.value && leaf.value?.id) {
+      setupLeafSubscription(leaf.value.id);
+    } else if (!isOnline.value) {
+      // Clean up subscriptions when going offline
+      cleanupLeafSubscription();
+    }
+  });
+};
 
 // Extract aliases from the leaf data if available
 const aliases = computed(() => {
@@ -436,7 +461,7 @@ let detailsSubscription: any = null;
 
 // Set up realtime subscription when a leaf is loaded
 const setupLeafSubscription = (leafId: string | number) => {
-  if (!leafId) return;
+  if (!leafId || !isOnline.value) return;
   
   // Clean up any existing subscription
   cleanupLeafSubscription();
@@ -465,27 +490,30 @@ const setupLeafSubscription = (leafId: string | number) => {
     )
     .subscribe();
     
-  // Also subscribe to plant_details changes for this leaf
-  const plantDetailsSubscription = supabase
-    .channel(`plant_details_${leafId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'plant_details',
-        filter: `inference_result_id=eq.${leafId}`
-      },
-      (payload) => {
-        console.log('Plant details changed:', payload);
-        
-        // Refresh leaf data
-        if (props.onDataChange) {
-          props.onDataChange(String(leafId));
+  // Only set up more subscriptions if we're online
+  if (isOnline.value) {
+    // Also subscribe to plant_details changes for this leaf
+    const plantDetailsSubscription = supabase
+      .channel(`plant_details_${leafId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'plant_details',
+          filter: `inference_result_id=eq.${leafId}`
+        },
+        (payload) => {
+          console.log('Plant details changed:', payload);
+          
+          // Refresh leaf data
+          if (props.onDataChange) {
+            props.onDataChange(String(leafId));
+          }
         }
-      }
-    )
-    .subscribe();
+      )
+      .subscribe();
+  }
 };
 
 // Cleanup function
@@ -501,7 +529,7 @@ const cleanupLeafSubscription = () => {
 watch(
   () => props.leaf?.id,
   (newLeafId) => {
-    if (newLeafId) {
+    if (newLeafId && isOnline.value) {
       setupLeafSubscription(newLeafId);
     }
   },
@@ -511,6 +539,14 @@ watch(
 // Clean up on unmount
 onBeforeUnmount(() => {
   cleanupLeafSubscription();
+  // Remove network listeners
+  Network.removeAllListeners();
+});
+
+// Initialize component
+onMounted(async () => {
+  await checkNetworkStatus();
+  setupNetworkListeners();
 });
 
 // Watch for leaf prop changes

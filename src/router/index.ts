@@ -70,11 +70,13 @@ const routes: Array<RouteRecordRaw> = [
     name: 'leafinfo',
     component: () => import('../views/LeafInfoPage.vue'),
     props: true,
+    meta: { requiresAuth: true }
   },
   {
     path: '/homecontent',
     name: 'homecontent',
     component: () => import('../components/HomeContent.vue'),
+    meta: { requiresAuth: true }
   },
   // {
   //   path: '/modal',
@@ -94,8 +96,8 @@ router.beforeEach(async (to, from, next) => {
   // Check if route requires auth
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
   
+  // If route doesn't require auth, allow access
   if (!requiresAuth) {
-    // Public route, allow access
     return next();
   }
   
@@ -104,15 +106,15 @@ router.beforeEach(async (to, from, next) => {
   
   if (error) {
     console.error('Auth check error:', error);
-    return next('/login');
+    return next({ path: '/login', query: { redirect: to.fullPath } });
   }
   
   if (session) {
     // User is authenticated, allow access
     return next();
   } else {
-    // Not authenticated, redirect to login
-    return next('/login');
+    // Not authenticated, redirect to login with the intended destination
+    return next({ path: '/login', query: { redirect: to.fullPath } });
   }
 });
 

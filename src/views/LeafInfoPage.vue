@@ -119,9 +119,15 @@ const leafData = computed(() => inferenceStore.result);
 const leafDataService = useLeafData();
 
 // Watch network status and sync when online
-watch(() => leafDataService.isOnline.value, (isOnline) => {
+watch(() => leafDataService.isOnline.value, async (isOnline) => {
   if (isOnline) {
-    leafDataService.syncOfflineData();
+    try {
+      console.log('Network is now online, syncing offline data...');
+      await leafDataService.syncOfflineData();
+      await showToast('Offline data synchronized successfully');
+    } catch (error) {
+      console.error('Failed to sync offline data:', error);
+    }
   }
   updateLeafImage();
 });
@@ -204,6 +210,8 @@ async function showToast(message: string, isError = false) {
 
 // Save plant data
 async function saveLeafInfo() {
+  let saveSuccessful = false;
+  
   try {
     // Validate required data
     if (!leafData.value?.leafInfo || !leafData.value?.inference) {
@@ -287,6 +295,24 @@ async function saveLeafInfo() {
       soil_req: leafData.value.leafInfo?.soilRequirements ?? ''
     };
 
+    // Check network status before saving
+    const isOnline = leafDataService.isOnline.value;
+    console.log("Network status before save:", isOnline ? "Online" : "Offline");
+    
+    // Log the detailed plant data being saved - helpful for debugging
+    console.log("Saving plant data:", {
+      inferenceData: {
+        ...inferenceData,
+        confidence: inferenceData.confidence
+      },
+      plantDetailsFields: Object.keys(plantDetails).map(key => {
+        // Use type assertion to fix TypeScript error with plantDetails[key]
+        const value = plantDetails[key as keyof typeof plantDetails];
+        return `${key}: ${value ? 'present' : 'empty'}`;
+      }),
+      imageAvailable: !!imageToSave
+    });
+
     // Save the data
     const result = await leafDataService.savePlantData({
       imageData: imageToSave,
@@ -295,10 +321,11 @@ async function saveLeafInfo() {
     });
 
     console.log("Save result:", result);
+    saveSuccessful = true;
 
-    // Handle location data if needed
+    // Handle location data if needed (only in online mode)
     const pinnedLocation = geoStore.currentLocation;
-    if (result && leafDataService.isOnline.value && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
+    if (result && isOnline && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
       try {
         const { error } = await supabase
           .from('pinned_locations')
@@ -320,8 +347,19 @@ async function saveLeafInfo() {
       }
     }
 
-    await showToast('Leaf information saved successfully');
+    // Show appropriate message based on network status
+    if (isOnline) {
+      await showToast('Leaf information saved successfully');
+    } else {
+      await showToast('Leaf information saved offline. Will sync when online.');
+    }
+
+    // Force UI update before navigating back
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Always go back after successful save (in both online and offline modes)
     router.back();
+    
   } catch (error) {
     console.error('Error saving leaf info:', error);
     if (error instanceof Error) {
@@ -329,6 +367,8 @@ async function saveLeafInfo() {
     } else {
       await showToast('Error saving leaf information', true);
     }
+    // Even with error, try to navigate back after a short delay
+    setTimeout(() => router.back(), 1500);
   }
 }
 </script>

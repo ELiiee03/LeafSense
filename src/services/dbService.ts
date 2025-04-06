@@ -9,6 +9,8 @@ interface InferenceResult {
   family_name: string;
   description: string;
   habitat: string;
+  growth_habits?: string;
+  confidence?: number;
   timestamp: number;
   synced: boolean;
 }

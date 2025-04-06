@@ -10,6 +10,15 @@
       <router-link to="/logs" class="view-all">View All →</router-link>
     </div>
 
+    <!-- Add ion-refresher for manual refresh -->
+    <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+      <ion-refresher-content
+        pullingText="Pull to refresh"
+        refreshingText="Refreshing..."
+      >
+      </ion-refresher-content>
+    </ion-refresher>
+
     <div v-if="isLoading" class="loading-container">
       <ion-spinner name="dots" />
       <p>Loading recent identifications...</p>
@@ -56,7 +65,7 @@ import LeafCard from './LeafCards.vue'
 import LeafInfoModal from './LeafInfoModal.vue'
 import { supabase } from '@/supabaseClient'
 import { RouterLink } from 'vue-router'
-import { IonSpinner, IonIcon } from '@ionic/vue'
+import { IonSpinner, IonIcon, IonRefresher, IonRefresherContent } from '@ionic/vue'
 import defaultLeafImage from '@/assets/pine needle.jpg'
 import { useQuery } from '@tanstack/vue-query'
 import { sqliteService } from '@/services/sqliteService'
@@ -372,8 +381,166 @@ const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
 const openLeafInfo = async (leaf: any) => {
   selectedLeaf.value = leaf;
   setModalOpen(true);
-  await fetchLeafData();
+  
+  // Check network status before fetching additional data
+  const isOnline = (await Network.getStatus()).connected;
+  
+  if (isOnline) {
+    // Online mode - fetch from Supabase
+    await fetchLeafData();
+  } else {
+    // Offline mode - format the existing data for the modal
+    // This ensures we're using the SQLite data properly
+    console.log('Opening leaf in offline mode:', leaf);
+    
+    // Get complete inference data with plant details by querying SQLite directly
+    try {
+      // First try to get full inference data from SQLite
+      const offlineResults = await sqliteService.getInferenceResults();
+      console.log('Fetched full offline results:', offlineResults);
+      
+      // Find the matching leaf with all its details
+      const fullLeafData = offlineResults.find(result => result.id.toString() === leaf.id.toString());
+      
+      if (fullLeafData) {
+        console.log('Found matching offline data with details:', fullLeafData);
+        // Use the fully populated data from SQLite with all plant details
+        selectedLeafData.value = {
+          id: fullLeafData.id,
+          result: fullLeafData.result || 'Unknown Plant',
+          scientific_name: fullLeafData.scientific_name || '',
+          family_name: fullLeafData.family_name || '',
+          description: fullLeafData.description || '',
+          habitat: fullLeafData.habitat || '',
+          image: fullLeafData.imagePath || '',
+          created_at: new Date(fullLeafData.timestamp).toISOString(),
+          confidence: fullLeafData.confidence || 0.8,
+          synced: fullLeafData.synced || false,
+          
+          // Include all plant detail fields
+          color: fullLeafData.color || '',
+          foliage: fullLeafData.foliage || '',
+          bark: fullLeafData.bark || '',
+          fruit: fullLeafData.fruit || '',
+          crown: fullLeafData.crown || '',
+          trunk: fullLeafData.trunk || '',
+          leaves: fullLeafData.leaves || '',
+          retention: fullLeafData.retention || '',
+          texture: fullLeafData.texture || '',
+          venation: fullLeafData.venation || '',
+          behavior: fullLeafData.behavior || '',
+          edible_uses: fullLeafData.edible_uses || '',
+          med_uses: fullLeafData.med_uses || '',
+          timber_uses: fullLeafData.timber_uses || '',
+          other_uses: fullLeafData.other_uses || '',
+          climate: fullLeafData.climate || '',
+          lifespan: fullLeafData.lifespan || '',
+          light_needs: fullLeafData.light_needs || '',
+          water_needs: fullLeafData.water_needs || '',
+          soil_req: fullLeafData.soil_req || '',
+          aliases: fullLeafData.aliases || [],
+          growthHabits: fullLeafData.growthHabits || '',
+          
+          // Include the full leafInfo structure for compatibility with LeafInfoModal
+          leafInfo: fullLeafData.leafInfo || {
+            name: fullLeafData.result || 'Unknown Plant',
+            scientificName: fullLeafData.scientific_name || '',
+            familyName: fullLeafData.family_name || '',
+            description: fullLeafData.description || '',
+            habitat: fullLeafData.habitat || '',
+            image: fullLeafData.imagePath || '',
+            color: fullLeafData.color || '',
+            foliage: fullLeafData.foliage || '',
+            bark: fullLeafData.bark || '',
+            fruit: fullLeafData.fruit || '',
+            crown: fullLeafData.crown || '',
+            trunk: fullLeafData.trunk || '',
+            leaves: fullLeafData.leaves || '',
+            retention: fullLeafData.retention || '',
+            texture: fullLeafData.texture || '',
+            venation: fullLeafData.venation || '',
+            behavior: fullLeafData.behavior || '',
+            edibleUses: fullLeafData.edible_uses || '',
+            medicinalUses: fullLeafData.med_uses || '',
+            timberUses: fullLeafData.timber_uses || '',
+            otherUses: fullLeafData.other_uses || '',
+            climate: fullLeafData.climate || '',
+            lifespan: fullLeafData.lifespan || '',
+            lightNeeds: fullLeafData.light_needs || '',
+            waterNeeds: fullLeafData.water_needs || '',
+            soilRequirements: fullLeafData.soil_req || '',
+            aliases: fullLeafData.aliases || [],
+            growthHabits: fullLeafData.growthHabits || ''
+          }
+        };
+        return;
+      }
+    } catch (error) {
+      console.error('Error fetching complete offline data:', error);
+    }
+    
+    // Fallback to basic data if full details can't be found
+    selectedLeafData.value = {
+      id: leaf.id,
+      result: leaf.leafInfo?.name || leaf.name || 'Unknown Plant',
+      scientific_name: leaf.leafInfo?.scientificName || leaf.scientific_name || '',
+      family_name: leaf.leafInfo?.familyName || leaf.family_name || '',
+      description: leaf.leafInfo?.description || leaf.description || '',
+      habitat: leaf.leafInfo?.habitat || leaf.habitat || '',
+      image: leaf.leafInfo?.image || leaf.image || '',
+      created_at: leaf.created_at || new Date().toISOString(),
+      confidence: leaf.inference?.confidence || leaf.confidence || 0.8,
+      synced: false, // Assume unsynced in offline mode
+      
+      // Add color if available
+      color: leaf.color || leaf.leafInfo?.color || '',
+      growthHabits: leaf.growthHabits || leaf.leafInfo?.growthHabits || '',
+      
+      // Structure the data in the leafInfo format as well for compatibility
+      leafInfo: {
+        name: leaf.leafInfo?.name || leaf.name || leaf.result || 'Unknown Plant',
+        scientificName: leaf.leafInfo?.scientificName || leaf.scientific_name || '',
+        familyName: leaf.leafInfo?.familyName || leaf.family_name || '',
+        description: leaf.leafInfo?.description || leaf.description || '',
+        habitat: leaf.leafInfo?.habitat || leaf.habitat || '',
+        image: leaf.leafInfo?.image || leaf.image || '',
+        color: leaf.leafInfo?.color || leaf.color || '',
+        growthHabits: leaf.leafInfo?.growthHabits || leaf.growthHabits || ''
+      }
+    };
+  }
 }
+
+// Add refresher handler
+const handleRefresh = async (event: CustomEvent) => {
+  console.log('Pull to refresh triggered in Recent Identifications');
+  try {
+    // Check network status and update component state
+    const networkStatus = await Network.getStatus();
+    isNetworkConnected.value = networkStatus.connected;
+    
+    if (networkStatus.connected) {
+      // Online - refresh from server
+      setupRealtimeSubscription();
+      await fetchRecentIdentifications();
+    } else {
+      // Offline - refresh from SQLite
+      await fetchRecentIdentifications(); // This will use SQLite in offline mode
+    }
+  } catch (error) {
+    console.error('Error during refresh:', error);
+  } finally {
+    // Always complete the refresher
+    setTimeout(() => {
+      // Use type assertion for TypeScript
+      const refresher = event.target as HTMLIonRefresherElement;
+      if (refresher && refresher.complete) {
+        refresher.complete();
+        console.log('Refresh completed');
+      }
+    }, 500);
+  }
+};
 </script>
 
 <style scoped>

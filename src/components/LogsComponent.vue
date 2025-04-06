@@ -5,6 +5,14 @@
   <ion-list>
     <NetworkAwareComponent @online="handleNetworkOnline" @offline="handleNetworkOffline" @refresh="refreshLogs">
       <template #online>
+        <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+          <ion-refresher-content
+            pullingText="Pull to refresh"
+            refreshingText="Refreshing..."
+          >
+          </ion-refresher-content>
+        </ion-refresher>
+        
     <ion-card v-for="log in logs" :key="log.id">
       <ion-item-sliding>
         <ion-item button @click="openLeafInfo(log)" :detail="false">
@@ -27,10 +35,11 @@
             </div>
           </ion-label>
           <div class="metadata-end-wrapper" slot="end">
-            <ion-chip :color="log.synced === false ? 'warning' : 'success'" class="sync-status-chip">
+            <ion-chip :color="getSyncChipColor(log)" class="sync-status-chip">
               <ion-icon v-if="log.synced === false" :icon="cloudOfflineOutline"></ion-icon>
+              <ion-icon v-else-if="log.sync_origin === 'offline'" :icon="syncOutline"></ion-icon>
               <ion-icon v-else :icon="cloudDoneOutline"></ion-icon>
-              {{ log.synced === false ? 'Pending' : 'Synced' }}
+              {{ getSyncChipLabel(log) }}
             </ion-chip>
             <ion-icon color="medium" :icon="chevronForward"></ion-icon>
           </div>
@@ -57,6 +66,14 @@
       </template>
       
       <template #offline>
+        <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+          <ion-refresher-content
+            pullingText="Pull to refresh"
+            refreshingText="Refreshing..."
+          >
+          </ion-refresher-content>
+        </ion-refresher>
+        
         <div class="offline-logs-container">
           <div class="offline-header">
             <ion-icon :icon="cloudOfflineOutline" size="large"></ion-icon>
@@ -93,6 +110,11 @@
                   <ion-icon color="medium" :icon="chevronForward"></ion-icon>
                 </div>
               </ion-item>
+              
+              <ion-item-options>
+                <ion-item-option>Favorite</ion-item-option>
+                <ion-item-option color="danger" @click="deleteOfflineLog(log)">Delete</ion-item-option>
+              </ion-item-options>
             </ion-item-sliding>
           </ion-card>
           
@@ -112,8 +134,8 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, onUnmounted, computed, watch } from 'vue';
-import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline } from 'ionicons/icons';
-import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController } from '@ionic/vue';
+import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline, syncOutline } from 'ionicons/icons';
+import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { supabase } from '@/supabaseClient';
 import { sqliteService } from '@/services/sqliteService';
 import { networkState, initNetworkService } from '@/services/networkService';
@@ -141,9 +163,21 @@ export default defineComponent({
     IonChip,
     IonThumbnail,
     NetworkAwareComponent,
+    IonRefresher,
+    IonRefresherContent,
   },
   
   setup(props, { emit }) {
+    interface LeafInfo {
+      name?: string;
+      scientificName?: string;
+      familyName?: string;
+      description?: string;
+      habitat?: string;
+      growthHabits?: string;
+      color?: string;
+    }
+    
     interface Log {
       id: number;
       result: string;          // Common name
@@ -155,6 +189,9 @@ export default defineComponent({
       growthHabits?: string;   // Added growth habits field  
       image?: string;          // Added image field
       synced?: boolean;        // Track sync status
+      leafInfo?: LeafInfo;     // Add leafInfo property
+      confidence?: number;     // Add confidence property
+      sync_origin?: string;    // Add sync_origin property
     }
 
     const page = ref(1);
@@ -199,28 +236,80 @@ export default defineComponent({
       try {
         // Load logs from SQLite
         const localLogs = await sqliteService.getInferenceResults();
+        console.log('Loaded offline data:', localLogs);
+        
         offlineLogs.value = localLogs.map(log => {
-          // Parse the result JSON if stored as string
-          let parsedResult;
-          try {
-            parsedResult = typeof log.result === 'string' ? JSON.parse(log.result) : log.result;
-          } catch (e) {
-            parsedResult = { leafInfo: { name: 'Unknown' } };
-          }
-          
+          // The result object should already be properly formatted from sqliteService
           return {
             id: log.id,
-            result: parsedResult?.leafInfo?.name || 'Unknown',
-            scientific_name: parsedResult?.leafInfo?.scientificName || '',
-            family_name: parsedResult?.leafInfo?.familyName || '',
-            description: parsedResult?.leafInfo?.description || '',
-            created_at: log.timestamp || new Date().toISOString(),
-            habitat: parsedResult?.leafInfo?.habitat || '',
-            growthHabits: parsedResult?.leafInfo?.growthHabits || '',
+            result: log.result || log.leafInfo?.name || 'Unknown',
+            scientific_name: log.scientific_name || log.leafInfo?.scientificName || '',
+            family_name: log.family_name || log.leafInfo?.familyName || '',
+            description: log.description || log.leafInfo?.description || '',
+            created_at: new Date(log.timestamp).toISOString(),
+            habitat: log.habitat || log.leafInfo?.habitat || '',
+            growthHabits: log.growthHabits || log.leafInfo?.growthHabits || '',
             image: log.imagePath || '',
             synced: false,
+            confidence: log.confidence || 0.8,
+            
+            // Include all plant detail fields directly
+            color: log.color || '',
+            foliage: log.foliage || '',
+            bark: log.bark || '',
+            fruit: log.fruit || '',
+            crown: log.crown || '',
+            trunk: log.trunk || '',
+            leaves: log.leaves || '',
+            retention: log.retention || '',
+            texture: log.texture || '',
+            venation: log.venation || '',
+            behavior: log.behavior || '',
+            edible_uses: log.edible_uses || '',
+            med_uses: log.med_uses || '',
+            timber_uses: log.timber_uses || '',
+            other_uses: log.other_uses || '',
+            climate: log.climate || '',
+            lifespan: log.lifespan || '',
+            light_needs: log.light_needs || '',
+            water_needs: log.water_needs || '',
+            soil_req: log.soil_req || '',
+            aliases: log.aliases || [],
+            
+            // Comprehensive leafInfo structure for LeafInfoModal
+            leafInfo: {
+              name: log.result || 'Unknown',
+              scientificName: log.scientific_name || '',
+              familyName: log.family_name || '',
+              description: log.description || '',
+              habitat: log.habitat || '',
+              growthHabits: log.growthHabits || '',
+              color: log.color || '',
+              foliage: log.foliage || '',
+              bark: log.bark || '',
+              fruit: log.fruit || '',
+              crown: log.crown || '',
+              trunk: log.trunk || '',
+              leaves: log.leaves || '',
+              retention: log.retention || '',
+              texture: log.texture || '',
+              venation: log.venation || '',
+              behavior: log.behavior || '',
+              edibleUses: log.edible_uses || '',
+              medicinalUses: log.med_uses || '',
+              timberUses: log.timber_uses || '',
+              otherUses: log.other_uses || '',
+              climate: log.climate || '',
+              lifespan: log.lifespan || '',
+              lightNeeds: log.light_needs || '',
+              waterNeeds: log.water_needs || '',
+              soilRequirements: log.soil_req || '',
+              aliases: log.aliases || []
+            }
           };
         });
+        
+        console.log('Formatted offline logs:', offlineLogs.value);
       } catch (error) {
         console.error('Error loading offline data:', error);
         offlineLogs.value = [];
@@ -238,10 +327,7 @@ export default defineComponent({
         
         // Force refetch from the server if online
         if (isOnline.value) {
-          await useLogsQuery(page.value).refetch({ 
-            cancelRefetch: true, // Cancel any ongoing requests
-            throwOnError: true   // Throw errors instead of returning cached data
-          });
+          await refetch(); // Use the refetch method from the existing query
           
           // Update the local logs array
           if (logsData.value) {
@@ -258,7 +344,7 @@ export default defineComponent({
     };
 
     // Use TanStack Query hooks
-    const { data: logsData, isLoading, isError } = useLogsQuery(page.value);
+    const { data: logsData, isLoading, isError, refetch } = useLogsQuery(page.value);
     const deleteMutation = useDeleteLogMutation();
     const syncMutation = useSyncMutation();
 
@@ -276,6 +362,18 @@ export default defineComponent({
         }
       }
     }, { immediate: true });
+
+    // Watch for network state changes
+    watch(() => networkState.isOnline.value, (isOnline) => {
+      console.log('Network state changed in LogsComponent:', isOnline ? 'Online' : 'Offline');
+      if (!isOnline) {
+        // When going offline, load offline data immediately
+        loadOfflineData();
+      } else {
+        // When coming back online, sync and refresh logs
+        syncPendingData().then(() => refreshLogs());
+      }
+    });
 
     // Watch the loading state and emit it to parent
     watch(isLoading, (newValue) => {
@@ -441,6 +539,113 @@ export default defineComponent({
       }
     };
 
+    // Add refresher handler
+    const handleRefresh = async (event: CustomEvent) => {
+      console.log('Pull to refresh triggered');
+      try {
+        // Check network status
+        const networkStatus = await Network.getStatus();
+        networkState.isOnline.value = networkStatus.connected;
+        
+        if (networkStatus.connected) {
+          // Online - refresh logs from server
+          await syncPendingData();
+          await refreshLogs();
+        } else {
+          // Offline - refresh logs from SQLite
+          await loadOfflineData();
+        }
+      } catch (error) {
+        console.error('Error during refresh:', error);
+      } finally {
+        // Always complete the refresher
+        setTimeout(() => {
+          // Use type assertion for TypeScript
+          const refresher = event.target as HTMLIonRefresherElement;
+          if (refresher && refresher.complete) {
+            refresher.complete();
+            console.log('Refresh completed');
+          }
+        }, 500);
+      }
+    };
+
+    // Add the methods to determine chip color and label based on sync status
+    const getSyncChipColor = (log: Log) => {
+      if (log.synced === false) {
+        return 'warning';
+      } else if (log.sync_origin === 'offline') {
+        return 'secondary';
+      }
+      return 'success';
+    };
+
+    const getSyncChipLabel = (log: Log) => {
+      if (log.synced === false) {
+        return 'Pending';
+      } else if (log.sync_origin === 'offline') {
+        return 'Synced (offline)';
+      }
+      return 'Synced';
+    };
+
+    // Add the deleteOfflineLog function
+    const deleteOfflineLog = async (log: Log) => {
+      try {
+        const alert = await alertController.create({
+          header: 'Confirm Delete',
+          message: 'Are you sure you want to delete this offline leaf data? This action cannot be undone.',
+          buttons: [
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            },
+            {
+              text: 'Delete',
+              role: 'destructive',
+              handler: async () => {
+                try {
+                  console.log('🗑️ Attempting to delete offline record with ID:', log.id);
+                  
+                  // Delete the record from SQLite
+                  await sqliteService.deleteUnsyncedRecord(log.id);
+                  console.log('🗑️ Successfully deleted offline record from SQLite');
+                  
+                  // Update the local logs array to remove the deleted item
+                  offlineLogs.value = offlineLogs.value.filter(item => item.id !== log.id);
+                  
+                  const toast = await toastController.create({
+                    message: 'Offline record deleted successfully',
+                    duration: 2000,
+                    color: 'success',
+                    position: 'top'
+                  });
+                  
+                  await toast.present();
+                } catch (err) {
+                  console.error('❌ Error deleting offline log:', err);
+                  
+                  // Show error toast
+                  const toast = await toastController.create({
+                    message: 'Failed to delete offline record',
+                    duration: 3000,
+                    color: 'danger',
+                    position: 'top'
+                  });
+                  
+                  await toast.present();
+                }
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
+      } catch (error) {
+        console.error('Error in deleteOfflineLog:', error);
+      }
+    };
+
     onMounted(async () => {
       // Initialize network service
       await initNetworkService();
@@ -494,6 +699,7 @@ export default defineComponent({
       timeOutline,
       cloudOfflineOutline,
       cloudDoneOutline,
+      syncOutline,
       logs,
       offlineLogs,
       allLogs,
@@ -510,7 +716,11 @@ export default defineComponent({
       deleteLog,
       refreshLogs,
       handleNetworkOnline,
-      handleNetworkOffline
+      handleNetworkOffline,
+      handleRefresh,
+      getSyncChipColor,
+      getSyncChipLabel,
+      deleteOfflineLog,
     };
   },
   emits: ['loading-changed']
