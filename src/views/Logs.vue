@@ -1,14 +1,19 @@
 <template>
     <ion-page>
-      <GlobalHeader />
+      <!-- <GlobalHeader /> -->
+      <ion-header class="ion-no-border">
+        <ion-toolbar>
+          <ion-title><b><h1>History</h1></b></ion-title>
+        </ion-toolbar>
+      </ion-header>
         <ion-content>
-        <ion-grid>
+        <!-- <ion-grid>
             <ion-row>
                 <ion-col></ion-col>
                 <ion-col size="auto">Recent Identifications</ion-col>
                 <ion-col></ion-col>
               </ion-row>
-        </ion-grid>
+        </ion-grid> -->
         
         <!-- Loading state -->
         <div class="loading-state" v-if="isLoading">

@@ -36,13 +36,24 @@ export default defineComponent({
       await loading.present();
 
       try {
+        // Add a longer delay for physical devices
+        console.log('Starting auth callback processing...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Log current URL for debugging
+        console.log('Current URL:', window.location.href);
+        
+        // Get redirect path from URL if present
+        const params = new URLSearchParams(window.location.search);
+        const redirectPath = params.get('redirect') || '/home';
+        console.log('Redirect path:', redirectPath);
+        
         // First check for hash fragments (#) which is how many OAuth providers return tokens
         if (window.location.hash) {
           console.log('Found hash fragment in URL');
           const hashParams = new URLSearchParams(window.location.hash.substring(1));
           const accessToken = hashParams.get('access_token');
           const refreshToken = hashParams.get('refresh_token');
-          const expiresIn = hashParams.get('expires_in');
           
           if (accessToken) {
             console.log('Setting session from hash fragment tokens');
@@ -61,11 +72,13 @@ export default defineComponent({
             
             // Successfully set session from hash tokens
             statusMessage.value = 'Authentication successful! Redirecting...';
+            console.log('Auth successful, preparing to redirect...');
             
             // Store user info in localStorage for app-wide access
             try {
               const { data: { user } } = await supabase.auth.getUser();
               if (user) {
+                console.log('Storing user info in localStorage');
                 localStorage.setItem('userInfo', JSON.stringify({
                   id: user.id,
                   email: user.email,
@@ -76,21 +89,31 @@ export default defineComponent({
               console.error('Error getting user details:', e);
             }
             
-            // Dismiss loading and redirect to home
+            // Close browser if in native app
+            if (Capacitor.isNativePlatform()) {
+              try {
+                console.log('Closing browser...');
+                await Browser.close();
+              } catch (e) {
+                console.log('Browser may already be closed');
+              }
+            }
+            
+            // Dismiss loading and redirect to intended destination
             await loading.dismiss();
-            router.replace('/home');
+            console.log('Redirecting to intended destination');
+            router.replace(redirectPath);
             return;
           }
         }
 
         // Then check for query parameters (?) which is typically used for email confirmation
-        const params = new URLSearchParams(window.location.search);
         const error = params.get('error');
         const errorDescription = params.get('error_description');
         
         if (error) {
           console.error('Auth error from URL:', error, errorDescription);
-          statusMessage.value = `Authentication failed: ${errorDescription || error}`;
+          statusMessage.value = errorDescription ? `Authentication failed: ${errorDescription}` : `Authentication failed: ${error}`;
           setTimeout(() => router.replace('/login'), 2000);
           await loading.dismiss();
           return;
@@ -114,7 +137,7 @@ export default defineComponent({
           }
         }
 
-        // Always check the current session
+        // Now check the current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
@@ -144,9 +167,9 @@ export default defineComponent({
             lastLogin: new Date().toISOString()
           }));
 
-          // Dismiss loading and redirect to home
+          // Dismiss loading and redirect to intended destination
           await loading.dismiss();
-          router.replace('/home');
+          router.replace(redirectPath);
         } else {
           statusMessage.value = 'No session found. Redirecting to login...';
           await loading.dismiss();

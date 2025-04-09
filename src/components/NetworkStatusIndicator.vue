@@ -1,52 +1,106 @@
 <template>
-  <div class="network-status" :class="{ 'offline': !isOnline }">
-    <ion-icon :icon="isOnline ? cloudDoneOutline : cloudOfflineOutline" />
-    <span>{{ isOnline ? 'Online' : 'Offline' }}</span>
-  </div>
+  <!-- Empty template since we're using toast notifications -->
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { cloudDoneOutline, cloudOfflineOutline } from 'ionicons/icons';
-import { Network } from '@capacitor/network';
+import { toastController } from '@ionic/vue';
+import { networkState, onNetworkChange, initNetworkService, cleanupNetworkService } from '@/services/networkService';
 
 const isOnline = ref(true);
+let previousState = true;
+let offlineToast: HTMLIonToastElement | null = null;
 
-const updateNetworkStatus = async (status: any) => {
-  isOnline.value = status.connected;
+const showOnlineToast = async () => {
+  const toast = await toastController.create({
+    message: 'Network connection restored',
+    icon: cloudDoneOutline,
+    color: 'success',
+    duration: 3000,
+    position: 'top'
+  });
+  
+  await toast.present();
+};
+
+const showOfflineToast = async () => {
+  // Dismiss any existing offline toast first
+  if (offlineToast) {
+    await offlineToast.dismiss();
+  }
+  
+  offlineToast = await toastController.create({
+    message: 'You are offline',
+    icon: cloudOfflineOutline,
+    color: 'danger',
+    position: 'top',
+    buttons: [
+      {
+        text: 'OK',
+        role: 'cancel'
+      }
+    ]
+  });
+  
+  await offlineToast.present();
+};
+
+const updateNetworkStatus = async (status: { connected: boolean }) => {
+  // Only process when the status changes
+  if (previousState !== status.connected) {
+    isOnline.value = status.connected;
+    previousState = status.connected;
+    
+    if (status.connected) {
+      // Online: dismiss offline toast and show temporary online toast
+      if (offlineToast) {
+        await offlineToast.dismiss();
+        offlineToast = null;
+      }
+      showOnlineToast();
+    } else {
+      // Offline: show persistent offline toast
+      showOfflineToast();
+    }
+  }
 };
 
 onMounted(async () => {
-  const status = await Network.getStatus();
-  isOnline.value = status.connected;
+  // Initialize the network service if it hasn't been initialized yet
+  await initNetworkService();
   
-  Network.addListener('networkStatusChange', updateNetworkStatus);
-});
-
-onUnmounted(() => {
-  Network.removeAllListeners();
+  // Set initial state from network service
+  isOnline.value = networkState.isOnline.value;
+  previousState = networkState.isOnline.value;
+  
+  // Only show initial toast if offline
+  if (!networkState.isOnline.value) {
+    showOfflineToast();
+  }
+  
+  // Subscribe to network changes
+  const unsubscribe = onNetworkChange(updateNetworkStatus);
+  
+  // Also watch the reactive state
+  watch(() => networkState.isOnline.value, (newValue) => {
+    if (previousState !== newValue) {
+      updateNetworkStatus({ connected: newValue });
+    }
+  });
+  
+  onUnmounted(() => {
+    // Clean up listeners
+    unsubscribe();
+    
+    // Clean up any remaining toast when component is unmounted
+    if (offlineToast) {
+      offlineToast.dismiss();
+    }
+  });
 });
 </script>
 
 <style scoped>
-.network-status {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 16px;
-  font-size: 0.8rem;
-  background-color: #E6F4E6;
-  color: #1E8E3E;
-  transition: all 0.3s ease;
-}
-
-.network-status.offline {
-  background-color: #FCE8E6;
-  color: #C5221F;
-}
-
-.network-status ion-icon {
-  font-size: 1rem;
-}
+/* No styles needed as we're using toast notifications */
 </style> 

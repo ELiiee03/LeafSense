@@ -2,18 +2,15 @@
 import { Geolocation } from '@capacitor/geolocation';
 
 export const requestPermissions = async () => {
-  // First check current permissions
-  const currentStatus = await Geolocation.checkPermissions();
-  
-  if (currentStatus.location === 'denied') {
-    throw new Error('Location permission was permanently denied');
-  }
-
-  // Request permissions if not already granted
+  // Request permissions first
   const permission = await Geolocation.requestPermissions();
   
+  if (permission.location === 'denied') {
+    throw new Error('Location permission was denied');
+  }
+  
   if (permission.location !== 'granted') {
-    throw new Error('Location permission denied');
+    throw new Error('Location permission not granted');
   }
 };
 

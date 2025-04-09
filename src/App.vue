@@ -9,11 +9,11 @@
 </template>
 
 <script lang="ts">
-import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
+import { IonApp, IonContent, IonPage, IonRouterOutlet, alertController, toastController } from '@ionic/vue';
 import { defineComponent, onMounted } from 'vue';
 import { syncService } from '@/services/syncService';
 import { sqliteService } from '@/services/sqliteService';
-import { Network } from '@capacitor/network';
+import { initNetworkService, networkState, onNetworkChange, cleanupNetworkService } from '@/services/networkService';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
 import { supabase } from './supabaseClient';
@@ -31,8 +31,85 @@ export default defineComponent({
   setup() {
     const router = useRouter();
 
+    // Function to handle database initialization errors
+    const handleDatabaseError = async (error: any) => {
+      console.error('Database initialization error:', error);
+
+      // Check if it's a foreign key constraint error
+      const errorMsg = error?.message || String(error);
+      const isForeignKeyError = errorMsg.includes('FOREIGN KEY constraint failed');
+      
+      if (isForeignKeyError) {
+        // Show alert to user with option to reset database
+        const alert = await alertController.create({
+          header: 'Database Error',
+          message: 'There was a problem with the offline database. Would you like to reset it? This will clear any unsynced plant identifications.',
+          buttons: [
+            {
+              text: 'Cancel',
+              role: 'cancel',
+              handler: () => {
+                console.log('Database reset cancelled');
+              }
+            },
+            {
+              text: 'Reset Database',
+              role: 'confirm',
+              handler: async () => {
+                try {
+                  // Show loading toast
+                  const loadingToast = await toastController.create({
+                    message: 'Resetting database...',
+                    duration: 3000,
+                    position: 'middle'
+                  });
+                  await loadingToast.present();
+                  
+                  // Reset database
+                  const result = await sqliteService.resetDatabase();
+                  
+                  if (result.success) {
+                    const successToast = await toastController.create({
+                      message: 'Database reset successfully',
+                      duration: 2000,
+                      position: 'bottom',
+                      color: 'success'
+                    });
+                    await successToast.present();
+                  } else {
+                    const errorToast = await toastController.create({
+                      message: result.message || 'Failed to reset database',
+                      duration: 3000,
+                      position: 'bottom',
+                      color: 'danger'
+                    });
+                    await errorToast.present();
+                  }
+                } catch (resetError) {
+                  console.error('Error during database reset:', resetError);
+                  const errorToast = await toastController.create({
+                    message: 'Failed to reset database',
+                    duration: 3000,
+                    position: 'bottom',
+                    color: 'danger'
+                  });
+                  await errorToast.present();
+                }
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
+      }
+    };
+
     onMounted(async () => {
       console.log('Setting up deep link handler in App.vue');
+      
+      // Initialize network service
+      console.log('Initializing network service...');
+      await initNetworkService();
       
       // Initialize SQLite database
       try {
@@ -41,7 +118,7 @@ export default defineComponent({
         console.log('SQLite database initialized successfully');
 
         // Set up network listener for syncing when back online
-        Network.addListener('networkStatusChange', async (status) => {
+        const unsubscribe = onNetworkChange(async (status) => {
           console.log('Network status changed:', status);
           if (status.connected) {
             console.log('Network connected, syncing with Supabase...');
@@ -55,13 +132,13 @@ export default defineComponent({
         });
 
         // Check if we're online now and sync any pending data
-        const networkStatus = await Network.getStatus();
-        if (networkStatus.connected) {
+        if (networkState.isOnline.value) {
           console.log('Network is connected on startup, syncing...');
           await sqliteService.syncWithSupabase();
         }
       } catch (error) {
         console.error('Error initializing database:', error);
+        await handleDatabaseError(error);
       }
       
       // Check for access token in URL hash (for web browser)
@@ -129,59 +206,125 @@ export default defineComponent({
         // Extract tokens from URL if present
         let accessToken = null;
         let refreshToken = null;
+        let redirectPath = '/home'; // Default redirect path
         
-        // Check for hash or query parameters
-        const url = new URL(appData.url);
-        
-        if (url.hash && url.hash.includes('access_token')) {
-          const hashParams = new URLSearchParams(url.hash.substring(1));
-          accessToken = hashParams.get('access_token');
-          refreshToken = hashParams.get('refresh_token');
-          console.log('Found tokens in hash fragment');
-        } else if (url.searchParams.has('access_token')) {
-          accessToken = url.searchParams.get('access_token');
-          refreshToken = url.searchParams.get('refresh_token');
-          console.log('Found tokens in query parameters');
-        }
-        
-        // Check if this is our OAuth callback
-        if (appData.url.includes('/auth-callback') || accessToken) {
-          console.log('Processing auth callback URL');
+        try {
+          // Check for hash or query parameters
+          const url = new URL(appData.url);
           
-          try {
-            // Try to close the browser
-            await Browser.close().catch(e => 
-              console.log('Browser may already be closed:', e)
-            );
+          // Try to extract redirect path from the URL
+          if (url.searchParams.has('redirect')) {
+            redirectPath = url.searchParams.get('redirect') || '/home';
+            console.log('Found redirect path in URL:', redirectPath);
+          }
+          
+          if (url.hash && url.hash.includes('access_token')) {
+            const hashParams = new URLSearchParams(url.hash.substring(1));
+            accessToken = hashParams.get('access_token');
+            refreshToken = hashParams.get('refresh_token');
+            console.log('Found tokens in hash fragment');
             
-            // Set session if we have tokens
-            if (accessToken) {
-              const { error } = await supabase.auth.setSession({
-                access_token: accessToken,
-                refresh_token: refreshToken || '',
-              });
+            // Dump all token info for debugging (remove sensitive data in production)
+            console.log('Access token available:', !!accessToken);
+            console.log('Refresh token available:', !!refreshToken);
+            const hashParamsArray = Array.from(hashParams.entries());
+            console.log('Hash params:', hashParamsArray.map(entry => {
+              const [key, value] = entry;
+              return key === 'access_token' || key === 'refresh_token' 
+                ? `${key}: [hidden]` 
+                : `${key}: ${value}`;
+            }));
+          } else if (url.searchParams.has('access_token')) {
+            accessToken = url.searchParams.get('access_token');
+            refreshToken = url.searchParams.get('refresh_token');
+            console.log('Found tokens in query parameters');
+          }
+          
+          // Check if this is our OAuth callback
+          if (appData.url.includes('/auth-callback') || accessToken) {
+            console.log('Processing auth callback URL');
+            
+            try {
+              // Don't close the browser immediately to ensure the user can complete authentication
+              // We'll add a small delay first
+              console.log('Waiting for auth to complete...');
+              await new Promise(resolve => setTimeout(resolve, 3000));
               
-              if (error) {
-                console.error('Error setting session:', error);
-                setTimeout(() => router.replace('/login'), 500);
-                return;
+              // Set session if we have tokens
+              if (accessToken) {
+                console.log('Setting session with access token');
+                const { error } = await supabase.auth.setSession({
+                  access_token: accessToken,
+                  refresh_token: refreshToken || '',
+                });
+                
+                if (error) {
+                  console.error('Error setting session:', error);
+                  
+                  // Now close the browser after auth attempt
+                  if (Capacitor.isNativePlatform()) {
+                    try {
+                      console.log('Closing browser after auth error...');
+                      await Browser.close();
+                    } catch (e) {
+                      console.log('Browser may already be closed:', e);
+                    }
+                  }
+                  
+                  setTimeout(() => router.replace('/login'), 500);
+                  return;
+                }
               }
+              
+              // Check authentication status
+              console.log('Checking authentication status...');
+              const { data: authData, error } = await supabase.auth.getSession();
+              console.log('Auth check result:', !!authData?.session, error ? error.message : 'No error');
+              
+              // Now try to close the browser after auth check
+              if (Capacitor.isNativePlatform()) {
+                try {
+                  console.log('Closing browser after auth check...');
+                  await Browser.close();
+                } catch (e) {
+                  console.log('Browser may already be closed:', e);
+                }
+              }
+              
+              if (authData?.session) {
+                console.log('Successfully authenticated, redirecting to intended destination');
+                // Store user info
+                localStorage.setItem('userInfo', JSON.stringify({
+                  id: authData.session.user.id,
+                  email: authData.session.user.email,
+                  lastLogin: new Date().toISOString()
+                }));
+                setTimeout(() => router.replace(redirectPath), 500);
+              } else {
+                console.log('No session found, redirecting to login');
+                setTimeout(() => router.replace('/login'), 500);
+              }
+            } catch (e) {
+              console.error('Error handling auth callback:', e);
+              // Try to close browser before redirecting
+              try {
+                await Browser.close();
+              } catch (browserError) {
+                console.log('Browser may already be closed');
+              }
+              router.replace('/login');
             }
-            
-            // Check authentication status
-            const { data: authData, error } = await supabase.auth.getSession();
-            console.log('Auth check result:', authData, error);
-            
-            if (authData?.session) {
-              console.log('Successfully authenticated, redirecting to home');
-              setTimeout(() => router.replace('/home'), 500);
-            } else {
-              console.log('No session found, redirecting to login');
-              setTimeout(() => router.replace('/login'), 500);
+          }
+        } catch (urlError) {
+          console.error('Error parsing URL:', urlError);
+          
+          // Close browser on error
+          if (Capacitor.isNativePlatform()) {
+            try {
+              await Browser.close();
+            } catch (e) {
+              console.log('Browser may already be closed');
             }
-          } catch (e) {
-            console.error('Error handling auth callback:', e);
-            router.replace('/login');
           }
         }
       });
@@ -199,7 +342,7 @@ export default defineComponent({
 </script>
 <style>
 :root {
-  --ion-background-color: #fff;
+  --ion-background-color: #E4EFE7;
 }
 
 ion-toolbar {

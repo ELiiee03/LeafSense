@@ -3,7 +3,7 @@
         <div class="header">
           <div class="header-left">
             <ion-icon :icon="leafOutline" class="icon" />
-            <h4>Explore Leaf Database</h4>
+            <h4><b>Explore Leaf Database</b></h4>
           </div>
         </div>
   
@@ -29,7 +29,7 @@
             </ion-col>
           </ion-row>
           <ion-row v-else>
-            <ion-col v-for="category in categories" :key="category.name" size="6">
+            <ion-col v-for="category in displayCategories" :key="category.name" size="6">
               <ion-card :style="{ background: category.color }" class="category-card">
                 <div class="category-content">
                   <h3>{{ category.name }}</h3>
@@ -67,9 +67,7 @@
     'Shrubs': '#F7E8D7',
     'Flowers': '#F7D7D7',
     'Herbs': '#E6F4D7',
-    // 'Vines': '#D7E6F7',
-    // 'Other': '#E6D7F7'
-  };
+  } as const;
 
   // Create a normalized mapping that handles both singular/plural and case sensitivity
   const categoryNormalization: { [key: string]: string } = {
@@ -87,27 +85,7 @@
     'herbs': 'Herbs',
   };
 
-  const error = ref<string | null>(null);
-  const categories = ref<Array<{ name: string; count: number; color: string }>>(
-    // Initialize with default categories showing zero counts
-    [...defaultCategories]
-  );
-  
-  // Compute the final categories to display, ensuring all default categories are included
-  const displayCategories = computed(() => {
-    // Create a map of the fetched categories for quick lookup
-    const categoryMap = new Map();
-    categories.value.forEach(cat => categoryMap.set(cat.name, cat));
-    
-    // Return default categories with updated counts if available
-    return defaultCategories.map(defaultCat => {
-      const fetchedCategory = categoryMap.get(defaultCat.name);
-      return fetchedCategory || defaultCat;
-    });
-  });
-
-  // Replace the fetchPlantCategories function with a query
-  // Replace the fetchPlantCategories function with a query
+  // Get categories data using TanStack Query
   const { data: categoriesData, isLoading, error: queryError } = useQuery({
     queryKey: ['plantCategories'],
     queryFn: async () => {
@@ -120,16 +98,34 @@
           .not('growth_habits', 'is', null);
         
         if (fetchError) throw fetchError;
-        return processCategories(data);
+        return processCategories(data || []);
       } else {
         // Offline mode: fetch from SQLite
         const offlineResults = await sqliteService.getUnsyncedResults();
-        return processCategories(offlineResults);
+        return processCategories(offlineResults || []);
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
     refetchOnWindowFocus: false
+  });
+
+  // Update displayCategories to use the query data
+  const displayCategories = computed(() => {
+    if (!categoriesData.value) {
+      return defaultCategories;
+    }
+
+    // Create a map of the fetched categories for quick lookup
+    const categoryMap = new Map(
+      categoriesData.value.map(cat => [cat.name, cat])
+    );
+    
+    // Return default categories with updated counts if available
+    return defaultCategories.map(defaultCat => {
+      const fetchedCategory = categoryMap.get(defaultCat.name);
+      return fetchedCategory || defaultCat;
+    });
   });
 
   // Helper function to process categories
@@ -142,13 +138,15 @@
     });
     
     // Process the data
-    data?.forEach(item => {
-      const habit = item.growth_habits?.trim() || 'Other';
+    data.forEach(item => {
+      const habit = item.growth_habits?.trim() || '';
+      
+      if (!habit) return; // Skip empty habits
       
       if (habit.includes(',')) {
         const habits = habit.split(',').map((h: string) => h.trim());
         habits.forEach((h: string) => {
-          processHabit(h, counts);
+          if (h) processHabit(h, counts);
         });
       } else {
         processHabit(habit, counts);
@@ -156,39 +154,32 @@
     });
     
     // Convert to array format for display
-    return Object.entries(counts)
-      .filter(([name]) => defaultCategories.some(cat => cat.name === name))
-      .map(([name, count]) => ({
-        name,
-        count,
-        color: categoryColors[name as keyof typeof categoryColors] || '#F0F0F0'
-      }));
+    return defaultCategories.map(cat => ({
+      name: cat.name,
+      count: counts[cat.name] || 0,
+      color: categoryColors[cat.name as keyof typeof categoryColors] || '#F0F0F0'
+    }));
   };
 
   // Helper function to process each habit and increment the right category counter
   const processHabit = (habit: string, counts: Record<string, number>) => {
     // Convert to lowercase for normalization
-    const habitLower = habit.toLowerCase();
+    const habitLower = habit.toLowerCase().trim();
     
     // Check if this habit has a normalized mapping
     const normalizedCategory = categoryNormalization[habitLower];
     
     if (normalizedCategory) {
       // If we found a match in our normalization map, increment the normalized category
-      counts[normalizedCategory]++;
-      console.log(`Normalized "${habit}" to category "${normalizedCategory}", new count: ${counts[normalizedCategory]}`);
-    } else {
-      // For habits that don't match our normalized categories, put in "Other"
-      const formattedHabit = 'Other';
-      counts[formattedHabit] = (counts[formattedHabit] || 0) + 1;
-      console.log(`No category match for "${habit}", counted in "Other" with count: ${counts[formattedHabit]}`);
+      counts[normalizedCategory] = (counts[normalizedCategory] || 0) + 1;
     }
+    // We no longer count "Other" category since we're only showing default categories
   };
   </script>
   
   <style scoped>
   .explore-container {
-    --background: #f8faf5;
+    --background: #FDFAF6;
     padding: 16px;
     border-radius: 12px;
     padding-top: 2px;
@@ -213,7 +204,7 @@
   }
   
   .content {
-    background: white;
+    background: #F8F8FF;
     padding: 16px;
     border-radius: 12px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.08);

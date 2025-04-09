@@ -2,9 +2,7 @@
     <ion-page>
         <ion-content>
             <GlobalHeader />
-            <div class="network-status-container">
-                <NetworkStatusIndicator />
-            </div>
+            <NetworkStatusIndicator />
             <HeroSection />
             <RecentIdentifications />
             <ExploreDatabase />
@@ -50,10 +48,5 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.network-status-container {
-    position: fixed;
-    top: 60px;
-    right: 16px;
-    z-index: 1000;
-}
+/* Network status container removed as it's now using toast notifications */
 </style>

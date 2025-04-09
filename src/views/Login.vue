@@ -125,7 +125,10 @@ export default defineComponent({
         
         if (error) throw error;
         showToast('Login successful!');
-        router.push('/home');
+        
+        // Check if there's a redirect path in the query params
+        const redirectPath = router.currentRoute.value.query.redirect as string || '/home';
+        router.push(redirectPath);
       } catch (error) {
         loading.value = false;
         if (error instanceof Error) {
@@ -141,15 +144,20 @@ export default defineComponent({
    // Google OAuth login using Capacitor Browser
     const loginWithGoogle = async () => {
       try {
+        // Get the redirect path if it exists
+        const redirectPath = router.currentRoute.value.query.redirect as string || '/home';
+        
         // Determine the correct redirect URL based on platform
         let redirectUrl;
         if (Capacitor.isNativePlatform()) {
-          // Use capacitor:// scheme for native apps
+          // For native platforms, use capacitor:// deep link scheme
           redirectUrl = 'capacitor://localhost/auth-callback';
         } else {
-          // Use full origin for web - this is a critical change
-          redirectUrl = `${window.location.origin}/auth-callback`;
+          // Use full origin for web
+          redirectUrl = `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirectPath)}`;
         }
+        
+        console.log('Using redirect URL:', redirectUrl);
         
         // Show loading indicator
         loading.value = true;
@@ -159,20 +167,27 @@ export default defineComponent({
           provider: 'google',
           options: {
             redirectTo: redirectUrl,
-            skipBrowserRedirect: true, // Important: we'll handle redirect manually
+            skipBrowserRedirect: true, // Important: we'll handle the browser redirect for native devices
+            queryParams: {
+              // Force account selection every time to prevent immediate redirection
+              prompt: 'select_account'
+            }
           }
         });
         
         if (error) throw error;
         
         if (data?.url) {
+          console.log('Opening OAuth URL:', data.url);
           // Open OAuth URL in the system browser
           await Browser.open({ 
             url: data.url,
-            windowName: '_self' // Try to open in same window if possible
+            windowName: '_blank',
+            presentationStyle: 'popover', // Use popover style to prevent immediate closing
           });
           
-          // Note: loading will be reset by the callback handler
+          // We don't reset loading here since it will be handled by the callback
+          // The auth state will be checked by the deep link handler in App.vue
         }
       } catch (error) {
         loading.value = false;

@@ -3,6 +3,16 @@
   <FilterComponent :allLogs="allLogs" @filter-changed="handleFilterChange" />
   
   <ion-list>
+    <NetworkAwareComponent @online="handleNetworkOnline" @offline="handleNetworkOffline" @refresh="refreshLogs">
+      <template #online>
+        <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+          <ion-refresher-content
+            pullingText="Pull to refresh"
+            refreshingText="Refreshing..."
+          >
+          </ion-refresher-content>
+        </ion-refresher>
+        
     <ion-card v-for="log in logs" :key="log.id">
       <ion-item-sliding>
         <ion-item button @click="openLeafInfo(log)" :detail="false">
@@ -25,10 +35,11 @@
             </div>
           </ion-label>
           <div class="metadata-end-wrapper" slot="end">
-            <ion-chip :color="log.synced === false ? 'warning' : 'success'" class="sync-status-chip">
+            <ion-chip :color="getSyncChipColor(log)" class="sync-status-chip">
               <ion-icon v-if="log.synced === false" :icon="cloudOfflineOutline"></ion-icon>
+              <ion-icon v-else-if="log.sync_origin === 'offline'" :icon="syncOutline"></ion-icon>
               <ion-icon v-else :icon="cloudDoneOutline"></ion-icon>
-              {{ log.synced === false ? 'Pending' : 'Synced' }}
+              {{ getSyncChipLabel(log) }}
             </ion-chip>
             <ion-icon color="medium" :icon="chevronForward"></ion-icon>
           </div>
@@ -52,6 +63,69 @@
     <div v-if="loading" class="loading-state">
       <ion-spinner></ion-spinner>
     </div>
+      </template>
+      
+      <template #offline>
+        <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
+          <ion-refresher-content
+            pullingText="Pull to refresh"
+            refreshingText="Refreshing..."
+          >
+          </ion-refresher-content>
+        </ion-refresher>
+        
+        <div class="offline-logs-container">
+          <div class="offline-header">
+            <ion-icon :icon="cloudOfflineOutline" size="large"></ion-icon>
+            <h3>Offline Mode</h3>
+            <p>Showing locally stored data</p>
+          </div>
+          
+          <ion-card v-for="log in offlineLogs" :key="log.id">
+            <ion-item-sliding>
+              <ion-item button @click="openLeafInfo(log)" :detail="false">
+                <ion-thumbnail>
+                  <img 
+                    :alt="log.result || 'Leaf image'" 
+                    :src="log.image || 'https://ionicframework.com/docs/img/demos/thumbnail.svg'" 
+                    @error="handleImageError"
+                  />
+                </ion-thumbnail>
+                <ion-label>
+                  <strong>{{ log.result }}</strong>
+                  <br />
+                  <i><ion-text>{{ log.scientific_name }}</ion-text></i>
+                  <div class="timestamp-wrapper">
+                    <ion-icon :icon="timeOutline" size="small"></ion-icon>
+                    <ion-note color="medium" class="ion-text-wrap">
+                      {{ formatTimestamp(log.created_at) }}
+                    </ion-note>
+                  </div>
+                </ion-label>
+                <div class="metadata-end-wrapper" slot="end">
+                  <ion-chip color="warning" class="sync-status-chip">
+                    <ion-icon :icon="cloudOfflineOutline"></ion-icon>
+                    Pending
+                  </ion-chip>
+                  <ion-icon color="medium" :icon="chevronForward"></ion-icon>
+                </div>
+              </ion-item>
+              
+              <ion-item-options>
+                <ion-item-option>Favorite</ion-item-option>
+                <ion-item-option color="danger" @click="deleteOfflineLog(log)">Delete</ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
+          </ion-card>
+          
+          <!-- Empty offline state -->
+          <div class="empty-state" v-if="offlineLogs.length === 0 && !loading">
+            <ion-icon :icon="leafOutline" size="large"></ion-icon>
+            <p>No offline data available</p>
+          </div>
+        </div>
+      </template>
+    </NetworkAwareComponent>
 
     <!-- Use LeafInfoModal as a reusable component -->
     <LeafInfoModal :isOpen="isOpen" :onClose="() => setOpen(false)" :leaf="selectedLeaf" />
@@ -60,14 +134,17 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, onUnmounted, computed, watch } from 'vue';
-import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline } from 'ionicons/icons';
-import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController } from '@ionic/vue';
+import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline, syncOutline } from 'ionicons/icons';
+import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { supabase } from '@/supabaseClient';
 import { sqliteService } from '@/services/sqliteService';
-import { Network } from '@capacitor/network';
+import { networkState, initNetworkService } from '@/services/networkService';
 import LeafInfoModal from './LeafInfoModal.vue';
 import FilterComponent from './FilterComponent.vue';
 import { useLogsQuery, useDeleteLogMutation, useSyncMutation } from '@/services/queryService';
+import NetworkAwareComponent from './NetworkAwareComponent.vue';
+import { Network } from '@capacitor/network';
+import { useQueryClient } from '@tanstack/vue-query';
 
 export default defineComponent({
   components: {
@@ -85,9 +162,22 @@ export default defineComponent({
     IonSpinner,
     IonChip,
     IonThumbnail,
+    NetworkAwareComponent,
+    IonRefresher,
+    IonRefresherContent,
   },
   
   setup(props, { emit }) {
+    interface LeafInfo {
+      name?: string;
+      scientificName?: string;
+      familyName?: string;
+      description?: string;
+      habitat?: string;
+      growthHabits?: string;
+      color?: string;
+    }
+    
     interface Log {
       id: number;
       result: string;          // Common name
@@ -99,16 +189,162 @@ export default defineComponent({
       growthHabits?: string;   // Added growth habits field  
       image?: string;          // Added image field
       synced?: boolean;        // Track sync status
+      leafInfo?: LeafInfo;     // Add leafInfo property
+      confidence?: number;     // Add confidence property
+      sync_origin?: string;    // Add sync_origin property
     }
 
     const page = ref(1);
     const isOpen = ref(false);
     const selectedLeaf = ref<Log | null>(null);
     const error = ref<string | null>(null);
-    const isOnline = ref(true);
+    const isOnline = computed(() => networkState.isOnline.value);
+    const offlineLogs = ref<Log[]>([]);
+    
+    // Add queryClient
+    const queryClient = useQueryClient();
+    
+    // Network handling methods
+    const handleNetworkOnline = async () => {
+      console.log('Network is online, reloading data from server');
+      // Set up realtime subscription when we come online
+      setupRealtimeSubscription();
+      await syncPendingData();
+      refreshLogs();
+    };
+    
+    const handleNetworkOffline = () => {
+      console.log('Network is offline, loading data from local storage');
+      // Clean up subscriptions when we go offline
+      if (subscription) {
+        supabase.removeChannel(subscription);
+        subscription = null;
+      }
+      loadOfflineData();
+    };
+    
+    const syncPendingData = async () => {
+      try {
+        await syncMutation.mutateAsync();
+        console.log('Pending data synced');
+      } catch (error) {
+        console.error('Error syncing data:', error);
+      }
+    };
+    
+    const loadOfflineData = async () => {
+      try {
+        // Load logs from SQLite
+        const localLogs = await sqliteService.getInferenceResults();
+        console.log('Loaded offline data:', localLogs);
+        
+        offlineLogs.value = localLogs.map(log => {
+          // The result object should already be properly formatted from sqliteService
+          return {
+            id: log.id,
+            result: log.result || log.leafInfo?.name || 'Unknown',
+            scientific_name: log.scientific_name || log.leafInfo?.scientificName || '',
+            family_name: log.family_name || log.leafInfo?.familyName || '',
+            description: log.description || log.leafInfo?.description || '',
+            created_at: new Date(log.timestamp).toISOString(),
+            habitat: log.habitat || log.leafInfo?.habitat || '',
+            growthHabits: log.growthHabits || log.leafInfo?.growthHabits || '',
+            image: log.imagePath || '',
+            synced: false,
+            confidence: log.confidence || 0.8,
+            
+            // Include all plant detail fields directly
+            color: log.color || '',
+            foliage: log.foliage || '',
+            bark: log.bark || '',
+            fruit: log.fruit || '',
+            crown: log.crown || '',
+            trunk: log.trunk || '',
+            leaves: log.leaves || '',
+            retention: log.retention || '',
+            texture: log.texture || '',
+            venation: log.venation || '',
+            behavior: log.behavior || '',
+            edible_uses: log.edible_uses || '',
+            med_uses: log.med_uses || '',
+            timber_uses: log.timber_uses || '',
+            other_uses: log.other_uses || '',
+            climate: log.climate || '',
+            lifespan: log.lifespan || '',
+            light_needs: log.light_needs || '',
+            water_needs: log.water_needs || '',
+            soil_req: log.soil_req || '',
+            aliases: log.aliases || [],
+            
+            // Comprehensive leafInfo structure for LeafInfoModal
+            leafInfo: {
+              name: log.result || 'Unknown',
+              scientificName: log.scientific_name || '',
+              familyName: log.family_name || '',
+              description: log.description || '',
+              habitat: log.habitat || '',
+              growthHabits: log.growthHabits || '',
+              color: log.color || '',
+              foliage: log.foliage || '',
+              bark: log.bark || '',
+              fruit: log.fruit || '',
+              crown: log.crown || '',
+              trunk: log.trunk || '',
+              leaves: log.leaves || '',
+              retention: log.retention || '',
+              texture: log.texture || '',
+              venation: log.venation || '',
+              behavior: log.behavior || '',
+              edibleUses: log.edible_uses || '',
+              medicinalUses: log.med_uses || '',
+              timberUses: log.timber_uses || '',
+              otherUses: log.other_uses || '',
+              climate: log.climate || '',
+              lifespan: log.lifespan || '',
+              lightNeeds: log.light_needs || '',
+              waterNeeds: log.water_needs || '',
+              soilRequirements: log.soil_req || '',
+              aliases: log.aliases || []
+            }
+          };
+        });
+        
+        console.log('Formatted offline logs:', offlineLogs.value);
+      } catch (error) {
+        console.error('Error loading offline data:', error);
+        offlineLogs.value = [];
+      }
+    };
+    
+    const refreshLogs = async () => {
+      try {
+        console.log('Refreshing logs data');
+        // Reset pagination
+        page.value = 1;
+        
+        // Invalidate the cache for logs
+        queryClient.invalidateQueries({ queryKey: ['logs'] });
+        
+        // Force refetch from the server if online
+        if (isOnline.value) {
+          await refetch(); // Use the refetch method from the existing query
+          
+          // Update the local logs array
+          if (logsData.value) {
+            logs.value = [...logsData.value];
+          }
+        } else {
+          await loadOfflineData();
+        }
+        
+        console.log('Logs data refreshed successfully');
+      } catch (error) {
+        console.error('Error refreshing logs:', error);
+      }
+    };
 
     // Use TanStack Query hooks
-    const { data: logsData, isLoading, isError } = useLogsQuery(page.value);
+    const { data: logsData, isLoading, isError, refetch } = useLogsQuery(page.value);
     const deleteMutation = useDeleteLogMutation();
     const syncMutation = useSyncMutation();
 
@@ -127,6 +363,18 @@ export default defineComponent({
       }
     }, { immediate: true });
 
+    // Watch for network state changes
+    watch(() => networkState.isOnline.value, (isOnline) => {
+      console.log('Network state changed in LogsComponent:', isOnline ? 'Online' : 'Offline');
+      if (!isOnline) {
+        // When going offline, load offline data immediately
+        loadOfflineData();
+      } else {
+        // When coming back online, sync and refresh logs
+        syncPendingData().then(() => refreshLogs());
+      }
+    });
+
     // Watch the loading state and emit it to parent
     watch(isLoading, (newValue) => {
       emit('loading-changed', newValue);
@@ -136,42 +384,8 @@ export default defineComponent({
       isOpen.value = open;
     };
 
-    // Monitor network status
-    const checkNetworkStatus = async () => {
-      const status = await Network.getStatus();
-      isOnline.value = status.connected;
-      return status.connected;
-    };
-
-    // Set up real-time subscription
-    let subscription: any = null;
-
-    const setupRealtimeSubscription = () => {
-      if (subscription) {
-        supabase.removeChannel(subscription);
-      }
-
-      subscription = supabase
-        .channel('inference_results_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'inference_results'
-          },
-          (payload) => {
-            // Add new item to the beginning of the list
-            if (logs.value) {
-              const newLog = payload.new as Log;
-              logs.value = [newLog, ...logs.value];
-            }
-          }
-        )
-        .subscribe();
-    };
-
     const openLeafInfo = (log: Log) => {
+      console.log('Opening leaf info with data:', log);
       selectedLeaf.value = log;
       setOpen(true);
     };
@@ -214,6 +428,9 @@ export default defineComponent({
                 try {
                   await deleteMutation.mutateAsync(log);
                   
+                  // Update the local logs array to remove the deleted item
+                  logs.value = logs.value.filter(item => item.id !== log.id);
+                  
                   const toast = await toastController.create({
                     message: 'Item deleted successfully',
                     duration: 2000,
@@ -223,9 +440,22 @@ export default defineComponent({
                   await toast.present();
                 } catch (err) {
                   console.error('Error deleting log:', err);
+                  
+                  // Check for specific error types
+                  let errorMessage = 'Failed to delete';
+                  
+                  if (err instanceof Error) {
+                    errorMessage = err.message;
+                    
+                    // Handle special cases
+                    if (errorMessage.includes('409') || errorMessage.includes('constraint')) {
+                      errorMessage = 'Cannot delete this item because it is referenced by other data';
+                    }
+                  }
+                  
                   const toast = await toastController.create({
-                    message: err instanceof Error ? err.message : 'Failed to delete',
-                    duration: 2000,
+                    message: errorMessage,
+                    duration: 3000,
                     color: 'danger',
                     position: 'top'
                   });
@@ -242,8 +472,65 @@ export default defineComponent({
       }
     };
 
+    // Set up real-time subscription
+    let subscription: any = null;
+
+    const setupRealtimeSubscription = () => {
+      if (!isOnline.value) return;
+      
+      // Clean up any existing subscriptions first
+      if (subscription) {
+        supabase.removeChannel(subscription);
+        subscription = null;
+      }
+
+      console.log('Setting up realtime subscriptions for logs...');
+
+      // Subscribe to inference_results changes
+      subscription = supabase
+        .channel('logs_inference_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'inference_results'
+          },
+          (payload) => {
+            console.log('Realtime logs update (inference):', payload.eventType, payload);
+            // Immediately refresh data when changes occur
+            refreshLogs();
+          }
+        )
+        .subscribe((status) => {
+          console.log('Logs subscription status (inference):', status);
+        });
+        
+      // Also subscribe to plant_details changes in a separate channel
+      const detailsSubscription = supabase
+        .channel('logs_details_changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all events
+            schema: 'public',
+            table: 'plant_details'
+          },
+          (payload) => {
+            console.log('Plant details update in logs:', payload.eventType, payload);
+            // Refresh logs when plant details change
+            refreshLogs();
+          }
+        )
+        .subscribe((status) => {
+          console.log('Logs subscription status (details):', status);
+        });
+    };
+
     // Add scroll handler for infinite loading
     const handleScroll = async (event: Event) => {
+      if (!isOnline.value) return; // Don't load more in offline mode
+      
       const target = event.target as HTMLElement;
       if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
         if (!isLoading.value) {
@@ -252,28 +539,136 @@ export default defineComponent({
       }
     };
 
+    // Add refresher handler
+    const handleRefresh = async (event: CustomEvent) => {
+      console.log('Pull to refresh triggered');
+      try {
+        // Check network status
+        const networkStatus = await Network.getStatus();
+        networkState.isOnline.value = networkStatus.connected;
+        
+        if (networkStatus.connected) {
+          // Online - refresh logs from server
+          await syncPendingData();
+          await refreshLogs();
+        } else {
+          // Offline - refresh logs from SQLite
+          await loadOfflineData();
+        }
+      } catch (error) {
+        console.error('Error during refresh:', error);
+      } finally {
+        // Always complete the refresher
+        setTimeout(() => {
+          // Use type assertion for TypeScript
+          const refresher = event.target as HTMLIonRefresherElement;
+          if (refresher && refresher.complete) {
+            refresher.complete();
+            console.log('Refresh completed');
+          }
+        }, 500);
+      }
+    };
+
+    // Add the methods to determine chip color and label based on sync status
+    const getSyncChipColor = (log: Log) => {
+      if (log.synced === false) {
+        return 'warning';
+      } else if (log.sync_origin === 'offline') {
+        return 'secondary';
+      }
+      return 'success';
+    };
+
+    const getSyncChipLabel = (log: Log) => {
+      if (log.synced === false) {
+        return 'Pending';
+      } else if (log.sync_origin === 'offline') {
+        return 'Synced (offline)';
+      }
+      return 'Synced';
+    };
+
+    // Add the deleteOfflineLog function
+    const deleteOfflineLog = async (log: Log) => {
+      try {
+        const alert = await alertController.create({
+          header: 'Confirm Delete',
+          message: 'Are you sure you want to delete this offline leaf data? This action cannot be undone.',
+          buttons: [
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            },
+            {
+              text: 'Delete',
+              role: 'destructive',
+              handler: async () => {
+                try {
+                  console.log('🗑️ Attempting to delete offline record with ID:', log.id);
+                  
+                  // Delete the record from SQLite
+                  await sqliteService.deleteUnsyncedRecord(log.id);
+                  console.log('🗑️ Successfully deleted offline record from SQLite');
+                  
+                  // Update the local logs array to remove the deleted item
+                  offlineLogs.value = offlineLogs.value.filter(item => item.id !== log.id);
+                  
+                  const toast = await toastController.create({
+                    message: 'Offline record deleted successfully',
+                    duration: 2000,
+                    color: 'success',
+                    position: 'top'
+                  });
+                  
+                  await toast.present();
+                } catch (err) {
+                  console.error('❌ Error deleting offline log:', err);
+                  
+                  // Show error toast
+                  const toast = await toastController.create({
+                    message: 'Failed to delete offline record',
+                    duration: 3000,
+                    color: 'danger',
+                    position: 'top'
+                  });
+                  
+                  await toast.present();
+                }
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
+      } catch (error) {
+        console.error('Error in deleteOfflineLog:', error);
+      }
+    };
+
     onMounted(async () => {
-      // Set up network listener
-      Network.addListener('networkStatusChange', async (status) => {
+      // Initialize network service
+      await initNetworkService();
+      
+      // Add network change listener
+      Network.addListener('networkStatusChange', (status) => {
         console.log('Network status changed:', status);
-        isOnline.value = status.connected;
+        // Update the networkState directly
+        networkState.isOnline.value = status.connected;
+        networkState.lastUpdated.value = new Date();
         
         if (status.connected) {
-          try {
-            await syncMutation.mutateAsync();
-            console.log('Data synced with Supabase');
-          } catch (error) {
-            console.error('Error syncing with Supabase:', error);
-          }
-          setupRealtimeSubscription();
+          handleNetworkOnline();
+        } else {
+          handleNetworkOffline();
         }
       });
       
       // Check current network status and initialize
-      await checkNetworkStatus();
-      
       if (isOnline.value) {
         setupRealtimeSubscription();
+      } else {
+        await loadOfflineData();
       }
 
       // Add scroll event listener
@@ -287,15 +682,15 @@ export default defineComponent({
       if (subscription) {
         supabase.removeChannel(subscription);
       }
-      
-      // Remove network listener
-      Network.removeAllListeners();
 
       // Remove scroll event listener
       const content = document.querySelector('ion-content');
       if (content) {
         content.removeEventListener('scroll', handleScroll);
       }
+      
+      // Remove network listeners
+      Network.removeAllListeners();
     });
 
     return {
@@ -304,7 +699,9 @@ export default defineComponent({
       timeOutline,
       cloudOfflineOutline,
       cloudDoneOutline,
+      syncOutline,
       logs,
+      offlineLogs,
       allLogs,
       isOpen,
       setOpen,
@@ -316,7 +713,14 @@ export default defineComponent({
       handleFilterChange,
       resetFilters,
       handleImageError,
-      deleteLog
+      deleteLog,
+      refreshLogs,
+      handleNetworkOnline,
+      handleNetworkOffline,
+      handleRefresh,
+      getSyncChipColor,
+      getSyncChipLabel,
+      deleteOfflineLog,
     };
   },
   emits: ['loading-changed']
@@ -366,7 +770,7 @@ img {
 }
 
 ion-item {
-  --background: #F7F7F7;
+  --background: #F8F8FF;
 }
 
 /* Empty state styles */
@@ -391,8 +795,54 @@ ion-item {
   font-size: 16px;
 }
 
+/* Offline mode styles */
+.offline-logs-container {
+  padding: 10px;
+}
+
+.offline-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.offline-header ion-icon {
+  font-size: 32px;
+  color: var(--ion-color-warning);
+  margin-bottom: 10px;
+}
+
+.offline-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ion-color-dark);
+}
+
+.offline-header p {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: var(--ion-color-medium);
+}
+
+/* Loading state */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 20px;
+}
+
 ion-text-wrap {
   margin-top: 20px;
+}
+
+ion-card {
+  border-radius: 15px;
 }
 
 ion-note {

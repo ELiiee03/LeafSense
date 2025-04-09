@@ -384,7 +384,7 @@ interface Leaf {
 }
 
 ion-content {
-  --background: #DCE6CC;
+  --background: #99BC85;
 }
 
   ion-fab {
@@ -398,7 +398,7 @@ ion-content {
     margin-top: 0;
   }
   ion-fab-button {
-    --background: #416d3f;
+    --background: #61a765;
     --box-shadow: 0px 4px 6px 0px rgba(0, 0, 0, 0.4), 0px 6px 12px 4px rgba(0, 0, 0, 0.3);
   }
 
