@@ -143,10 +143,12 @@ export function useLeafData() {
       plantDetails: any 
     }) => {
       // Fix soil_req field if needed
-      if (plantDetails.soil_req !== undefined && plantDetails.soil_req === undefined) {
+      if (plantDetails.solid_req !== undefined && plantDetails.soil_req === undefined) {
         plantDetails.soil_req = plantDetails.solid_req;
         delete plantDetails.solid_req;
       }
+      
+      console.log('Plant details for offline storage:', JSON.stringify(plantDetails, null, 2));
       
       // Only pass the basic inference data to saveOfflineInferenceResult
       const result = await sqliteService.saveOfflineInferenceResult({
@@ -177,14 +179,14 @@ export function useLeafData() {
           texture: plantDetails.texture,
           venation: plantDetails.venation,
           behavior: plantDetails.behavior,
-          edibleUses: plantDetails.edible_uses,
-          medUses: plantDetails.med_uses,
-          timberUses: plantDetails.timber_uses,
-          otherUses: plantDetails.other_uses,
+          edibleUses: plantDetails.edible_uses || plantDetails.edibleUses,
+          medUses: plantDetails.med_uses || plantDetails.medUses,
+          timberUses: plantDetails.timber_uses || plantDetails.timberUses,
+          otherUses: plantDetails.other_uses || plantDetails.otherUses,
           climate: plantDetails.climate,
           lifespan: plantDetails.lifespan,
-          lightNeeds: plantDetails.light_needs,
-          waterNeeds: plantDetails.water_needs,
+          lightNeeds: plantDetails.light_needs || plantDetails.lightNeeds,
+          waterNeeds: plantDetails.water_needs || plantDetails.waterNeeds,
           soilReq: plantDetails.soil_req || plantDetails.soilReq
         });
       }
@@ -221,6 +223,49 @@ export function useLeafData() {
     isSaving: computed(() => 
       savePlantOnlineMutation.isPending.value || 
       savePlantOfflineMutation.isPending.value
-    )
+    ),
+    cleanupSyncedData: async () => {
+      try {
+        if (!isOnline.value) {
+          console.warn('Cannot clean up synced data while offline');
+          return { success: false, reason: 'offline' };
+        }
+        return await sqliteService.deleteAllSyncedData();
+      } catch (error) {
+        console.error('Error cleaning up synced data:', error);
+        return { success: false, error };
+      }
+    },
+    // New function to sync and clean up in one step
+    syncAndCleanup: async () => {
+      try {
+        if (!isOnline.value) {
+          console.warn('Cannot sync and clean up while offline');
+          return { success: false, reason: 'offline' };
+        }
+        
+        // First, sync data
+        const syncResult = await syncMutation.mutateAsync();
+        console.log('Sync completed with result:', syncResult);
+        
+        // Extract syncedCount with type guard
+        const syncedCount = 'syncedCount' in syncResult ? syncResult.syncedCount : 0;
+        
+        // Then, clean up synced data (should already be done by syncWithSupabase)
+        // This is just to make sure cleanup is complete
+        const cleanupResult = await sqliteService.deleteAllSyncedData();
+        console.log('Cleanup completed with result:', cleanupResult);
+        
+        return {
+          success: true,
+          syncedCount: syncedCount,
+          cleanedCount: cleanupResult.deletedCount || 0,
+          message: `Synced ${syncedCount} records and cleaned up ${cleanupResult.deletedCount || 0} records`
+        };
+      } catch (error) {
+        console.error('Error in sync and cleanup:', error);
+        return { success: false, error };
+      }
+    }
   };
 } 

@@ -13,6 +13,20 @@
           </ion-refresher-content>
         </ion-refresher>
         
+        <!-- Add cleanup button for synced records -->
+        <ion-item lines="none" v-if="isOnline">
+          <ion-button 
+            slot="end" 
+            size="small" 
+            fill="clear" 
+            color="medium" 
+            @click="cleanupSyncedLogs"
+            :disabled="cleanupLoading">
+            <ion-icon slot="start" :icon="trashOutline"></ion-icon>
+            Clean Synced Logs
+          </ion-button>
+        </ion-item>
+        
     <ion-card v-for="log in logs" :key="log.id">
       <ion-item-sliding>
         <ion-item button @click="openLeafInfo(log)" :detail="false">
@@ -134,14 +148,14 @@
 
 <script lang="ts">
 import { defineComponent, ref, onMounted, onUnmounted, computed, watch } from 'vue';
-import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline, syncOutline } from 'ionicons/icons';
+import { chevronForward, leafOutline, timeOutline, cloudOfflineOutline, cloudDoneOutline, syncOutline, trashOutline } from 'ionicons/icons';
 import { IonThumbnail, IonChip, IonCard, IonItem, IonItemOption, IonItemOptions, IonItemSliding, IonLabel, IonList, IonNote, IonText, IonButton, IonIcon, IonSpinner, alertController, toastController, IonRefresher, IonRefresherContent } from '@ionic/vue';
 import { supabase } from '@/supabaseClient';
 import { sqliteService } from '@/services/sqliteService';
 import { networkState, initNetworkService } from '@/services/networkService';
 import LeafInfoModal from './LeafInfoModal.vue';
 import FilterComponent from './FilterComponent.vue';
-import { useLogsQuery, useDeleteLogMutation, useSyncMutation } from '@/services/queryService';
+import { useLogsQuery, useDeleteLogMutation, useSyncAndCleanMutation } from '@/services/queryService';
 import NetworkAwareComponent from './NetworkAwareComponent.vue';
 import { Network } from '@capacitor/network';
 import { useQueryClient } from '@tanstack/vue-query';
@@ -204,6 +218,9 @@ export default defineComponent({
     // Add queryClient
     const queryClient = useQueryClient();
     
+    // Add cleanup state
+    const cleanupLoading = ref(false);
+    
     // Network handling methods
     const handleNetworkOnline = async () => {
       console.log('Network is online, reloading data from server');
@@ -225,10 +242,44 @@ export default defineComponent({
     
     const syncPendingData = async () => {
       try {
-        await syncMutation.mutateAsync();
-        console.log('Pending data synced');
+        // Show syncing indicator if needed
+        const toast = await toastController.create({
+          message: 'Syncing data...',
+          duration: 2000,
+          color: 'primary',
+          position: 'top'
+        });
+        await toast.present();
+        
+        // Sync data
+        const syncResult = await syncMutation.mutateAsync();
+        console.log('Pending data synced:', syncResult);
+        
+        // If we synced some records, refresh the offline logs
+        if (syncResult && syncResult.syncedCount > 0) {
+          // Reload offline data to show updated list
+          await loadOfflineData();
+          
+          // Show success toast
+          const successToast = await toastController.create({
+            message: `Synced ${syncResult.syncedCount} records. Offline data cleaned up.`,
+            duration: 2000,
+            color: 'success',
+            position: 'top'
+          });
+          await successToast.present();
+        }
       } catch (error) {
         console.error('Error syncing data:', error);
+        
+        // Show error toast
+        const errorToast = await toastController.create({
+          message: 'Error syncing data. Try again later.',
+          duration: 3000,
+          color: 'danger',
+          position: 'top'
+        });
+        await errorToast.present();
       }
     };
     
@@ -346,7 +397,7 @@ export default defineComponent({
     // Use TanStack Query hooks
     const { data: logsData, isLoading, isError, refetch } = useLogsQuery(page.value);
     const deleteMutation = useDeleteLogMutation();
-    const syncMutation = useSyncMutation();
+    const syncMutation = useSyncAndCleanMutation();
 
     // Computed properties for logs
     const allLogs = computed(() => logsData.value || []);
@@ -410,7 +461,64 @@ export default defineComponent({
       imgElement.src = 'https://ionicframework.com/docs/img/demos/thumbnail.svg';
     };
 
-    // Add delete functionality
+    // Add the deleteOfflineLog function
+    const deleteOfflineLog = async (log: Log) => {
+      try {
+        const alert = await alertController.create({
+          header: 'Confirm Delete',
+          message: 'Are you sure you want to delete this offline leaf data? This action cannot be undone.',
+          buttons: [
+            {
+              text: 'Cancel',
+              role: 'cancel'
+            },
+            {
+              text: 'Delete',
+              role: 'destructive',
+              handler: async () => {
+                try {
+                  console.log('🗑️ Attempting to delete offline record with ID:', log.id);
+                  
+                  // Delete the record from SQLite
+                  await sqliteService.deleteUnsyncedRecord(log.id);
+                  console.log('🗑️ Successfully deleted offline record from SQLite');
+                  
+                  // Update the local logs array to remove the deleted item
+                  offlineLogs.value = offlineLogs.value.filter(item => item.id !== log.id);
+                  
+                  const toast = await toastController.create({
+                    message: 'Offline record deleted successfully',
+                    duration: 2000,
+                    color: 'success',
+                    position: 'top'
+                  });
+                  
+                  await toast.present();
+                } catch (err) {
+                  console.error('❌ Error deleting offline log:', err);
+                  
+                  // Show error toast
+                  const toast = await toastController.create({
+                    message: 'Failed to delete offline record',
+                    duration: 3000,
+                    color: 'danger',
+                    position: 'top'
+                  });
+                  
+                  await toast.present();
+                }
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
+      } catch (error) {
+        console.error('Error in deleteOfflineLog:', error);
+      }
+    };
+
+    // Add the deleteLog function that works in both online and offline modes
     const deleteLog = async (log: Log) => {
       try {
         const alert = await alertController.create({
@@ -426,10 +534,22 @@ export default defineComponent({
               role: 'destructive',
               handler: async () => {
                 try {
-                  await deleteMutation.mutateAsync(log);
-                  
-                  // Update the local logs array to remove the deleted item
-                  logs.value = logs.value.filter(item => item.id !== log.id);
+                  // Check if we're online or offline
+                  if (!isOnline.value || log.synced === false) {
+                    // For offline logs or when we're offline, use direct SQLite delete
+                    console.log('📲 Deleting record directly from SQLite:', log.id);
+                    await sqliteService.deleteUnsyncedRecord(log.id);
+                    
+                    // Update the local logs array
+                    logs.value = logs.value.filter(item => item.id !== log.id);
+                  } else {
+                    // For online synchronized logs, use the mutation
+                    console.log('🌐 Deleting record using online mutation:', log.id);
+                    await deleteMutation.mutateAsync(log);
+                    
+                    // Update the local logs array
+                    logs.value = logs.value.filter(item => item.id !== log.id);
+                  }
                   
                   const toast = await toastController.create({
                     message: 'Item deleted successfully',
@@ -438,6 +558,11 @@ export default defineComponent({
                     position: 'top'
                   });
                   await toast.present();
+                  
+                  // Refresh logs if needed
+                  if (!isOnline.value) {
+                    await loadOfflineData();
+                  }
                 } catch (err) {
                   console.error('Error deleting log:', err);
                   
@@ -589,51 +714,71 @@ export default defineComponent({
       return 'Synced';
     };
 
-    // Add the deleteOfflineLog function
-    const deleteOfflineLog = async (log: Log) => {
+    // Add manual cleanup function
+    const cleanupSyncedLogs = async () => {
       try {
+        if (!isOnline.value) {
+          const toast = await toastController.create({
+            message: 'Cannot clean up logs while offline',
+            duration: 3000,
+            color: 'warning',
+            position: 'top'
+          });
+          await toast.present();
+          return;
+        }
+        
+        // Show confirmation alert
         const alert = await alertController.create({
-          header: 'Confirm Delete',
-          message: 'Are you sure you want to delete this offline leaf data? This action cannot be undone.',
+          header: 'Confirm Cleanup',
+          message: 'Are you sure you want to clean up all synced logs from the device? This will only delete local copies that have already been synced to the server.',
           buttons: [
             {
               text: 'Cancel',
               role: 'cancel'
             },
             {
-              text: 'Delete',
-              role: 'destructive',
+              text: 'Clean Up',
               handler: async () => {
                 try {
-                  console.log('🗑️ Attempting to delete offline record with ID:', log.id);
+                  cleanupLoading.value = true;
                   
-                  // Delete the record from SQLite
-                  await sqliteService.deleteUnsyncedRecord(log.id);
-                  console.log('🗑️ Successfully deleted offline record from SQLite');
+                  // Show progress toast
+                  const progressToast = await toastController.create({
+                    message: 'Cleaning up synced logs...',
+                    duration: 2000,
+                    color: 'primary',
+                    position: 'top'
+                  });
+                  await progressToast.present();
                   
-                  // Update the local logs array to remove the deleted item
-                  offlineLogs.value = offlineLogs.value.filter(item => item.id !== log.id);
+                  // Call the cleanup function
+                  const result = await sqliteService.deleteAllSyncedData();
                   
-                  const toast = await toastController.create({
-                    message: 'Offline record deleted successfully',
+                  // Refresh the offline logs
+                  await loadOfflineData();
+                  
+                  // Show success toast
+                  const successToast = await toastController.create({
+                    message: `Cleaned up ${result.deletedCount} synced logs`,
                     duration: 2000,
                     color: 'success',
                     position: 'top'
                   });
-                  
-                  await toast.present();
-                } catch (err) {
-                  console.error('❌ Error deleting offline log:', err);
+                  await successToast.present();
+                } catch (error) {
+                  console.error('Error cleaning up logs:', error);
                   
                   // Show error toast
-                  const toast = await toastController.create({
-                    message: 'Failed to delete offline record',
+                  const errorToast = await toastController.create({
+                    message: 'Error cleaning up logs',
                     duration: 3000,
                     color: 'danger',
                     position: 'top'
                   });
-                  
-                  await toast.present();
+                  await errorToast.present();
+                } finally {
+                  cleanupLoading.value = false;
                 }
               }
             }
@@ -642,7 +787,8 @@ export default defineComponent({
         
         await alert.present();
       } catch (error) {
-        console.error('Error in deleteOfflineLog:', error);
+        console.error('Error in cleanupSyncedLogs:', error);
+        cleanupLoading.value = false;
       }
     };
 
@@ -700,6 +846,7 @@ export default defineComponent({
       cloudOfflineOutline,
       cloudDoneOutline,
       syncOutline,
+      trashOutline,
       logs,
       offlineLogs,
       allLogs,
@@ -721,6 +868,9 @@ export default defineComponent({
       getSyncChipColor,
       getSyncChipLabel,
       deleteOfflineLog,
+      cleanupSyncedLogs,
+      cleanupLoading,
+      isOnline,
     };
   },
   emits: ['loading-changed']
