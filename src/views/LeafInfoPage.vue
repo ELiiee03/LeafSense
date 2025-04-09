@@ -354,11 +354,13 @@ async function saveLeafInfo() {
       await showToast('Leaf information saved offline. Will sync when online.');
     }
 
-    // Force UI update before navigating back
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Force UI update before navigating back - IMPORTANT: give toast time to display
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Always go back after successful save (in both online and offline modes)
-    router.back();
+    // Only navigate back if save was successful
+    if (saveSuccessful) {
+      router.back();
+    }
     
   } catch (error) {
     console.error('Error saving leaf info:', error);
@@ -367,8 +369,7 @@ async function saveLeafInfo() {
     } else {
       await showToast('Error saving leaf information', true);
     }
-    // Even with error, try to navigate back after a short delay
-    setTimeout(() => router.back(), 1500);
+    // Don't navigate back on error - let user see the error message
   }
 }
 </script>

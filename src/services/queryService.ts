@@ -506,14 +506,80 @@ export const useDeleteLogMutation = () => {
 
 export const useSyncMutation = () => {
   const queryClient = useQueryClient();
-
+  
   return useMutation({
     mutationFn: async () => {
-      await sqliteService.syncWithSupabase();
+      // Check if we're online first
+      const networkStatus = await Network.getStatus();
+      if (!networkStatus.connected) {
+        console.log('Cannot sync while offline');
+        return { syncedCount: 0, message: 'Device is offline' };
+      }
+      
+      try {
+        // Perform the sync
+        console.log('Starting sync process...');
+        const result = await sqliteService.syncWithSupabase();
+        console.log('Sync completed with result:', result);
+        return result;
+      } catch (error) {
+        console.error('Error in sync mutation:', error);
+        throw error;
+      }
     },
     onSuccess: () => {
-      // Invalidate and refetch logs queries
+      // Invalidate and refetch logs after successful sync
       queryClient.invalidateQueries({ queryKey: ['logs'] });
+    }
+  });
+};
+
+// New mutation hook for syncing and cleaning up logs in one operation
+export const useSyncAndCleanMutation = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      // Check if we're online first
+      const networkStatus = await Network.getStatus();
+      if (!networkStatus.connected) {
+        console.log('Cannot sync and clean while offline');
+        return { 
+          syncedCount: 0, 
+          cleanedCount: 0, 
+          message: 'Device is offline' 
+        };
+      }
+      
+      try {
+        // Step 1: Use our syncService which is more reliable than direct sqliteService call
+        console.log('Starting sync and clean process...');
+        
+        // We'll use the one in syncService which already has flags to prevent duplicate syncs
+        const { syncedCount, failureCount } = await import('@/services/syncService')
+          .then(module => module.syncService.syncInferenceResults());
+        
+        console.log(`Sync completed: ${syncedCount} synced, ${failureCount || 0} failures`);
+        
+        // No need for explicit cleanup - syncService already handles this internally
+        // But we'll return the result for display
+        
+        return {
+          syncedCount: syncedCount || 0,
+          cleanedCount: syncedCount || 0, // Same as synced count since we delete what we sync
+          message: `Synced ${syncedCount || 0} records`
+        };
+      } catch (error) {
+        console.error('Error in sync and clean mutation:', error);
+        throw error;
+      }
     },
+    onSuccess: () => {
+      // Invalidate and refetch logs after successful sync and cleanup
+      queryClient.invalidateQueries({ queryKey: ['logs'] });
+      
+      // Also refresh any offline data queries
+      queryClient.invalidateQueries({ queryKey: ['offlineLogs'] });
+    }
   });
 }; 
