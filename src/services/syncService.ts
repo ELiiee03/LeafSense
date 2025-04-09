@@ -29,24 +29,35 @@ export const syncService = {
     this.isSyncing.value = true;
 
     try {
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting current user during sync:', userError);
+      }
+      
       for (const result of unsyncedResults) {
-        const { error } = await supabase
+        // Only include fields that exist in the inference_results table
+        const { data, error } = await supabase
           .from('inference_results')
           .insert({
-            image_path: result.image_path,
-            result: JSON.stringify({
-              predictedClass: result.predicted_class,
-              scientificName: result.scientific_name,
-              familyName: result.family_name,
-              description: result.description,
-              habitat: result.habitat,
-            }),
+            // Use camelCase to snake_case naming conversion
+            image: result.image_path, // changed from image_path to match table schema
+            scientific_name: result.scientific_name,
+            family_name: result.family_name,
+            description: result.description,
+            habitat: result.habitat,
+            result: result.predicted_class, // Use predicted_class as the result field
+            growth_habits: result.growth_habits,
+            confidence: result.confidence,
             timestamp: result.timestamp,
-            synced: true
+            user_id: user?.id || null
           });
 
         if (!error) {
           await dbService.markAsSynced(result.id!);
+        } else {
+          console.error('Error syncing inference result:', error);
         }
       }
     } finally {

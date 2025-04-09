@@ -42,12 +42,11 @@ export default defineComponent({
         
         // Log current URL for debugging
         console.log('Current URL:', window.location.href);
-        if (window.location.hash) {
-          console.log('Hash fragment found:', window.location.hash);
-        }
-        if (window.location.search) {
-          console.log('Search params found:', window.location.search);
-        }
+        
+        // Get redirect path from URL if present
+        const params = new URLSearchParams(window.location.search);
+        const redirectPath = params.get('redirect') || '/home';
+        console.log('Redirect path:', redirectPath);
         
         // First check for hash fragments (#) which is how many OAuth providers return tokens
         if (window.location.hash) {
@@ -100,16 +99,15 @@ export default defineComponent({
               }
             }
             
-            // Dismiss loading and redirect to home
+            // Dismiss loading and redirect to intended destination
             await loading.dismiss();
-            console.log('Redirecting to home page');
-            router.replace('/home');
+            console.log('Redirecting to intended destination');
+            router.replace(redirectPath);
             return;
           }
         }
 
         // Then check for query parameters (?) which is typically used for email confirmation
-        const params = new URLSearchParams(window.location.search);
         const error = params.get('error');
         const errorDescription = params.get('error_description');
         
@@ -139,7 +137,7 @@ export default defineComponent({
           }
         }
 
-        // Always check the current session
+        // Now check the current session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
@@ -169,9 +167,9 @@ export default defineComponent({
             lastLogin: new Date().toISOString()
           }));
 
-          // Dismiss loading and redirect to home
+          // Dismiss loading and redirect to intended destination
           await loading.dismiss();
-          router.replace('/home');
+          router.replace(redirectPath);
         } else {
           statusMessage.value = 'No session found. Redirecting to login...';
           await loading.dismiss();

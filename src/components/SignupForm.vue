@@ -68,8 +68,9 @@ export default defineComponent({
     const checkCurrentSession = async () => {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (session) {
-        // User is already authenticated, redirect to home
-        router.replace('/home');
+        // User is already authenticated, redirect to home or intended destination
+        const redirectPath = router.currentRoute.value.query.redirect as string || '/home';
+        router.replace(redirectPath);
       }
     };
 
@@ -89,6 +90,17 @@ export default defineComponent({
             console.log('Browser may already be closed', e);
           }
           
+          // Extract redirect path from URL if present
+          let redirectPath = '/home';
+          try {
+            const url = new URL(data.url);
+            if (url.searchParams.has('redirect')) {
+              redirectPath = url.searchParams.get('redirect') || '/home';
+            }
+          } catch (e) {
+            console.error('Error parsing URL:', e);
+          }
+          
           // Get the current session to see if user is authenticated
           const { data: { session }, error } = await supabase.auth.getSession();
           
@@ -101,7 +113,7 @@ export default defineComponent({
           if (session) {
             showToast('Authentication successful!');
             emit('signup-success', session.user);
-            router.replace('/home');
+            router.replace(redirectPath);
           } else {
             showToast('Authentication failed. Please try again.');
             router.push('/login');
@@ -178,10 +190,13 @@ export default defineComponent({
       try {
         googleLoading.value = true;
         
+        // Get redirect path from URL if present
+        const redirectPath = router.currentRoute.value.query.redirect as string || '/home';
+        
         // Determine the correct redirect URL based on platform
         const redirectUrl = Capacitor.isNativePlatform()
           ? 'capacitor://localhost/auth-callback'
-          : `${window.location.origin}/auth-callback`;
+          : `${window.location.origin}/auth-callback?redirect=${encodeURIComponent(redirectPath)}`;
 
         console.log('Using redirect URL:', redirectUrl);
 
@@ -237,7 +252,7 @@ export default defineComponent({
                   
                   showToast('Authentication successful!');
                   emit('signup-success', session.user);
-                  router.replace('/home');
+                  router.replace(redirectPath);
                   
                 } else if (checkCount >= maxChecks) {
                   // Give up after max checks

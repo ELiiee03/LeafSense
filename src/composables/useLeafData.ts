@@ -79,6 +79,13 @@ export function useLeafData() {
         delete sanitizedDetails.solid_req;
       }
       
+      // Get current user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error("Error getting current user:", userError);
+      }
+      
       // Save inference result first
       const { data, error } = await supabase
         .from('inference_results')
@@ -91,7 +98,7 @@ export function useLeafData() {
           result: inferenceData.predictedClass,
           confidence: inferenceData.confidence,
           growth_habits: inferenceData.growthHabits,
-          user_id: null
+          user_id: user?.id || null // Use the authenticated user's ID
         })
         .select();
 
@@ -136,11 +143,12 @@ export function useLeafData() {
       plantDetails: any 
     }) => {
       // Fix soil_req field if needed
-      if (plantDetails.solid_req !== undefined && plantDetails.soil_req === undefined) {
+      if (plantDetails.soil_req !== undefined && plantDetails.soil_req === undefined) {
         plantDetails.soil_req = plantDetails.solid_req;
         delete plantDetails.solid_req;
       }
       
+      // Only pass the basic inference data to saveOfflineInferenceResult
       const result = await sqliteService.saveOfflineInferenceResult({
         imagePath: imageData, // Store full image path/data
         predictedClass: inferenceData.predictedClass,
@@ -149,24 +157,35 @@ export function useLeafData() {
         description: inferenceData.description,
         habitat: inferenceData.habitat,
         confidence: inferenceData.confidence,
-        growthHabits: inferenceData.growthHabits
+        growthHabits: inferenceData.growthHabits,
+        color: plantDetails.color || null
       });
       
       if (result && result.id) {
-        // Fix field names for SQLite
-        const offlineDetails = { ...plantDetails };
-        if (offlineDetails.soil_req) {
-          offlineDetails.soilReq = offlineDetails.soil_req;
-          delete offlineDetails.soil_req;
-        }
-        if (offlineDetails.solid_req) {
-          offlineDetails.soilReq = offlineDetails.solid_req;
-          delete offlineDetails.solid_req;
-        }
-        
+        // Save the detailed plant information separately
         await sqliteService.saveOfflinePlantDetails({
           inferenceResultId: result.id,
-          ...offlineDetails
+          aliases: plantDetails.aliases,
+          color: plantDetails.color,
+          foliage: plantDetails.foliage,
+          bark: plantDetails.bark,
+          fruit: plantDetails.fruit,
+          crown: plantDetails.crown,
+          trunk: plantDetails.trunk,
+          leaves: plantDetails.leaves,
+          retention: plantDetails.retention,
+          texture: plantDetails.texture,
+          venation: plantDetails.venation,
+          behavior: plantDetails.behavior,
+          edibleUses: plantDetails.edible_uses,
+          medUses: plantDetails.med_uses,
+          timberUses: plantDetails.timber_uses,
+          otherUses: plantDetails.other_uses,
+          climate: plantDetails.climate,
+          lifespan: plantDetails.lifespan,
+          lightNeeds: plantDetails.light_needs,
+          waterNeeds: plantDetails.water_needs,
+          soilReq: plantDetails.soil_req || plantDetails.soilReq
         });
       }
       

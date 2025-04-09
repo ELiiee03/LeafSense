@@ -47,7 +47,8 @@ export const inferenceService = {
 
             // console.log('Image path:', imagePath); // Log the image path
 
-            if (isConnected && connectionType === 'wifi') {
+            // if (isConnected && (connectionType === 'wifi' || connectionType === 'cellular')) {
+                if (isConnected && (connectionType === 'cellular')) {
                 // Online: Use Flask API
                 try {
                     // Convert blob URL to base64
@@ -63,7 +64,7 @@ export const inferenceService = {
                         reader.readAsDataURL(blob);
                      });
 
-                    const result = await axios.post('http://192.168.1.57:5000/predict', {
+                    const result = await axios.post('https://leafsense-backend.onrender.com/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {

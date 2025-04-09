@@ -9,7 +9,7 @@
 </template>
 
 <script lang="ts">
-import { IonApp, IonContent, IonPage, IonRouterOutlet } from '@ionic/vue';
+import { IonApp, IonContent, IonPage, IonRouterOutlet, alertController, toastController } from '@ionic/vue';
 import { defineComponent, onMounted } from 'vue';
 import { syncService } from '@/services/syncService';
 import { sqliteService } from '@/services/sqliteService';
@@ -30,6 +30,79 @@ export default defineComponent({
   },
   setup() {
     const router = useRouter();
+
+    // Function to handle database initialization errors
+    const handleDatabaseError = async (error: any) => {
+      console.error('Database initialization error:', error);
+
+      // Check if it's a foreign key constraint error
+      const errorMsg = error?.message || String(error);
+      const isForeignKeyError = errorMsg.includes('FOREIGN KEY constraint failed');
+      
+      if (isForeignKeyError) {
+        // Show alert to user with option to reset database
+        const alert = await alertController.create({
+          header: 'Database Error',
+          message: 'There was a problem with the offline database. Would you like to reset it? This will clear any unsynced plant identifications.',
+          buttons: [
+            {
+              text: 'Cancel',
+              role: 'cancel',
+              handler: () => {
+                console.log('Database reset cancelled');
+              }
+            },
+            {
+              text: 'Reset Database',
+              role: 'confirm',
+              handler: async () => {
+                try {
+                  // Show loading toast
+                  const loadingToast = await toastController.create({
+                    message: 'Resetting database...',
+                    duration: 3000,
+                    position: 'middle'
+                  });
+                  await loadingToast.present();
+                  
+                  // Reset database
+                  const result = await sqliteService.resetDatabase();
+                  
+                  if (result.success) {
+                    const successToast = await toastController.create({
+                      message: 'Database reset successfully',
+                      duration: 2000,
+                      position: 'bottom',
+                      color: 'success'
+                    });
+                    await successToast.present();
+                  } else {
+                    const errorToast = await toastController.create({
+                      message: result.message || 'Failed to reset database',
+                      duration: 3000,
+                      position: 'bottom',
+                      color: 'danger'
+                    });
+                    await errorToast.present();
+                  }
+                } catch (resetError) {
+                  console.error('Error during database reset:', resetError);
+                  const errorToast = await toastController.create({
+                    message: 'Failed to reset database',
+                    duration: 3000,
+                    position: 'bottom',
+                    color: 'danger'
+                  });
+                  await errorToast.present();
+                }
+              }
+            }
+          ]
+        });
+        
+        await alert.present();
+      }
+    };
 
     onMounted(async () => {
       console.log('Setting up deep link handler in App.vue');
@@ -65,6 +138,7 @@ export default defineComponent({
         }
       } catch (error) {
         console.error('Error initializing database:', error);
+        await handleDatabaseError(error);
       }
       
       // Check for access token in URL hash (for web browser)
@@ -132,10 +206,17 @@ export default defineComponent({
         // Extract tokens from URL if present
         let accessToken = null;
         let refreshToken = null;
+        let redirectPath = '/home'; // Default redirect path
         
         try {
           // Check for hash or query parameters
           const url = new URL(appData.url);
+          
+          // Try to extract redirect path from the URL
+          if (url.searchParams.has('redirect')) {
+            redirectPath = url.searchParams.get('redirect') || '/home';
+            console.log('Found redirect path in URL:', redirectPath);
+          }
           
           if (url.hash && url.hash.includes('access_token')) {
             const hashParams = new URLSearchParams(url.hash.substring(1));
@@ -211,14 +292,14 @@ export default defineComponent({
               }
               
               if (authData?.session) {
-                console.log('Successfully authenticated, redirecting to home');
+                console.log('Successfully authenticated, redirecting to intended destination');
                 // Store user info
                 localStorage.setItem('userInfo', JSON.stringify({
                   id: authData.session.user.id,
                   email: authData.session.user.email,
                   lastLogin: new Date().toISOString()
                 }));
-                setTimeout(() => router.replace('/home'), 500);
+                setTimeout(() => router.replace(redirectPath), 500);
               } else {
                 console.log('No session found, redirecting to login');
                 setTimeout(() => router.replace('/login'), 500);
