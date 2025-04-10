@@ -79,8 +79,20 @@ export default defineComponent({
         
         // Check if the URL is our auth callback URL
         if (data.url.includes('auth-callback')) {
-          // Close the browser after handling the auth URL
-          await Browser.close();
+          // Store a flag to indicate we're handling auth in Login component
+          localStorage.setItem('auth_handling_in_progress', 'true');
+          console.log('Auth handling started in Login component');
+          
+          try {
+            // Close the browser after handling the auth URL
+            await Browser.close();
+          } catch (e) {
+            console.log('Browser may already be closed');
+          }
+          
+          // Add a delay before checking session to ensure it's established
+          console.log('Waiting for session to be established...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
           
           // Get the current session to see if user is authenticated
           const { data: { session }, error } = await supabase.auth.getSession();
@@ -92,11 +104,31 @@ export default defineComponent({
           }
           
           if (session) {
+            console.log('Session found in Login component, proceeding to home');
+            localStorage.setItem('auth_successful', 'true');
             showToast('Google login successful!');
             router.push('/home');
           } else {
-            showToast('Authentication failed. Please try again.');
+            console.log('No session found after authentication, retrying...');
+            // Try one more time after a delay before showing error
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            const { data: retryData } = await supabase.auth.getSession();
+            
+            if (retryData.session) {
+              console.log('Session found after retry');
+              localStorage.setItem('auth_successful', 'true');
+              showToast('Google login successful!');
+              router.push('/home');
+            } else {
+              // Only show error if we're not already being redirected by App.vue
+              if (window.location.pathname !== '/home') {
+                showToast('Authentication failed. Please try again.');
+              }
+            }
           }
+          
+          // Clear the flag
+          localStorage.removeItem('auth_handling_in_progress');
         }
       });
     };

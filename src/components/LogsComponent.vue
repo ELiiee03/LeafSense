@@ -247,7 +247,8 @@ export default defineComponent({
           message: 'Syncing data...',
           duration: 2000,
           color: 'primary',
-          position: 'top'
+          position: 'top',
+          cssClass: 'no-shadow-toast'
         });
         await toast.present();
         
@@ -265,7 +266,8 @@ export default defineComponent({
             message: `Synced ${syncResult.syncedCount} records. Offline data cleaned up.`,
             duration: 2000,
             color: 'success',
-            position: 'top'
+            position: 'top',
+            cssClass: 'no-shadow-toast'
           });
           await successToast.present();
         }
@@ -277,7 +279,8 @@ export default defineComponent({
           message: 'Error syncing data. Try again later.',
           duration: 3000,
           color: 'danger',
-          position: 'top'
+          position: 'top',
+          cssClass: 'no-shadow-toast'
         });
         await errorToast.present();
       }
@@ -490,7 +493,8 @@ export default defineComponent({
                     message: 'Offline record deleted successfully',
                     duration: 2000,
                     color: 'success',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   
                   await toast.present();
@@ -502,7 +506,8 @@ export default defineComponent({
                     message: 'Failed to delete offline record',
                     duration: 3000,
                     color: 'danger',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   
                   await toast.present();
@@ -555,7 +560,8 @@ export default defineComponent({
                     message: 'Item deleted successfully',
                     duration: 2000,
                     color: 'success',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await toast.present();
                   
@@ -582,7 +588,8 @@ export default defineComponent({
                     message: errorMessage,
                     duration: 3000,
                     color: 'danger',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await toast.present();
                 }
@@ -722,7 +729,8 @@ export default defineComponent({
             message: 'Cannot clean up logs while offline',
             duration: 3000,
             color: 'warning',
-            position: 'top'
+            position: 'top',
+            cssClass: 'no-shadow-toast'
           });
           await toast.present();
           return;
@@ -748,7 +756,8 @@ export default defineComponent({
                     message: 'Cleaning up synced logs...',
                     duration: 2000,
                     color: 'primary',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await progressToast.present();
                   
@@ -763,7 +772,8 @@ export default defineComponent({
                     message: `Cleaned up ${result.deletedCount} synced logs`,
                     duration: 2000,
                     color: 'success',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await successToast.present();
                 } catch (error) {
@@ -774,7 +784,8 @@ export default defineComponent({
                     message: 'Error cleaning up logs',
                     duration: 3000,
                     color: 'danger',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await errorToast.present();
                 } finally {
@@ -998,5 +1009,10 @@ ion-card {
 ion-note {
   margin-top: 6px;
   display: inline-block;
+}
+
+/* Toast styles */
+:global(.no-shadow-toast) {
+  --box-shadow: none !important;
 }
 </style>

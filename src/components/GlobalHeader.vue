@@ -64,7 +64,7 @@ export default defineComponent({
         await successToast.present();
         
         // Redirect to login page
-        router.replace('/login');
+        router.replace('/preview');
       } catch (error) {
         console.error('Logout error:', error);
         

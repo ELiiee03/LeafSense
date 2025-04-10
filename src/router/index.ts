@@ -58,6 +58,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/preview',
+    name: 'preview',
     component: () => import('../views/Preview.vue'),
   },
   {

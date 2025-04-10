@@ -203,6 +203,12 @@ export default defineComponent({
       App.addListener('appUrlOpen', async (appData: { url: string }) => {
         console.log('App opened with URL:', appData.url);
         
+        // Check if Login component is already handling this auth
+        if (localStorage.getItem('auth_handling_in_progress') === 'true') {
+          console.log('Auth already being handled by Login component, skipping duplicate handling');
+          return;
+        }
+        
         // Extract tokens from URL if present
         let accessToken = null;
         let refreshToken = null;
@@ -246,9 +252,9 @@ export default defineComponent({
             
             try {
               // Don't close the browser immediately to ensure the user can complete authentication
-              // We'll add a small delay first
+              // We'll add a larger delay first
               console.log('Waiting for auth to complete...');
-              await new Promise(resolve => setTimeout(resolve, 3000));
+              await new Promise(resolve => setTimeout(resolve, 5000));
               
               // Set session if we have tokens
               if (accessToken) {
@@ -278,6 +284,7 @@ export default defineComponent({
               
               // Check authentication status
               console.log('Checking authentication status...');
+              await new Promise(resolve => setTimeout(resolve, 2000));
               const { data: authData, error } = await supabase.auth.getSession();
               console.log('Auth check result:', !!authData?.session, error ? error.message : 'No error');
               
@@ -301,6 +308,13 @@ export default defineComponent({
                 }));
                 setTimeout(() => router.replace(redirectPath), 500);
               } else {
+                // Check if authentication was already handled successfully by Login.vue
+                if (localStorage.getItem('auth_successful') === 'true') {
+                  console.log('Auth already successful in Login component, not showing error');
+                  localStorage.removeItem('auth_successful');
+                  return;
+                }
+                
                 console.log('No session found, redirecting to login');
                 setTimeout(() => router.replace('/login'), 500);
               }

@@ -208,6 +208,10 @@ export default defineComponent({
           options: {
             redirectTo: redirectUrl,
             skipBrowserRedirect: true,
+            queryParams: {
+              // Force account selection every time
+              prompt: 'select_account'
+            }
           }
         });
         
