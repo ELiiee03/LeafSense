@@ -1,12 +1,12 @@
 <template>
   <div class="network-aware-container">
     <!-- Show online content when network is available -->
-    <div v-if="isOnline">
+    <div v-if="isOnline && !forceOfflineUI" class="online-content">
       <slot name="online"></slot>
     </div>
     
     <!-- Show offline content when network is unavailable -->
-    <div v-else>
+    <div v-else class="offline-content">
       <slot name="offline">
         <!-- Default offline UI if no offline slot is provided -->
         <div class="offline-fallback">
@@ -37,6 +37,11 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  // Add prop to force offline UI regardless of actual connection status
+  forceOfflineUI: {
+    type: Boolean,
+    default: false
+  },
 });
 
 // Emit events when network status changes
@@ -51,7 +56,7 @@ let unsubscribe: (() => void) | null = null;
 
 // Handle network status changes
 const handleNetworkChange = async (status: { connected: boolean }) => {
-  if (status.connected) {
+  if (status.connected && !props.forceOfflineUI) {
     emit('online');
     
     // Auto refresh content when coming back online if autoRefresh is enabled
@@ -76,6 +81,18 @@ const refreshContent = async () => {
   }, 800);
 };
 
+// Watch for the forceOfflineUI prop changes
+watch(() => props.forceOfflineUI, (forceOffline) => {
+  console.log('ForceOfflineUI prop changed:', forceOffline);
+  if (forceOffline) {
+    // If forcing offline UI, emit offline event
+    emit('offline');
+  } else if (isOnline.value) {
+    // Only emit online if actually online
+    emit('online');
+  }
+}, { immediate: true });
+
 // Setup component
 onMounted(async () => {
   // Initialize network service
@@ -85,10 +102,10 @@ onMounted(async () => {
   unsubscribe = onNetworkChange(handleNetworkChange);
   
   // Emit initial state
-  if (isOnline.value) {
-    emit('online');
-  } else {
+  if (props.forceOfflineUI || !isOnline.value) {
     emit('offline');
+  } else {
+    emit('online');
   }
   
   // Initial refresh if requested
@@ -98,9 +115,20 @@ onMounted(async () => {
   
   // Watch for network state changes
   watch(() => networkState.lastUpdated.value, () => {
-    if (isOnline.value && props.autoRefresh) {
+    if (isOnline.value && !props.forceOfflineUI && props.autoRefresh) {
       refreshContent();
     }
+  });
+
+  // Listen for refresh events from parent
+  window.addEventListener('network-status-changed', (event: any) => {
+    console.log('NetworkAwareComponent received network-status-changed event:', event.detail);
+    if (!event.detail.connected || props.forceOfflineUI) {
+      emit('offline');
+    } else {
+      emit('online');
+    }
+    emit('refresh');
   });
 });
 
@@ -109,6 +137,9 @@ onUnmounted(() => {
   if (unsubscribe) {
     unsubscribe();
   }
+  
+  // Clean up event listener
+  window.removeEventListener('network-status-changed', () => {});
 });
 
 // Expose refresh method to parent components

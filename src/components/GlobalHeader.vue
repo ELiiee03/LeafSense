@@ -43,16 +43,18 @@ export default defineComponent({
         });
         await loadingToast.present();
         
+        // Clear any user data from localStorage
+        localStorage.removeItem('userInfo');
+        localStorage.removeItem('pendingVerificationEmail');
+        localStorage.removeItem('auth_handling_in_progress');
+        localStorage.removeItem('auth_successful');
+        
         // Call Supabase signOut
         const { error } = await supabase.auth.signOut();
         
         if (error) {
           throw error;
         }
-        
-        // Clear any user data from localStorage
-        localStorage.removeItem('userInfo');
-        localStorage.removeItem('pendingVerificationEmail');
         
         // Show success message
         const successToast = await toastController.create({
@@ -63,8 +65,10 @@ export default defineComponent({
         await loadingToast.dismiss();
         await successToast.present();
         
-        // Redirect to login page
-        router.replace('/preview');
+        // Redirect to preview page with timeout to ensure session is cleared
+        setTimeout(() => {
+          window.location.href = '/preview';
+        }, 300);
       } catch (error) {
         console.error('Logout error:', error);
         

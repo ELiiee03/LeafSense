@@ -205,8 +205,8 @@ export default defineComponent({
         
         // Check if Login component is already handling this auth
         if (localStorage.getItem('auth_handling_in_progress') === 'true') {
-          console.log('Auth already being handled by Login component, skipping duplicate handling');
-          return;
+          console.log('Auth handling in progress - App.vue will help with processing');
+          // We'll continue processing to ensure session is properly established
         }
         
         // Extract tokens from URL if present
@@ -251,86 +251,91 @@ export default defineComponent({
             console.log('Processing auth callback URL');
             
             try {
-              // Don't close the browser immediately to ensure the user can complete authentication
-              // We'll add a larger delay first
-              console.log('Waiting for auth to complete...');
-              await new Promise(resolve => setTimeout(resolve, 5000));
-              
-              // Set session if we have tokens
+              // Immediately try to set the session if we have tokens
+              let sessionSet = false;
               if (accessToken) {
-                console.log('Setting session with access token');
-                const { error } = await supabase.auth.setSession({
+                console.log('Setting session with access token immediately');
+                const { data, error } = await supabase.auth.setSession({
                   access_token: accessToken,
                   refresh_token: refreshToken || '',
                 });
                 
                 if (error) {
-                  console.error('Error setting session:', error);
+                  console.error('Error setting session with tokens:', error);
+                } else if (data?.session) {
+                  console.log('Session successfully set with tokens');
+                  sessionSet = true;
                   
-                  // Now close the browser after auth attempt
-                  if (Capacitor.isNativePlatform()) {
-                    try {
-                      console.log('Closing browser after auth error...');
-                      await Browser.close();
-                    } catch (e) {
-                      console.log('Browser may already be closed:', e);
-                    }
-                  }
-                  
-                  setTimeout(() => router.replace('/login'), 500);
-                  return;
+                  // Store user info
+                  localStorage.setItem('userInfo', JSON.stringify({
+                    id: data.session.user.id,
+                    email: data.session.user.email,
+                    lastLogin: new Date().toISOString()
+                  }));
                 }
               }
               
-              // Check authentication status
-              console.log('Checking authentication status...');
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              const { data: authData, error } = await supabase.auth.getSession();
-              console.log('Auth check result:', !!authData?.session, error ? error.message : 'No error');
+              // Even if we didn't have tokens, check if we have a session from cookies
+              if (!sessionSet) {
+                console.log('Checking for session from cookies...');
+                const { data: sessionData } = await supabase.auth.getSession();
+                
+                if (sessionData?.session) {
+                  console.log('Found session from cookies');
+                  sessionSet = true;
+                  
+                  // Store user info
+                  localStorage.setItem('userInfo', JSON.stringify({
+                    id: sessionData.session.user.id,
+                    email: sessionData.session.user.email,
+                    lastLogin: new Date().toISOString()
+                  }));
+                } else {
+                  console.log('No session found in cookies');
+                }
+              }
               
-              // Now try to close the browser after auth check
+              // Now try to close the browser
               if (Capacitor.isNativePlatform()) {
                 try {
-                  console.log('Closing browser after auth check...');
+                  console.log('Closing browser after auth processing...');
                   await Browser.close();
                 } catch (e) {
                   console.log('Browser may already be closed:', e);
                 }
               }
               
-              if (authData?.session) {
-                console.log('Successfully authenticated, redirecting to intended destination');
-                // Store user info
-                localStorage.setItem('userInfo', JSON.stringify({
-                  id: authData.session.user.id,
-                  email: authData.session.user.email,
-                  lastLogin: new Date().toISOString()
-                }));
+              // Clear the auth handling flag
+              localStorage.removeItem('auth_handling_in_progress');
+              
+              // Redirect based on session status
+              if (sessionSet) {
+                console.log('Authentication successful, redirecting to', redirectPath);
+                localStorage.setItem('auth_successful', 'true');
                 setTimeout(() => router.replace(redirectPath), 500);
               } else {
-                // Check if authentication was already handled successfully by Login.vue
-                if (localStorage.getItem('auth_successful') === 'true') {
-                  console.log('Auth already successful in Login component, not showing error');
-                  localStorage.removeItem('auth_successful');
-                  return;
-                }
-                
-                console.log('No session found, redirecting to login');
+                console.log('Authentication failed, redirecting to login');
                 setTimeout(() => router.replace('/login'), 500);
               }
             } catch (e) {
               console.error('Error handling auth callback:', e);
+              localStorage.removeItem('auth_handling_in_progress');
+              
               // Try to close browser before redirecting
-              try {
-                await Browser.close();
-              } catch (browserError) {
-                console.log('Browser may already be closed');
+              if (Capacitor.isNativePlatform()) {
+                try {
+                  await Browser.close();
+                } catch (browserError) {
+                  console.log('Browser may already be closed');
+                }
               }
+              
               router.replace('/login');
             }
           }
         } catch (urlError) {
           console.error('Error parsing URL:', urlError);
+          localStorage.removeItem('auth_handling_in_progress');
           
           // Close browser on error
           if (Capacitor.isNativePlatform()) {

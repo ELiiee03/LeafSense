@@ -194,6 +194,10 @@ export default defineComponent({
         // Show loading indicator
         loading.value = true;
 
+        // Before starting auth, clear any existing auth flags
+        localStorage.removeItem('auth_handling_in_progress');
+        localStorage.removeItem('auth_successful');
+
         // Generate the OAuth URL from Supabase
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
@@ -210,7 +214,10 @@ export default defineComponent({
         if (error) throw error;
         
         if (data?.url) {
+          // Set the auth handling flag immediately before opening the URL
+          localStorage.setItem('auth_handling_in_progress', 'true');
           console.log('Opening OAuth URL:', data.url);
+          
           // Open OAuth URL in the system browser
           await Browser.open({ 
             url: data.url,
@@ -218,11 +225,33 @@ export default defineComponent({
             presentationStyle: 'popover', // Use popover style to prevent immediate closing
           });
           
+          // Start a fallback timer to clear flags and redirect if callback doesn't work
+          setTimeout(async () => {
+            // If we're still on the login page after 30 seconds, check for session
+            if (router.currentRoute.value.path === '/login') {
+              console.log('Checking for session after timeout...');
+              const { data: sessionData } = await supabase.auth.getSession();
+              if (sessionData?.session) {
+                console.log('Session found after timeout, redirecting to home');
+                localStorage.removeItem('auth_handling_in_progress');
+                localStorage.setItem('auth_successful', 'true');
+                router.push('/home');
+              } else {
+                // Reset loading state if no session found
+                loading.value = false;
+                localStorage.removeItem('auth_handling_in_progress');
+                console.log('No session found after timeout');
+                showToast('Authentication timed out. Please try again.');
+              }
+            }
+          }, 30000);
+          
           // We don't reset loading here since it will be handled by the callback
           // The auth state will be checked by the deep link handler in App.vue
         }
       } catch (error) {
         loading.value = false;
+        localStorage.removeItem('auth_handling_in_progress');
         if (error instanceof Error) {
           console.error('Google login error:', error.message);
           showToast(`Google login failed: ${error.message}`);
