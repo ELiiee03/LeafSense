@@ -58,6 +58,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/preview',
+    name: 'preview',
     component: () => import('../views/Preview.vue'),
   },
   {
@@ -93,6 +94,12 @@ const router = createRouter({
 
 // Route guard for authenticated routes
 router.beforeEach(async (to, from, next) => {
+  // Always allow access to preview page without auth check
+  if (to.path === '/preview' || to.path === '/login' || to.path === '/signup' || 
+      to.path === '/auth-callback' || to.path === '/verify-email') {
+    return next();
+  }
+  
   // Check if route requires auth
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
   

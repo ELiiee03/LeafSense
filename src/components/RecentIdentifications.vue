@@ -19,12 +19,12 @@
       </ion-refresher-content>
     </ion-refresher>
 
-    <div v-if="isLoading" class="loading-container">
+    <div v-if="templateConditions.showLoading" class="loading-container">
       <ion-spinner name="dots" />
       <p>Loading recent identifications...</p>
     </div>
 
-    <div v-else-if="recentLeaves?.length === 0" class="empty-container">
+    <div v-else-if="templateConditions.showEmpty" class="empty-container">
       <ion-icon :icon="leafOutline" class="empty-icon" />
       <p>No leaf identifications yet</p>
       <p class="empty-subtitle">Identify your first leaf to see it here</p>
@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watchEffect } from 'vue'
+import { ref, onMounted, onUnmounted, watchEffect, computed } from 'vue'
 import { timeOutline, leafOutline } from 'ionicons/icons'
 import LeafCard from './LeafCards.vue'
 import LeafInfoModal from './LeafInfoModal.vue'
@@ -152,32 +152,109 @@ const generateRandomId = () => {
   return 'id-' + Math.random().toString(36).substring(2, 15);
 }
 
+// Add network status ref
+const isNetworkConnected = ref(true);
+// Add a UI-specific network state that updates instantly for UI renders
+const uiNetworkState = ref(true);
+
+// Add network change handler
+const handleNetworkChange = async (status: { connected: boolean }) => {
+  console.log('Network status changed:', status);
+  
+  // Update UI state IMMEDIATELY for faster UI rendering
+  uiNetworkState.value = status.connected;
+  
+  // Then update the actual network state for data operations
+  isNetworkConnected.value = status.connected;
+  
+  if (status.connected) {
+    // If we're coming back online
+    console.log('Network is back online, refreshing data');
+    setupRealtimeSubscription();
+    // Don't block UI on data fetch
+    setTimeout(() => {
+      fetchRecentIdentifications().catch(err => 
+        console.error('Error fetching data after coming online:', err)
+      );
+    }, 0);
+  } else {
+    // If we're going offline
+    console.log('Network is offline, cleaning up subscription');
+    cleanupSubscription();
+    // Don't block UI on data fetch
+    setTimeout(() => {
+      fetchRecentIdentifications().catch(err => 
+        console.error('Error fetching offline data:', err)
+      );
+    }, 0);
+  }
+};
+
 // Get recent identifications with vue-query
 const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentifications } = useQuery({
   queryKey: ['recentIdentifications'],
   queryFn: async () => {
-    const isOnline = (await Network.getStatus()).connected;
-    if (isOnline) {
-      const { data, error } = await supabase
-        .from('inference_results')
-        .select('id, created_at, result, scientific_name, confidence, image')
-        .order('created_at', { ascending: false })
-        .limit(5);
+    // Use the current network state without rechecking with Network.getStatus()
+    // This prevents blocking on potentially slow network calls
+    const isOnline = isNetworkConnected.value;
+    
+    // Add a timeout wrapper for network operations
+    const withTimeout = <T>(promise: Promise<T> | PromiseLike<T>, ms = 2000): Promise<T> => { // Reduce timeout to 2s from 3s
+      let timeoutId: ReturnType<typeof setTimeout>;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Operation timed out')), ms);
+      });
       
-      if (error) throw error;
-      return data.map(item => ({
-        id: item.id?.toString() || generateRandomId(),
-        created_at: item.created_at || new Date().toISOString(),
-        formattedDate: formatRelativeDate(item.created_at),
-        inference: { 
-          confidence: typeof item.confidence === 'number' ? item.confidence : 0
-        },
-        leafInfo: {
-          name: item.result || 'Unknown Leaf',
-          scientificName: item.scientific_name || 'Unknown Species',
-          image: item.image || ''
-        }
-      }));
+      return Promise.race([promise, timeoutPromise])
+        .finally(() => clearTimeout(timeoutId));
+    };
+    
+    if (isOnline) {
+      try {
+        const promise = supabase
+          .from('inference_results')
+          .select('id, created_at, result, scientific_name, confidence, image')
+          .order('created_at', { ascending: false })
+          .limit(5);
+        
+        const { data, error } = await withTimeout(promise as unknown as Promise<{data: any[], error: any}>);
+        
+        if (error) throw error;
+        return data.map((item: any) => ({
+          id: item.id?.toString() || generateRandomId(),
+          created_at: item.created_at || new Date().toISOString(),
+          formattedDate: formatRelativeDate(item.created_at),
+          inference: { 
+            confidence: typeof item.confidence === 'number' ? item.confidence : 0
+          },
+          leafInfo: {
+            name: item.result || 'Unknown Leaf',
+            scientificName: item.scientific_name || 'Unknown Species',
+            image: item.image || ''
+          }
+        }));
+      } catch (err) {
+        console.error('Error in online fetch, falling back to offline:', err);
+        // Fall back to offline mode on error - update both states
+        isNetworkConnected.value = false;
+        uiNetworkState.value = false;
+        
+        // Return offline data
+        const offlineResults = await sqliteService.getUnsyncedResults();
+        return offlineResults.map(item => ({
+          id: item.id?.toString() || generateRandomId(),
+          created_at: new Date(item.timestamp).toISOString(),
+          formattedDate: formatRelativeDate(new Date(item.timestamp).toISOString()),
+          inference: { 
+            confidence: typeof item.confidence === 'number' ? item.confidence : 0
+          },
+          leafInfo: {
+            name: item.predicted_class || 'Unknown Leaf',
+            scientificName: item.scientific_name || 'Unknown Species',
+            image: item.image_path || ''
+          }
+        }));
+      }
     } else {
       // Offline mode: fetch from SQLite
       const offlineResults = await sqliteService.getUnsyncedResults();
@@ -198,7 +275,10 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
   },
   staleTime: 1000 * 60 * 5, // 5 minutes
   retry: 1,
-  refetchOnWindowFocus: false
+  refetchOnWindowFocus: false,
+  // Add these options to make network transitions smoother
+  refetchInterval: false,
+  placeholderData: (previousData) => previousData // Replace keepPreviousData with placeholderData
 });
 
 // Set up real-time subscription
@@ -233,54 +313,6 @@ const cleanupSubscription = () => {
   }
 }
 
-// Add network status ref
-const isNetworkConnected = ref(true);
-
-// Add network change handler
-const handleNetworkChange = async (status: { connected: boolean }) => {
-  console.log('Network status changed:', status);
-  isNetworkConnected.value = status.connected;
-  
-  if (status.connected) {
-    // If we're coming back online
-    console.log('Network is back online, refreshing data');
-    setupRealtimeSubscription();
-    await fetchRecentIdentifications();
-  } else {
-    // If we're going offline
-    console.log('Network is offline, cleaning up subscription');
-    cleanupSubscription();
-    await fetchRecentIdentifications(); // Fetch from local storage
-  }
-};
-
-// Update the onMounted hook
-onMounted(async () => {
-  console.log("%c🍃 RecentIdentifications component mounted", "font-size: 14px; color: green; font-weight: bold;");
-  
-  // Check initial network status
-  const initialStatus = await Network.getStatus();
-  isNetworkConnected.value = initialStatus.connected;
-  
-  // Set up network change listener
-  Network.addListener('networkStatusChange', handleNetworkChange);
-  
-  // Set up real-time subscription only if online
-  if (isNetworkConnected.value) {
-    setupRealtimeSubscription();
-  }
-  
-  // Fetch initial data
-  await fetchRecentIdentifications();
-});
-
-// Update onUnmounted to clean up network listener
-onUnmounted(() => {
-  cleanupSubscription();
-  // Remove network listener
-  Network.removeAllListeners();
-})
-
 // Add modal state
 const isModalOpen = ref(false)
 const selectedLeaf = ref<any>(null)
@@ -308,8 +340,8 @@ const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
   queryFn: async () => {
     if (!selectedLeaf.value?.id) return null;
     
-    const isOnline = (await Network.getStatus()).connected;
-    if (isOnline) {
+    // Use existing network state instead of checking again
+    if (isNetworkConnected.value) {
       // Updated query to join with plant_details table
       const { data, error } = await supabase
         .from('inference_results')
@@ -370,24 +402,23 @@ const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
     } else {
       // Offline mode: fetch from SQLite
       const offlineResults = await sqliteService.getUnsyncedResults();
-      return offlineResults.find(result => result.id === selectedLeaf.value.id);
+      return offlineResults.find(result => result.id === selectedLeaf.value?.id);
     }
   },
   enabled: false, // Don't run automatically
   staleTime: 1000 * 60 * 5, // 5 minutes
 });
 
-// Modify the openLeafInfo function
+// Modify the openLeafInfo function to not check network status again
 const openLeafInfo = async (leaf: any) => {
   selectedLeaf.value = leaf;
   setModalOpen(true);
   
-  // Check network status before fetching additional data
-  const isOnline = (await Network.getStatus()).connected;
-  
-  if (isOnline) {
+  // Use the existing network state instead of checking again
+  // This makes the UI response much faster
+  if (isNetworkConnected.value) {
     // Online mode - fetch from Supabase
-    await fetchLeafData();
+    fetchLeafData().catch(err => console.error('Error fetching leaf data:', err));
   } else {
     // Offline mode - format the existing data for the modal
     // This ensures we're using the SQLite data properly
@@ -511,36 +542,107 @@ const openLeafInfo = async (leaf: any) => {
   }
 }
 
-// Add refresher handler
+// Update the onMounted hook
+onMounted(async () => {
+  console.log("%c🍃 RecentIdentifications component mounted", "font-size: 14px; color: green; font-weight: bold;");
+  
+  try {
+    // Update the network status check functions
+    const checkNetworkWithTimeout = async (): Promise<{connected: boolean}> => {
+      return Promise.race([
+        Network.getStatus(),
+        new Promise<{connected: boolean}>((_, reject) => {
+          setTimeout(() => reject(new Error('Network check timed out')), 2000);
+        })
+      ]).catch(err => {
+        console.warn('Network check timed out, assuming offline:', err);
+        return { connected: false };
+      });
+    };
+    
+    const initialStatus = await checkNetworkWithTimeout();
+    isNetworkConnected.value = initialStatus?.connected ?? false;
+    
+    // Set up network change listener
+    Network.addListener('networkStatusChange', handleNetworkChange);
+    
+    // Set up real-time subscription only if online
+    if (isNetworkConnected.value) {
+      setupRealtimeSubscription();
+    }
+    
+    // Fetch initial data - don't await
+    setTimeout(() => {
+      fetchRecentIdentifications().catch(err => 
+        console.error('Error in initial data fetch:', err)
+      );
+    }, 0);
+  } catch (error) {
+    console.error('Error during component initialization:', error);
+    isNetworkConnected.value = false;
+  }
+});
+
+// Update onUnmounted to clean up network listener
+onUnmounted(() => {
+  cleanupSubscription();
+  // Remove network listener
+  Network.removeAllListeners();
+})
+
+// Update handleRefresh function to be even more responsive
 const handleRefresh = async (event: CustomEvent) => {
   console.log('Pull to refresh triggered in Recent Identifications');
   try {
-    // Check network status and update component state
-    const networkStatus = await Network.getStatus();
+    // Update UI immediately
+    const refresher = event.target as HTMLIonRefresherElement;
+    
+    // Check network with a shorter timeout (1 second)
+    const networkStatus = await Promise.race([
+      Network.getStatus(),
+      new Promise<{connected: boolean}>((_, reject) => {
+        setTimeout(() => reject(new Error('Network check timed out')), 1000);
+      })
+    ]).catch(() => ({ connected: false }));
+    
+    // Update both states immediately
+    uiNetworkState.value = networkStatus.connected;
     isNetworkConnected.value = networkStatus.connected;
     
-    if (networkStatus.connected) {
-      // Online - refresh from server
-      setupRealtimeSubscription();
-      await fetchRecentIdentifications();
-    } else {
-      // Offline - refresh from SQLite
-      await fetchRecentIdentifications(); // This will use SQLite in offline mode
+    // Trigger refresh asynchronously and complete the refresher immediately
+    setTimeout(() => {
+      if (networkStatus.connected) {
+        setupRealtimeSubscription();
+      } else {
+        cleanupSubscription();
+      }
+      fetchRecentIdentifications();
+    }, 0);
+    
+    // Complete the refresher IMMEDIATELY instead of waiting
+    if (refresher && refresher.complete) {
+      refresher.complete();
+      console.log('Refresh completed immediately');
     }
   } catch (error) {
     console.error('Error during refresh:', error);
-  } finally {
-    // Always complete the refresher
-    setTimeout(() => {
-      // Use type assertion for TypeScript
-      const refresher = event.target as HTMLIonRefresherElement;
-      if (refresher && refresher.complete) {
-        refresher.complete();
-        console.log('Refresh completed');
-      }
-    }, 500);
+    
+    // Always complete the refresher even on error
+    const refresher = event.target as HTMLIonRefresherElement;
+    if (refresher && refresher.complete) {
+      refresher.complete();
+    }
   }
 };
+
+// Modify template to use uiNetworkState for conditional rendering
+const templateConditions = computed(() => {
+  return {
+    showEmpty: !isLoading.value && (!recentLeaves.value || recentLeaves.value.length === 0),
+    showLoading: isLoading.value,
+    showOfflineIndicator: !uiNetworkState.value
+  };
+});
 </script>
 
 <style scoped>

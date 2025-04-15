@@ -34,39 +34,39 @@ export const syncService = {
       console.log("⚠️ A sync operation is already in progress. Skipping.");
       return { syncedCount: 0, alreadyInProgress: true };
     }
-    
+
     try {
       isSyncingInProgress = true;
       this.isSyncing.value = true;
-      
+
       console.log("🔄 Starting inference results sync process");
-      
+
       // First check if there are already synced records that weren't properly cleaned up
       try {
         const { values: syncedCount } = await sqliteService.executeQuery(
           `SELECT COUNT(*) as count FROM unsynced_inferences WHERE synced = 1`
         );
-        
+
         if (syncedCount && syncedCount[0] && syncedCount[0].count > 0) {
           console.log(`⚠️ Found ${syncedCount[0].count} records already marked as synced but not cleaned up`);
           console.log(`🧹 Cleaning up these records before starting new sync...`);
-          
+
           // Clean up synced records to prevent duplicates
           await this.cleanupSyncedRecords();
         }
       } catch (cleanupError) {
         console.error('❌ Error during pre-sync cleanup:', cleanupError);
       }
-      
+
       // Use sqliteService to get all unsynced records
       const unsyncedResults = await sqliteService.getUnsyncedResults();
       console.log(`🔄 Found ${unsyncedResults.length} unsynced results to sync`);
-      
+
       if (unsyncedResults.length === 0) {
         console.log("✅ No unsynced results to sync");
         return { syncedCount: 0 };
       }
-      
+
       // Print IDs of records to be synced for debugging
       if (unsyncedResults.length > 0) {
         const ids = unsyncedResults.map(r => r.id).join(', ');
@@ -74,41 +74,50 @@ export const syncService = {
       }
 
       // Get current user
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('❌ Error getting current user during sync:', userError);
+      let user = null;
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          // Instead of failing, just log it and continue without a user
+          console.log('⚠️ No authenticated user found during sync. Results will be synced without user ID.');
+        } else {
+          user = data.user;
+        }
+      } catch (userError: any) {
+        // Catch any auth errors but continue with sync
+        console.log('⚠️ Auth error during sync:', userError.message);
+        console.log('⚠️ Continuing sync without user ID');
       }
-      
+
       // Track unique identifiers to prevent duplicates
       const processedUniqueIds = new Set();
-      
+
       let successCount = 0;
       let failureCount = 0;
       let duplicateCount = 0;
-      
+
       // Process one record at a time
       for (const result of unsyncedResults) {
         try {
           // Generate a unique identifier for this record to prevent duplicates
           // Use scientific_name + timestamp as they should be unique together
           const uniqueId = `${result.scientific_name}_${result.timestamp}`;
-          
+
           // Skip if we've already processed this unique ID in this sync batch
           if (processedUniqueIds.has(uniqueId)) {
             console.log(`⚠️ Skipping duplicate record with ID ${result.id} (${uniqueId})`);
             duplicateCount++;
-            
+
             // Mark as synced so it doesn't try to sync again
             await sqliteService.markAsSynced(result.id);
             continue;
           }
-          
+
           console.log(`🔄 Processing record ID: ${result.id}`);
-          
+
           // Add to processed set
           processedUniqueIds.add(uniqueId);
-          
+
           // First check if a similar record already exists in Supabase
           // This will prevent duplication if records were previously synced
           const { data: existingRecords, error: checkError } = await supabase
@@ -120,7 +129,7 @@ export const syncService = {
             .gte('created_at', new Date(result.timestamp - 60000).toISOString())
             .lte('created_at', new Date(result.timestamp + 60000).toISOString())
             .limit(1);
-            
+
           if (checkError) {
             console.error(`❌ Error checking for existing record:`, checkError);
           } else if (existingRecords && existingRecords.length > 0) {
@@ -130,12 +139,12 @@ export const syncService = {
             duplicateCount++;
             continue;
           }
-          
+
           // 1. Insert inference result
           const { data: inferenceData, error: inferenceError } = await supabase
             .from('inference_results')
             .insert({
-              image: result.image_path, 
+              image: result.image_path,
               scientific_name: result.scientific_name,
               family_name: result.family_name,
               description: result.description,
@@ -147,33 +156,33 @@ export const syncService = {
               sync_origin: 'offline'
             })
             .select();
-          
+
           if (inferenceError) {
             console.error(`❌ Error inserting inference result ID ${result.id}:`, inferenceError);
             failureCount++;
             continue;
           }
-          
+
           if (!inferenceData || inferenceData.length === 0) {
             console.error(`❌ No data returned when inserting inference ID ${result.id}`);
             failureCount++;
             continue;
           }
-          
+
           console.log(`✅ Successfully inserted inference with Supabase ID: ${inferenceData[0].id}`);
-          
+
           // 2. Look for and insert plant details
           try {
             const plantDetailsResult = await sqliteService.executeQuery(
               `SELECT * FROM offline_plant_details WHERE inference_result_id = ?`,
               [result.id]
             );
-            
+
             const plantDetails = plantDetailsResult.values?.[0];
-            
+
             if (plantDetails) {
               console.log(`🔄 Found plant details for inference ID ${result.id}`);
-              
+
               // Parse aliases if needed
               let parsedAliases = plantDetails.aliases;
               if (typeof parsedAliases === 'string' && parsedAliases) {
@@ -188,9 +197,9 @@ export const syncService = {
                   parsedAliases = [parsedAliases];
                 }
               }
-              
+
               console.log(`🔄 Inserting plant details for Supabase inference ID: ${inferenceData[0].id}`);
-              
+
               // Insert plant details with all fields
               const { data: plantData, error: plantError } = await supabase
                 .from('plant_details')
@@ -219,7 +228,7 @@ export const syncService = {
                   soil_req: plantDetails.soil_req || null
                 })
                 .select();
-              
+
               if (plantError) {
                 console.error(`❌ Error inserting plant details for inference ID ${result.id}:`, plantError);
                 console.error(`Error details:`, plantError.message, plantError.details);
@@ -232,19 +241,19 @@ export const syncService = {
           } catch (detailsError) {
             console.error(`❌ Error processing plant details for inference ID ${result.id}:`, detailsError);
           }
-          
+
           // 3. Mark as synced regardless of plant details results
           await sqliteService.markAsSynced(result.id);
           successCount++;
-          
+
         } catch (recordError) {
           console.error(`❌ Error syncing record ID ${result.id}:`, recordError);
           failureCount++;
         }
       }
-      
+
       console.log(`🔄 Sync Summary: ${successCount} records synced, ${failureCount} failures, ${duplicateCount} duplicates skipped`);
-      
+
       // Clean up synced records without using transactions
       if (successCount > 0 || duplicateCount > 0) {
         try {
@@ -253,10 +262,10 @@ export const syncService = {
           console.error('❌ Error cleaning up synced records:', cleanupError);
         }
       }
-      
-      return { 
-        syncedCount: successCount, 
-        failureCount, 
+
+      return {
+        syncedCount: successCount,
+        failureCount,
         duplicateCount,
         totalProcessed: successCount + failureCount + duplicateCount
       };
@@ -268,27 +277,27 @@ export const syncService = {
       isSyncingInProgress = false;
     }
   },
-  
+
   // Safe method to clean up synced records without transactions
   async cleanupSyncedRecords() {
     try {
       console.log('🧹 Cleaning up synced records safely without transactions');
-      
+
       // 1. Get all synced records
       const { values: syncedIds } = await sqliteService.executeQuery(
         `SELECT id FROM unsynced_inferences WHERE synced = 1`
       );
-      
+
       if (!syncedIds || syncedIds.length === 0) {
         console.log('🧹 No synced records to clean up');
         return { success: true, count: 0 };
       }
-      
+
       console.log(`🧹 Found ${syncedIds.length} synced records to clean up`);
-      
+
       // 2. Delete each record individually
       let totalDeleted = 0;
-      
+
       for (const item of syncedIds) {
         try {
           // Delete associated plant details first
@@ -296,13 +305,13 @@ export const syncService = {
             `DELETE FROM offline_plant_details WHERE inference_result_id = ?`,
             [item.id]
           );
-          
+
           // Then delete the inference record
           const inferenceResult = await sqliteService.executeQuery(
             `DELETE FROM unsynced_inferences WHERE id = ?`,
             [item.id]
           );
-          
+
           if (inferenceResult.changes && inferenceResult.changes > 0) {
             totalDeleted++;
           }
@@ -310,7 +319,7 @@ export const syncService = {
           console.error(`❌ Error deleting record ID ${item.id}:`, recordError);
         }
       }
-      
+
       console.log(`🧹 Successfully cleaned up ${totalDeleted} synced records`);
       return { success: true, count: totalDeleted };
     } catch (error) {

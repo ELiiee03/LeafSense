@@ -3,7 +3,12 @@
   <FilterComponent :allLogs="allLogs" @filter-changed="handleFilterChange" />
   
   <ion-list>
-    <NetworkAwareComponent @online="handleNetworkOnline" @offline="handleNetworkOffline" @refresh="refreshLogs">
+    <NetworkAwareComponent 
+      @online="handleNetworkOnline" 
+      @offline="handleNetworkOffline" 
+      @refresh="refreshLogs"
+      :forceOfflineUI="!isOnline"
+    >
       <template #online>
         <ion-refresher slot="fixed" @ionRefresh="handleRefresh($event)">
           <ion-refresher-content
@@ -14,7 +19,7 @@
         </ion-refresher>
         
         <!-- Add cleanup button for synced records -->
-        <ion-item lines="none" v-if="isOnline">
+        <!-- <ion-item lines="none" v-if="isOnline">
           <ion-button 
             slot="end" 
             size="small" 
@@ -25,7 +30,7 @@
             <ion-icon slot="start" :icon="trashOutline"></ion-icon>
             Clean Synced Logs
           </ion-button>
-        </ion-item>
+        </ion-item> -->
         
     <ion-card v-for="log in logs" :key="log.id">
       <ion-item-sliding>
@@ -74,7 +79,7 @@
     </div>
 
     <!-- Loading state -->
-    <div v-if="loading" class="loading-state">
+    <div v-if="loading && isOnline" class="loading-state">
       <ion-spinner></ion-spinner>
     </div>
       </template>
@@ -224,6 +229,9 @@ export default defineComponent({
     // Network handling methods
     const handleNetworkOnline = async () => {
       console.log('Network is online, reloading data from server');
+      // Reset loading state immediately
+      isLoading.value = false;
+      
       // Set up realtime subscription when we come online
       setupRealtimeSubscription();
       await syncPendingData();
@@ -232,11 +240,16 @@ export default defineComponent({
     
     const handleNetworkOffline = () => {
       console.log('Network is offline, loading data from local storage');
+      // Reset loading state immediately and ensure it stays false
+      isLoading.value = false;
+      
       // Clean up subscriptions when we go offline
       if (subscription) {
         supabase.removeChannel(subscription);
         subscription = null;
       }
+      
+      // Immediately load offline data
       loadOfflineData();
     };
     
@@ -247,7 +260,8 @@ export default defineComponent({
           message: 'Syncing data...',
           duration: 2000,
           color: 'primary',
-          position: 'top'
+          position: 'top',
+          cssClass: 'no-shadow-toast'
         });
         await toast.present();
         
@@ -265,7 +279,8 @@ export default defineComponent({
             message: `Synced ${syncResult.syncedCount} records. Offline data cleaned up.`,
             duration: 2000,
             color: 'success',
-            position: 'top'
+            position: 'top',
+            cssClass: 'no-shadow-toast'
           });
           await successToast.present();
         }
@@ -277,7 +292,8 @@ export default defineComponent({
           message: 'Error syncing data. Try again later.',
           duration: 3000,
           color: 'danger',
-          position: 'top'
+          position: 'top',
+          cssClass: 'no-shadow-toast'
         });
         await errorToast.present();
       }
@@ -285,10 +301,14 @@ export default defineComponent({
     
     const loadOfflineData = async () => {
       try {
+        // Immediately clear loading state to prevent spinner in offline mode
+        isLoading.value = false;
+        
         // Load logs from SQLite
         const localLogs = await sqliteService.getInferenceResults();
         console.log('Loaded offline data:', localLogs);
         
+        // Ensure the offline logs are immediately populated
         offlineLogs.value = localLogs.map(log => {
           // The result object should already be properly formatted from sqliteService
           return {
@@ -361,9 +381,14 @@ export default defineComponent({
         });
         
         console.log('Formatted offline logs:', offlineLogs.value);
+        
+        // Ensure loading state is explicitly false after data is loaded
+        isLoading.value = false;
       } catch (error) {
         console.error('Error loading offline data:', error);
         offlineLogs.value = [];
+        // Ensure loading state is false even if there's an error
+        isLoading.value = false;
       }
     };
     
@@ -415,19 +440,24 @@ export default defineComponent({
     }, { immediate: true });
 
     // Watch for network state changes
-    watch(() => networkState.isOnline.value, (isOnline) => {
+    watch(() => networkState.isOnline.value, (isOnline, prevIsOnline) => {
       console.log('Network state changed in LogsComponent:', isOnline ? 'Online' : 'Offline');
+      
+      // Reset loading state immediately to prevent endless spinner
+      isLoading.value = false;
+      
       if (!isOnline) {
-        // When going offline, load offline data immediately
+        // Force offline UI immediately
         loadOfflineData();
-      } else {
-        // When coming back online, sync and refresh logs
+      } else if (isOnline && prevIsOnline === false) {
+        // Only when coming back online from offline state
         syncPendingData().then(() => refreshLogs());
       }
-    });
+    }, { immediate: true });
 
     // Watch the loading state and emit it to parent
     watch(isLoading, (newValue) => {
+      console.log('LogsComponent loading state changed:', newValue);
       emit('loading-changed', newValue);
     });
 
@@ -490,7 +520,8 @@ export default defineComponent({
                     message: 'Offline record deleted successfully',
                     duration: 2000,
                     color: 'success',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   
                   await toast.present();
@@ -502,7 +533,8 @@ export default defineComponent({
                     message: 'Failed to delete offline record',
                     duration: 3000,
                     color: 'danger',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   
                   await toast.present();
@@ -555,7 +587,8 @@ export default defineComponent({
                     message: 'Item deleted successfully',
                     duration: 2000,
                     color: 'success',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await toast.present();
                   
@@ -582,7 +615,8 @@ export default defineComponent({
                     message: errorMessage,
                     duration: 3000,
                     color: 'danger',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await toast.present();
                 }
@@ -722,7 +756,8 @@ export default defineComponent({
             message: 'Cannot clean up logs while offline',
             duration: 3000,
             color: 'warning',
-            position: 'top'
+            position: 'top',
+            cssClass: 'no-shadow-toast'
           });
           await toast.present();
           return;
@@ -748,7 +783,8 @@ export default defineComponent({
                     message: 'Cleaning up synced logs...',
                     duration: 2000,
                     color: 'primary',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await progressToast.present();
                   
@@ -763,7 +799,8 @@ export default defineComponent({
                     message: `Cleaned up ${result.deletedCount} synced logs`,
                     duration: 2000,
                     color: 'success',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await successToast.present();
                 } catch (error) {
@@ -774,7 +811,8 @@ export default defineComponent({
                     message: 'Error cleaning up logs',
                     duration: 3000,
                     color: 'danger',
-                    position: 'top'
+                    position: 'top',
+                    cssClass: 'no-shadow-toast'
                   });
                   await errorToast.present();
                 } finally {
@@ -796,24 +834,41 @@ export default defineComponent({
       // Initialize network service
       await initNetworkService();
       
-      // Add network change listener
-      Network.addListener('networkStatusChange', (status) => {
+      // Immediately check network status and force UI update
+      const networkStatus = await Network.getStatus();
+      networkState.isOnline.value = networkStatus.connected;
+      console.log('Initial network status on mount:', networkStatus.connected);
+      
+      // Reset loading state explicitly
+      isLoading.value = false;
+      
+      // Add network change listener with immediate UI updates
+      Network.addListener('networkStatusChange', async (status) => {
         console.log('Network status changed:', status);
+        // Force loading state false immediately to prevent spinner
+        isLoading.value = false;
+        
         // Update the networkState directly
         networkState.isOnline.value = status.connected;
         networkState.lastUpdated.value = new Date();
         
-        if (status.connected) {
-          handleNetworkOnline();
-        } else {
+        if (!status.connected) {
+          // Go directly to offline mode without waiting
           handleNetworkOffline();
+        } else {
+          // For online status, can use slight delay before loading data
+          setTimeout(() => {
+            handleNetworkOnline();
+          }, 100);
         }
       });
       
-      // Check current network status and initialize
-      if (isOnline.value) {
+      // Initialize based on current network status
+      if (networkState.isOnline.value) {
         setupRealtimeSubscription();
+        refreshLogs();
       } else {
+        // If offline on mount, immediately load offline data
         await loadOfflineData();
       }
 
@@ -822,6 +877,21 @@ export default defineComponent({
       if (content) {
         content.addEventListener('scroll', handleScroll);
       }
+      
+      // Also listen for custom network status change events from HomePage
+      window.addEventListener('network-status-changed', (event: any) => {
+        console.log('Received network-status-changed event:', event.detail);
+        // Reset loading state immediately
+        isLoading.value = false;
+        
+        if (!event.detail.connected) {
+          // Offline - switch immediately to offline mode
+          handleNetworkOffline();
+        } else {
+          // Online - can wait a tiny bit
+          setTimeout(() => handleNetworkOnline(), 100);
+        }
+      });
     });
 
     onUnmounted(() => {
@@ -837,6 +907,9 @@ export default defineComponent({
       
       // Remove network listeners
       Network.removeAllListeners();
+      
+      // Remove custom event listener
+      window.removeEventListener('network-status-changed', (event: any) => {});
     });
 
     return {
@@ -998,5 +1071,10 @@ ion-card {
 ion-note {
   margin-top: 6px;
   display: inline-block;
+}
+
+/* Toast styles */
+:global(.no-shadow-toast) {
+  --box-shadow: none !important;
 }
 </style>
