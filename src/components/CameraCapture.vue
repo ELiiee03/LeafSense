@@ -27,6 +27,12 @@
       </ion-fab-button>
     </ion-fab>
 
+    <!-- Loading spinner overlay -->
+    <div v-if="isLoading" class="loading-overlay">
+      <ion-spinner name="crescent" color="light"></ion-spinner>
+      <p>Processing image...</p>
+    </div>
+
     <!-- Model to display the image -->
     <ion-modal :is-open="isOpen">
       <!-- <ion-header class="ion-no-border transparent-header">
@@ -63,7 +69,7 @@
         <div class="leaf-info">
           <div class="leaf-text">
             <h2 class="leaf-name"><b>{{ inferenceResult?.leafInfo.name }}</b></h2>
-            <p class="leaf-scientific-name">{{ inferenceResult?.leafInfo.scientificName }}</p>
+            <p class="leaf-scientific-name"><i>{{ inferenceResult?.leafInfo.scientificName }}</i></p>
           </div>
           <ion-fab-button @click="navigateToLeafInfo" class="leaf-fab-button" size="small">
             <ion-icon size="small" :icon="arrowForwardOutline"></ion-icon>
@@ -104,6 +110,7 @@
 // Modal state
   const isOpen = ref(false);
   const imageSrc = ref('');
+  const isLoading = ref(false);
   const router = useRouter();
   const inferenceStore = useInferenceStore();
   // const emit = defineEmits(['captureImage']);
@@ -161,6 +168,9 @@ const takePhoto = async () => {
       source: CameraSource.Prompt
     });
 
+    // Show loading spinner AFTER photo is selected, before processing
+    isLoading.value = true;
+
     let finalImagePath = '';
     if (networkStatus.connected) {
       imageSrc.value = image.dataUrl || '';
@@ -192,67 +202,17 @@ const takePhoto = async () => {
     
     inferenceStore.setInferenceResult(completeResult);
     inferenceResult.value = completeResult;
+    
+    // Hide loading spinner right before opening modal
+    isLoading.value = false;
     setOpen(true);
 
   } catch (error) {
     console.error('Error:', error);
     showToast(`Error: ${error}`, true);
+    isLoading.value = false;
   }
 };
-
-// Modified takePhoto function with error handling
-// const takePhoto = async () => {
-//   try {
-//     const networkStatus = await Network.getStatus();
-//     const image = await Camera.getPhoto({
-//       quality: 90,
-//       allowEditing: false,
-//       resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
-//       source: CameraSource.Prompt
-//     });
-
-//     if (!image?.webPath) {
-//       await showToast('Failed to get image path', true);
-//       return;
-//     }
-
-//     imageSrc.value = image.webPath;
-    
-//     if (!imageSrc.value) {
-//       await showToast('Image source is empty', true);
-//       return;
-//     }
-
-//     // Add network check
-//     const status = await Network.getStatus();
-//     if (!status.connected) {
-//       await showToast('No network - using offline mode');
-//     }
-
-//     try {
-//       const result = await inferenceService.performInference(image.path!);
-//       inferenceResult.value = result;
-//       setOpen(true);
-//     } catch (inferenceError) {
-//       await showToast(`Inference failed: ${inferenceError}`, true);
-//       console.error('Inference error:', inferenceError);
-//     }
-
-//   } catch (error) {
-//     await showToast(`Camera error: ${error}`, true);
-//     console.error('Camera error:', error);
-//   } finally {
-//     if (!isOpen.value) {
-//       await showToast('Modal failed to open - check console', true);
-//     }
-//   }
-// };
-
-
-// const navigateToLeafInfo = () => {
-//     setOpen(false); // Close the modal before navigating
-//     router.push({ name: 'leafinfo' });
-//   };
 
 const navigateToLeafInfo = () => {
   setOpen(false);
@@ -381,6 +341,21 @@ interface Leaf {
   width: 100vw;
   height: 100%;
   object-fit: cover; /* Ensure the image covers the container without distortion */
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  color: white;
 }
 
 ion-content {

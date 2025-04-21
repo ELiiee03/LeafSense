@@ -37,7 +37,7 @@
           </div>
           
           <!-- Match percentage pill -->
-          <div class="match-pill" v-if="getConfidence">
+          <div class="match-pill" v-if="getConfidence !== null && getConfidence !== undefined">
             {{ formatConfidence(getConfidence) }}% match
           </div>
         </div>
@@ -452,7 +452,15 @@ const processedAliases = computed(() => {
 // ]);
 
 // Format confidence score
-const formatConfidence = (confidence: number) => {
+const formatConfidence = (confidence: number | null) => {
+  if (confidence === null || confidence === undefined) return 0;
+  
+  // If confidence is already between 0-100, return as is
+  if (confidence > 1) {
+    return confidence.toFixed(2);
+  }
+  
+  // Otherwise convert from 0-1 to 0-100
   return (confidence * 100).toFixed(2);
 };
 
@@ -679,15 +687,29 @@ const getScientificName = computed(() => {
 });
 
 const getFamilyName = computed(() => {
-  return 'Family: ' + (leaf.value?.family_name || 
-         leaf.value?.leafInfo?.familyName || 
-         'Unknown Family');
+  // Log the family name values for debugging
+  console.log('Family name values:', {
+    direct: leaf.value?.family_name,
+    leafInfo: leaf.value?.leafInfo?.familyName
+  });
+  
+  const familyName = leaf.value?.family_name || 
+                    leaf.value?.leafInfo?.familyName || 
+                    'Unknown Family';
+  
+  return 'Family: ' + familyName;
 });
 
 const getConfidence = computed(() => {
+  // Log the confidence values to debug
+  console.log('Confidence values:', {
+    direct: leaf.value?.confidence,
+    inference: leaf.value?.inference?.confidence
+  });
+  
+  // Don't provide a fallback value, let the formatConfidence function handle it
   return leaf.value?.confidence || 
-         leaf.value?.inference?.confidence || 
-         null;
+         leaf.value?.inference?.confidence;
 });
 </script>
 

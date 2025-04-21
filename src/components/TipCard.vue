@@ -33,7 +33,18 @@
     "Leaves have tiny pores called stomata that allow them to breathe by taking in carbon dioxide and releasing oxygen.",
     "Chlorophyll, the pigment in leaves, is what gives them their green color and helps in photosynthesis.",
     "Some plants, like cacti, have modified leaves called spines to reduce water loss.",
-    "Deciduous trees shed their leaves in the fall to conserve water and energy during winter."
+    "Deciduous trees shed their leaves in the fall to conserve water and energy during winter.",
+    "The largest leaf in the world belongs to the raffia palm, reaching up to 25 meters in length.",
+    "The pattern of veins in a leaf is called venation and helps transport water and nutrients throughout the leaf.",
+    "Some leaves, like those of the sensitive plant (Mimosa pudica), can rapidly fold when touched as a defense mechanism.",
+    "Leaves can be simple (single blade) or compound (multiple leaflets arranged on a common stalk).",
+    "The autumn colors of leaves appear when chlorophyll breaks down, revealing other pigments like carotenoids and anthocyanins.",
+    "Some plants, like the Venus flytrap, have modified leaves that can trap and digest insects.",
+    "Leaf arrangements on stems can be alternate, opposite, or whorled, which helps with identification.",
+    "Many medicinal compounds come from plant leaves, like the antimalarial drug quinine from cinchona tree leaves.",
+    "The waxy cuticle on leaf surfaces helps protect plants from water loss and pathogen invasion.",
+    "A tree with 200,000 leaves can remove about 70 pounds of air pollutants per year.",
+    "The leaf shape is often adapted to the climate - large, broad leaves in tropical areas and needle-like leaves in cold regions."
   ];
   
   const currentIndex = ref(0);
@@ -110,4 +121,3 @@
     color: #666;
   }
   </style>
-  

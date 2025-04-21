@@ -42,10 +42,25 @@ export const initNetworkService = async () => {
 
   // Setup listener for network changes
   Network.addListener('networkStatusChange', (status) => {
-    networkState.isOnline.value = status.connected;
-    networkState.connectionType.value = status.connectionType;
-    networkState.lastUpdated.value = new Date();
-    notifyListeners();
+    console.log('Network status changed:', status.connected ? 'online' : 'offline');
+    
+    // When going offline, update immediately to prevent hanging operations
+    if (!status.connected) {
+      networkState.isOnline.value = false;
+      networkState.connectionType.value = status.connectionType;
+      networkState.lastUpdated.value = new Date();
+      notifyListeners();
+      console.log('Network went offline, updated state immediately');
+    } else {
+      // When going online, update with a slight delay to let network stabilize
+      setTimeout(() => {
+        networkState.isOnline.value = status.connected;
+        networkState.connectionType.value = status.connectionType;
+        networkState.lastUpdated.value = new Date();
+        notifyListeners();
+        console.log('Network went online, updated state after delay');
+      }, 500);
+    }
   });
 };
 

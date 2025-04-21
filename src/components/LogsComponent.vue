@@ -72,15 +72,10 @@
     </ion-card>
 
     <!-- Empty state when no logs match the filters -->
-    <div class="empty-state" v-if="logs.length === 0 && !loading">
+    <div class="empty-state" v-if="logs.length === 0">
       <ion-icon :icon="leafOutline" size="large"></ion-icon>
       <p>No leaves match your filter criteria</p>
       <ion-button fill="clear" @click="resetFilters">Reset Filters</ion-button>
-    </div>
-
-    <!-- Loading state -->
-    <div v-if="loading && isOnline" class="loading-state">
-      <ion-spinner></ion-spinner>
     </div>
       </template>
       
@@ -436,6 +431,8 @@ export default defineComponent({
         } else {
           logs.value = [...logs.value, ...newData];
         }
+        // Ensure loading state is reset when data is received
+        isLoading.value = false;
       }
     }, { immediate: true });
 
@@ -458,6 +455,18 @@ export default defineComponent({
     // Watch the loading state and emit it to parent
     watch(isLoading, (newValue) => {
       console.log('LogsComponent loading state changed:', newValue);
+      
+      // Set a safety timeout to automatically reset loading state
+      if (newValue === true) {
+        setTimeout(() => {
+          if (isLoading.value === true) {
+            console.log('Safety timeout: Forcing loading state to false after timeout');
+            isLoading.value = false;
+            emit('loading-changed', false);
+          }
+        }, 8000); // 8 second timeout
+      }
+      
       emit('loading-changed', newValue);
     });
 

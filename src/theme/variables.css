@@ -5,6 +5,7 @@ http://ionicframework.com/docs/theming/ */
 /* :root {
     --background: #A9BA9D;
   } */
+  /* Root variables commented out to respect device notches
   :root {
     --ion-safe-area-top: 0px;
     --ion-safe-area-bottom: 0px;
@@ -12,6 +13,7 @@ http://ionicframework.com/docs/theming/ */
     --ion-safe-area-right: 0px;
     --ion-statusbar-padding: 0px;
   }
+  */
   
   ion-content {
     --offset-top: 0px !important;

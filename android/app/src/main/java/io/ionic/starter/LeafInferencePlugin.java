@@ -14,6 +14,7 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import android.net.Uri;
 import java.io.FileInputStream;
+import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.util.Log;
 import android.graphics.Bitmap;
@@ -25,6 +26,10 @@ public class LeafInferencePlugin extends Plugin {
 
     private Interpreter tflite;
     private static final int NUM_CLASSES = 10;
+    private static final String[] CLASS_NAMES = {
+        "Cacao", "Cassava", "Coconut", "Durian", "Jackfruit", 
+        "Kapok", "Oil Palm", "Paper Mulberry", "Poinsettia", "Saman Samanea"
+    };
 
     @Override
     public void load() {
@@ -130,34 +135,37 @@ public class LeafInferencePlugin extends Plugin {
                 }
             }
 
-            float[][] output = new float[1][NUM_CLASSES]; // Output shape (1, 4)
+            float[][] output = new float[1][NUM_CLASSES]; // Output shape (1, 10)
             tflite.run(input, output);
 
-            // 🔹 Log Raw Output from Model
+            // Log Raw Output from Model
             Log.d("Inference", "Raw Model Output: " + Arrays.toString(output[0]));
 
-            // 🔹 Apply Softmax to Normalize Outputs
+            // Apply Softmax to Normalize Outputs
             float[] probabilities = softmax(output[0]);
 
-            Log.d("Inference", "All confidence scores:");
+            // Log detailed class-by-class confidence scores
+            Log.d("Inference", "===== LEAF CLASSIFICATION RESULTS =====");
             for (int i = 0; i < probabilities.length; i++) {
-                Log.d("Inference", "Class " + i + ": " + String.format("%.5f", probabilities[i]));
+                String className = (i < CLASS_NAMES.length) ? CLASS_NAMES[i] : "Class " + i;
+                Log.d("Inference", className + ": " + String.format("%.4f", probabilities[i] * 100) + "%");
             }
-
-            // 🔹 Log Confidence Scores After Softmax
-            Log.d("Inference", "Confidence Scores (Softmax Applied): " + Arrays.toString(probabilities));
+            Log.d("Inference", "======================================");
 
             // Get class with highest confidence
             int classIndex = argmax(probabilities);
             float confidence = probabilities[classIndex];
+            String predictedClassName = (classIndex < CLASS_NAMES.length) ? CLASS_NAMES[classIndex] : "Unknown";
+
+            Log.d("Inference", "TOP PREDICTION: " + predictedClassName + 
+                " (Class " + classIndex + ") with confidence: " + 
+                String.format("%.2f", confidence * 100) + "%");
 
             // Validate confidence score range
             if (confidence < 0 || confidence > 1) {
                 call.reject("Invalid confidence score after softmax: " + confidence);
                 return;
             }
-
-            Log.d("Inference", "Predicted class index: " + classIndex + ", Confidence: " + confidence);
 
             JSObject[] allClassesArray = new JSObject[NUM_CLASSES];
             for (int i = 0; i < probabilities.length; i++) {
@@ -176,12 +184,8 @@ public class LeafInferencePlugin extends Plugin {
             JSObject ret = new JSObject();
             ret.put("classIndex", classIndex);
             ret.put("confidence", confidence);
-            // ret.put("rawOutput", Arrays.asList(output[0]));  // Send raw logits before softmax
-            // ret.put("allClasses", Arrays.asList(allClassesArray)); // Send all softmax values
             ret.put("rawOutput", Arrays.toString(output[0])); // Log raw output before softmax
-            // ret.put("allClasses", Arrays.asList(allClassesArray)); // Convert to List
             ret.put("allConfidences", confidenceList);  
-
             
             call.resolve(ret);
 
@@ -245,21 +249,6 @@ public class LeafInferencePlugin extends Plugin {
         }
         return input;
     }
-
-    // private int getClassIndex(float[] output) {
-    //     int maxIndex = 0;
-    //     float maxConfidence = -Float.MAX_VALUE;  // Start with very low value
-
-    //     for (int i = 0; i < output.length; i++) {
-    //         if (output[i] > maxConfidence) {
-    //             maxConfidence = output[i];
-    //             maxIndex = i;
-    //         }
-    //     }
-        
-    //     Log.d("Inference", "Predicted class index: " + maxIndex + ", Confidence: " + maxConfidence);
-    //     return maxIndex;
-    // }
 
     private MappedByteBuffer loadModelFile() throws Exception {
         String modelPath = "model.tflite";

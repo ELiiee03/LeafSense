@@ -1,5 +1,5 @@
 <template>
-  <ion-header class="ion-no-border">
+  <ion-header class="ion-no-border custom-header">
     <ion-toolbar>
       <ion-title><b>LeafSense.</b></ion-title>
       <ion-buttons slot="end">
@@ -93,5 +93,28 @@ export default defineComponent({
 <style scoped>
 ion-toolbar {
   --color: black;
+  --padding-top: 0 !important;
+  --min-height: 56px;
+  margin-top: 0 !important;
+}
+
+ion-header.custom-header {
+  --ion-safe-area-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+ion-title b {
+  margin: 0;
+  padding: 10px 0;
+  font-size: 24px;
+}
+
+/* Force this component to override global styles */
+:deep(ion-header) {
+  padding-top: 0 !important;
+}
+
+:deep(ion-toolbar) {
+  --padding-top: 0 !important;
 }
 </style>

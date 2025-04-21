@@ -200,19 +200,124 @@ export function useLeafData() {
     imageData: string,
     inferenceData: any,
     plantDetails: any
-  }) => {
-    // Check network status
-    const networkStatus = await Network.getStatus();
+  }, forceOffline?: boolean) => {
+    // Define a safe wrapper for Network.getStatus with timeout and retries
+    const checkNetworkWithRetry = async (timeoutMs = 2000, retries = 2): Promise<{connected: boolean}> => {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const result = await Promise.race([
+            Network.getStatus(),
+            new Promise<never>((_, reject) => 
+              setTimeout(() => reject(new Error('Network check timeout')), timeoutMs)
+            )
+          ]);
+          return result;
+        } catch (err) {
+          console.warn(`Network check attempt ${i+1}/${retries} failed:`, err);
+          // Last retry - return offline
+          if (i === retries - 1) {
+            return { connected: false };
+          }
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      return { connected: false };
+    };
+
+    // Check network status unless forceOffline is explicitly set
+    if (forceOffline === true) {
+      console.log("Forcing offline save mode");
+      isOnline.value = false;
+      // Add offline flag to help caller identify offline saves
+      return savePlantOfflineMutation.mutateAsync(data)
+        .then(result => ({ ...(result as object || {}), offline: true }));
+    }
     
-    if (networkStatus.connected) {
-      return savePlantOnlineMutation.mutateAsync(data);
-    } else {
-      return savePlantOfflineMutation.mutateAsync(data);
+    try {
+      // Check network status with the enhanced retry function
+      const networkStatus = await checkNetworkWithRetry();
+      
+      // Update the online state
+      isOnline.value = networkStatus.connected;
+      console.log(`Network check result: ${networkStatus.connected ? 'online' : 'offline'}`);
+      
+      // If network status indicates we're online, try online save with fallback
+      if (networkStatus.connected) {
+        try {
+          // Try online save with timeout to prevent hanging
+          const onlineSavePromise = savePlantOnlineMutation.mutateAsync(data);
+          
+          // Add a timeout to prevent hanging indefinitely
+          const result = await Promise.race([
+            onlineSavePromise,
+            new Promise<never>((_, reject) => {
+              const timeoutError = new Error('Online save timeout');
+              timeoutError.name = 'NetworkTimeoutError'; // Custom error type for better detection
+              setTimeout(() => reject(timeoutError), 5000); // Shorter timeout for better UX
+            })
+          ]);
+          
+          return { ...(result as object || {}), offline: false };
+        } catch (error) {
+          // Check if this is a timeout error (either by name or message)
+          const isTimeoutError = 
+            (error instanceof Error && error.name === 'NetworkTimeoutError') ||
+            (error instanceof Error && error.message.includes('timeout'));
+          
+          console.error(`Online save failed or timed out (timeout: ${isTimeoutError}):`, error);
+          
+          // If it's a timeout, assume network transition and go straight to offline mode
+          if (isTimeoutError) {
+            console.log('Detected timeout during online save, assuming network transition to offline');
+            isOnline.value = false;
+            const offlineResult = await savePlantOfflineMutation.mutateAsync(data);
+            return { ...(offlineResult as object || {}), offline: true, wasNetworkTransition: true };
+          }
+          
+          // For non-timeout errors, double-check network status
+          const currentNetworkStatus = await checkNetworkWithRetry(1500, 1);
+          
+          // If network is truly down, update state and use offline save
+          if (!currentNetworkStatus.connected) {
+            console.log('Network is now confirmed offline, switching to offline save');
+            isOnline.value = false; // Update state to reflect reality
+            const offlineResult = await savePlantOfflineMutation.mutateAsync(data);
+            return { ...(offlineResult as object || {}), offline: true };
+          } else {
+            // Network is still up but save failed for other reasons
+            console.error('Network is still available but save failed. Trying offline save as fallback');
+            const offlineResult = await savePlantOfflineMutation.mutateAsync(data);
+            return { ...(offlineResult as object || {}), offline: true };
+          }
+        }
+      } else {
+        // Already know we're offline, go straight to offline save
+        console.log('Using offline save mode due to network status');
+        const offlineResult = await savePlantOfflineMutation.mutateAsync(data);
+        return { ...(offlineResult as object || {}), offline: true };
+      }
+    } catch (error) {
+      console.error('Error during save with network check:', error);
+      // Last resort fallback - if any network errors occur, try offline save
+      isOnline.value = false;
+      try {
+        const offlineResult = await savePlantOfflineMutation.mutateAsync(data);
+        return { ...(offlineResult as object || {}), offline: true, wasFallback: true };
+      } catch (offlineError) {
+        // If even offline save fails, rethrow with more context
+        console.error('Offline save also failed:', offlineError);
+        const errorMessage = offlineError instanceof Error ? offlineError.message : 'Unknown error';
+        throw new Error(`Failed to save data: ${errorMessage}`);
+      }
     }
   };
 
   return {
     isOnline: computed(() => isOnline.value),
+    setOnlineStatus: (status: boolean) => {
+      isOnline.value = status;
+    },
     networkStatus: networkQuery,
     syncOfflineData: () => syncMutation.mutate(),
     savePlantData,

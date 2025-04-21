@@ -20,9 +20,13 @@
                                 <b>{{ leafData.leafInfo.name }}</b>
                             </h1>
                             <p class="leaf-scientific-name" v-if="leafData?.leafInfo">
-                              <i> {{ leafData.leafInfo.scientificName }}</i> 
+                              <i>{{ leafData.leafInfo.scientificName.replace(/\s+/g, ' ') }}</i>
                             </p>
+                            <div class="fam-name" v-if="leafData?.leafInfo">
+                              <span class="label">Family Name:</span>
+                              <span class="value">{{ leafData.leafInfo.familyName || 'No family name available' }}</span>
                             </div>
+                          </div>
                         </div>
                       </ion-col>
                       <ion-col size="auto">
@@ -100,13 +104,14 @@
 import { IonPage, IonContent, IonCol, IonGrid, IonRow, toastController, IonChip, IonButton } from '@ionic/vue';
 import { arrowBack, locationSharp } from 'ionicons/icons';
 import { useRouter } from 'vue-router';
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
 import { useInferenceStore } from '@/stores/inferenceStores';
 import { useGeoStore } from '@/stores/geolocationStore';
 import LocationModal from '@/components/LocationModal.vue';
 import PlantDetails from '@/components/Plant details/PlantDetails.vue';
 import { useLeafData } from '@/composables/useLeafData';
 import { supabase } from '@/supabaseClient';
+import { Network } from '@capacitor/network';
 
 // State
 const showModal = ref(false);
@@ -118,17 +123,36 @@ const inferenceStore = useInferenceStore();
 const leafData = computed(() => inferenceStore.result);
 const leafDataService = useLeafData();
 
+// Add reactive reference for UI network state 
+const uiNetworkState = ref(true);
+
 // Watch network status and sync when online
-watch(() => leafDataService.isOnline.value, async (isOnline) => {
+watch(() => leafDataService.isOnline.value, async (isOnline, previousState) => {
   if (isOnline) {
     try {
       console.log('Network is now online, syncing offline data...');
-      await leafDataService.syncOfflineData();
-      await showToast('Offline data synchronized successfully');
+      // Add timeout to prevent hanging
+      const syncPromise = leafDataService.syncOfflineData();
+      await Promise.race([
+        syncPromise,
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Sync timeout')), 10000)
+        )
+      ]).catch(err => {
+        console.error('Sync operation timed out or failed:', err);
+      });
+      
+      // Double check we're still online after sync
+      const currentStatus = await Network.getStatus().catch(() => ({ connected: false }));
+      if (currentStatus.connected) {
+        await showToast('Offline data synchronized successfully');
+      }
     } catch (error) {
       console.error('Failed to sync offline data:', error);
     }
   }
+  // Update the UI network state
+  uiNetworkState.value = isOnline;
   updateLeafImage();
 });
 
@@ -173,6 +197,77 @@ watch(() => leafData.value, () => {
 // Lifecycle
 onMounted(() => {
   updateLeafImage();
+  
+  // Define a more robust network status check function
+  const checkAndUpdateNetworkStatus = async () => {
+    try {
+      const status = await Promise.race([
+        Network.getStatus(),
+        new Promise<{connected: false}>((_, reject) => 
+          setTimeout(() => reject(new Error('Network status check timeout')), 2000)
+        )
+      ]).catch(() => ({ connected: false }));
+      
+      console.log(`Network status check: ${status.connected ? 'online' : 'offline'}`);
+      uiNetworkState.value = status.connected;
+      leafDataService.setOnlineStatus(status.connected);
+      
+      return status.connected;
+    } catch (err) {
+      console.error('Error checking network status:', err);
+      // Default to current state if we can't check
+      return uiNetworkState.value;
+    }
+  };
+  
+  // Check network status immediately
+  checkAndUpdateNetworkStatus();
+  
+  // Set up network change listener with debouncing to avoid rapid changes
+  let networkChangeTimeout: any = null;
+  
+  Network.addListener('networkStatusChange', status => {
+    console.log('Network status changed:', status.connected ? 'online' : 'offline');
+    
+    // Clear any pending timeout
+    if (networkChangeTimeout) {
+      clearTimeout(networkChangeTimeout);
+    }
+    
+    // Important: Immediately update UI for offline state to prevent hanging operations
+    if (!status.connected) {
+      // For offline transitions, update immediately without waiting
+      uiNetworkState.value = false;
+      leafDataService.setOnlineStatus(false);
+      console.log('Network went offline, updated state immediately');
+    }
+    
+    // For all network changes, still use debounce for complete state update
+    networkChangeTimeout = setTimeout(async () => {
+      // Double-check the current status to be sure
+      const confirmedStatus = await checkAndUpdateNetworkStatus();
+      
+      // Only trigger sync if we're coming online
+      if (confirmedStatus && !uiNetworkState.value) {
+        try {
+          console.log('Network confirmed as online, syncing offline data...');
+          await leafDataService.syncOfflineData();
+          await showToast('Offline data synchronized successfully');
+        } catch (syncError) {
+          console.error('Failed to sync offline data:', syncError);
+        }
+      }
+      
+      // Update UI state after confirmation
+      uiNetworkState.value = confirmedStatus;
+      leafDataService.setOnlineStatus(confirmedStatus);
+    }, 500); // 500ms debounce
+  });
+});
+
+// Clean up network listeners
+onUnmounted(() => {
+  Network.removeAllListeners();
 });
 
 // Utility functions
@@ -211,6 +306,8 @@ async function showToast(message: string, isError = false) {
 // Save plant data
 async function saveLeafInfo() {
   let saveSuccessful = false;
+  // Create a variable to store plant details that's accessible throughout the function
+  let capturedPlantDetails = {};
   
   try {
     // Validate required data
@@ -220,6 +317,24 @@ async function saveLeafInfo() {
     }
 
     console.log("Starting save process...");
+    
+    // Get the latest network status directly to ensure accuracy with a timeout
+    // Add a timeout to the network status check to prevent hanging
+    const networkStatus = await Promise.race([
+      Network.getStatus(),
+      new Promise<{connected: false}>((_, reject) => 
+        setTimeout(() => reject(new Error('Network check timeout')), 1500)  // Reduced timeout
+      )
+    ]).catch(err => {
+      console.warn('Network check timed out or failed, assuming offline:', err);
+      return { connected: false };
+    });
+    
+    console.log("Current network status:", networkStatus.connected ? "online" : "offline");
+    
+    // Update both UI and service network states
+    uiNetworkState.value = networkStatus.connected;
+    leafDataService.setOnlineStatus(networkStatus.connected);
     
     // Prepare image data - use leafImage directly to ensure we save what's displayed
     let imageToSave = '';
@@ -233,9 +348,6 @@ async function saveLeafInfo() {
       imageToSave = imageSrc.value;
       console.log("Using imageSrc.value for save");
     }
-
-    // Log image data being saved
-    console.log('Saving image data:', imageToSave ? 'Image data available' : 'No image available');
 
     // Prepare inference data
     const inferenceData = {
@@ -295,37 +407,65 @@ async function saveLeafInfo() {
       soil_req: leafData.value.leafInfo?.soilRequirements ?? ''
     };
 
-    // Check network status before saving
-    const isOnline = leafDataService.isOnline.value;
-    console.log("Network status before save:", isOnline ? "Online" : "Offline");
+    // Store plantDetails in the outer variable for later use
+    capturedPlantDetails = plantDetails;
     
-    // Log the detailed plant data being saved - helpful for debugging
-    console.log("Saving plant data:", {
-      inferenceData: {
-        ...inferenceData,
-        confidence: inferenceData.confidence
-      },
-      plantDetailsFields: Object.keys(plantDetails).map(key => {
-        // Use type assertion to fix TypeScript error with plantDetails[key]
-        const value = plantDetails[key as keyof typeof plantDetails];
-        return `${key}: ${value ? 'present' : 'empty'}`;
-      }),
-      imageAvailable: !!imageToSave
-    });
-
-    // Save the data
-    const result = await leafDataService.savePlantData({
+    // Prepare the data package once to reuse it if needed
+    const dataPackage = {
       imageData: imageToSave,
       inferenceData,
       plantDetails
-    });
+    };
 
-    console.log("Save result:", result);
-    saveSuccessful = true;
+    let result;
+    
+    // Always try offline save first to avoid network transition issues
+    if (!networkStatus.connected) {
+      // Directly use offline save if we know we're offline
+      console.log("Network is offline, using direct offline save");
+      result = await leafDataService.savePlantData(dataPackage, true); // Force offline mode
+      saveSuccessful = true;
+    } else {
+      // For online mode, use a shorter timeout to prevent hanging
+      try {
+        console.log("Attempting online save with timeout protection");
+        
+        // Set a shorter timeout for online save to detect network issues quickly
+        const savePromise = Promise.race([
+          leafDataService.savePlantData(dataPackage, false), // try online
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Online save timeout')), 5000);
+          })
+        ]);
+        
+        // Wait for the save to complete
+        result = await savePromise;
+        console.log("Online save completed successfully:", result);
+        saveSuccessful = true;
+      } catch (error) {
+        console.error("Online save failed:", error);
+        
+        // If it's a timeout or network error, try offline save immediately
+        leafDataService.setOnlineStatus(false);
+        uiNetworkState.value = false;
+        
+        console.log("Attempting fallback offline save");
+        try {
+          // Force offline mode for reliable saving
+          result = await leafDataService.savePlantData(dataPackage, true);
+          console.log("Offline save succeeded:", result);
+          saveSuccessful = true;
+          await showToast('Saved in offline mode', false);
+        } catch (offlineError) {
+          console.error("Even offline save failed:", offlineError);
+          await showToast('Could not save data. Please try again.', true);
+        }
+      }
+    }
 
-    // Handle location data if needed (only in online mode)
+    // Handle location data if needed (only if we have a result and were online)
     const pinnedLocation = geoStore.currentLocation;
-    if (result && isOnline && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
+    if (saveSuccessful && networkStatus.connected && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
       try {
         const { error } = await supabase
           .from('pinned_locations')
@@ -347,8 +487,13 @@ async function saveLeafInfo() {
       }
     }
 
-    // Show appropriate message based on network status
-    if (isOnline) {
+    if (!saveSuccessful) {
+      await showToast('Leaf information could not be saved', true);
+      return;
+    }
+
+    // Show appropriate message based on save state
+    if (networkStatus.connected && !(result as any)?.offline) {
       await showToast('Leaf information saved successfully');
     } else {
       await showToast('Leaf information saved offline. Will sync when online.');
@@ -364,12 +509,38 @@ async function saveLeafInfo() {
     
   } catch (error) {
     console.error('Error saving leaf info:', error);
-    if (error instanceof Error) {
-      await showToast(`Error: ${error.message}`, true);
-    } else {
-      await showToast('Error saving leaf information', true);
+    
+    // Final fallback - force offline save as last resort
+    try {
+      console.log('Emergency fallback - forcing offline save');
+      
+      const fallbackResult = await leafDataService.savePlantData({
+        imageData: leafImage.value || '',
+        inferenceData: {
+          predictedClass: leafData.value?.inference.predictedClass || '',
+          scientificName: leafData.value?.leafInfo.scientificName || '',
+          familyName: leafData.value?.leafInfo.familyName || '',
+          description: leafData.value?.leafInfo.description || '',
+          habitat: leafData.value?.leafInfo.habitat || '',
+          confidence: leafData.value?.inference.confidence || 0,
+          growthHabits: leafData.value?.leafInfo.growthHabits || ''
+        },
+        plantDetails: capturedPlantDetails
+      }, true); // Force offline mode
+      
+      if (fallbackResult) {
+        saveSuccessful = true;
+        await showToast('Emergency offline save successful', false);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        if (saveSuccessful) {
+          router.back();
+        }
+      }
+    } catch (fallbackError) {
+      console.error('Emergency fallback save also failed:', fallbackError);
+      await showToast('Unable to save data. Please try again.', true);
     }
-    // Don't navigate back on error - let user see the error message
   }
 }
 </script>
@@ -394,12 +565,12 @@ async function saveLeafInfo() {
 }
 
 ion-chip {
-  --background: #416d3f;
-  --color: #fff;
-  margin-top: 85%;
-  margin-left: 0%;
-  align-self: flex-end;
-  z-index: 3; /* Above the gradient */
+    --background: #416d3f;
+    --color: #fff;
+    margin-top: 60%;  /* Remove top margin */
+    margin-left: 0%;
+    align-self: flex-end;
+    z-index: 3;
 }
 
 .card-container1 {
@@ -476,21 +647,50 @@ ion-chip {
 }
 
 
-.leaf-name, .leaf-scientific-name {
+.leaf-name, .leaf-scientific-name, .fam-name {
     margin: 0; /* Remove default margin */
-    padding: 2px 0; /* Add padding for spacing */
+    padding: 1px 0; /* Reduce padding from 2px to 1px */
     text-align: left; 
     color: #fff;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
 }
 
+.leaf-scientific-name {
+    margin: 0;
+    padding: 1px 0;
+    text-align: left;
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    white-space: nowrap; /* Force to stay on one line */
+    width: auto; /* Allow text to take its natural width */
+    overflow: visible;
+    text-overflow: clip;
+}
+
+.fam-name {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.fam-name .label {
+    margin-right: 5px;
+    white-space: nowrap;
+}
+
+.fam-name .value {
+    white-space: normal;
+}
+
 .custom-grid {
-    width: 100% ; /* Adjust the width as needed */
-    height: 5%; /* Adjust the height as needed */
-    position: absolute; /* Position the container absolutely */
-    top: 110px; /* Adjust the top position as needed */
-    bottom: 0; /* Position at bottom */
-    z-index: 2; /* Position above the image */
+    width: 100%;
+    height: auto;
+    position: absolute;
+    top: auto;  /* Remove fixed top position */
+    bottom: 10px;  /* Position from bottom instead */
+    z-index: 2;
     border: none;
 }
 
@@ -504,12 +704,15 @@ ion-fab-button {
     display: flex;
     flex-direction: column;
     text-align: left;
-    margin-top: 50px;
+    margin-top: 0;  /* Remove top margin */
     border: none;
-    max-width: 85%;
-    margin-left: 5px;
-    z-index: 3; 
+    max-width: 100%;
     width: 100%;
+    margin-left: 5px;
+    z-index: 3;
+    padding-bottom: 0;  /* Semi-transparent background */
+    padding: 8px;  /* Add padding around text */
+    border-radius: 5px;  /* Optional: rounded corners */
 }
 
 .leaf-image {

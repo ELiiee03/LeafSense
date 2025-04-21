@@ -19,7 +19,9 @@
             android:label="@string/title_activity_main"
             android:launchMode="singleTask"
             android:name=".MainActivity"
-            android:theme="@style/AppTheme.NoActionBarLaunch">
+            android:theme="@style/AppTheme.NoActionBarLaunch"
+            android:windowSoftInputMode="adjustResize"
+            android:resizeableActivity="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -32,6 +34,14 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="capacitor" android:host="localhost" android:pathPrefix="/auth-callback" />
             </intent-filter>
+            
+            <!-- Edge-to-edge display support for Android P and above (API 28+) -->
+            <meta-data
+                android:name="android.supports_size_changes"
+                android:value="true" />
+            <meta-data
+                android:name="android.max_aspect"
+                android:value="2.4" />
         </activity>
         <provider
             android:authorities="${applicationId}.fileprovider"

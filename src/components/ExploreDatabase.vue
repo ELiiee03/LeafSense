@@ -46,17 +46,18 @@
   <script setup lang="ts">
   import { IonContent, IonSearchbar, IonGrid, IonRow, IonCol, IonCard, IonIcon, IonSpinner, IonCardContent } from '@ionic/vue';
   import { leafOutline } from 'ionicons/icons';
-  import { ref, onMounted, computed } from 'vue';
+  import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
   import { supabase } from '@/supabaseClient';
-  import { useQuery } from '@tanstack/vue-query';
+  import { useQuery, useQueryClient } from '@tanstack/vue-query';
   import { sqliteService } from '@/services/sqliteService';
   import { Network } from '@capacitor/network';
+  import { networkState, onNetworkChange } from '@/services/networkService';
 
   // Define default categories with colors
   const defaultCategories = [
     { name: 'Trees', count: 0, color: '#E6F4E6' },
     { name: 'Shrubs', count: 0, color: '#F7E8D7' },
-    { name: 'Flowers', count: 0, color: '#F7D7D7' },
+    { name: 'Grass', count: 0, color: '#F7D7D7' },
     { name: 'Herbs', count: 0, color: '#E6F4D7' },
     // { name: 'Vines', count: 0, color: '#D7E6F7' }
   ];
@@ -65,7 +66,7 @@
   const categoryColors = {
     'Trees': '#E6F4E6',
     'Shrubs': '#F7E8D7',
-    'Flowers': '#F7D7D7',
+    'Grass': '#F7D7D7',
     'Herbs': '#E6F4D7',
   } as const;
 
@@ -78,12 +79,43 @@
     'shrub': 'Shrubs',
     'shrubs': 'Shrubs',
     // Flowers/Flower variations
-    'flower': 'Flowers',
+    'grass': 'Grass',
     'flowers': 'Flowers',
     // Herbs/Herb variations
     'herb': 'Herbs',
     'herbs': 'Herbs',
   };
+
+  // Get the query client to manually refetch data
+  const queryClient = useQueryClient();
+  
+  // Network status change listener
+  let unsubscribeFromNetwork: (() => void) | null = null;
+
+  // Handler for network status changes
+  const handleNetworkChange = async (status: { connected: boolean }) => {
+    console.log('Network status changed in ExploreDatabase:', status.connected ? 'online' : 'offline');
+    // Refetch data when network status changes
+    queryClient.invalidateQueries({ queryKey: ['plantCategories'] });
+  };
+  
+  // Set up network monitoring
+  onMounted(() => {
+    unsubscribeFromNetwork = onNetworkChange(handleNetworkChange);
+    
+    // Also watch for network state changes via the reactive ref
+    watch(() => networkState.lastUpdated.value, () => {
+      console.log('Network state updated in ExploreDatabase');
+      queryClient.invalidateQueries({ queryKey: ['plantCategories'] });
+    });
+  });
+  
+  // Clean up
+  onUnmounted(() => {
+    if (unsubscribeFromNetwork) {
+      unsubscribeFromNetwork();
+    }
+  });
 
   // Get categories data using TanStack Query
   const { data: categoriesData, isLoading, error: queryError } = useQuery({

@@ -126,6 +126,8 @@ watch(() => props.allLogs, () => {
   padding: 12px;
   background: #E4EFE7;
   border-radius: 12px;
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
 /* Custom Search Bar */
@@ -143,6 +145,7 @@ watch(() => props.allLogs, () => {
   width: 100%;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE and Edge */
+
 }
 
 /* Hide scrollbar */

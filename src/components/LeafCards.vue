@@ -112,6 +112,12 @@
            props.leaf.scientific_name || 
            '';
   });
+  
+  const getFamilyName = computed(() => {
+    return props.leaf.leafInfo?.familyName || 
+           props.leaf.family_name || 
+           'Unknown Family';
+  });
   </script>
   
   <style scoped>
@@ -177,10 +183,19 @@
   }
   
   .scientific-name {
-    margin: 2px 0 6px;
+    margin: 2px 0 2px;
     font-size: 0.8rem;
     color: #666;
     font-style: italic;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .family-name {
+    margin: 0 0 6px;
+    font-size: 0.75rem;
+    color: #777;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

@@ -16,6 +16,7 @@ import { sqliteService } from '@/services/sqliteService';
 import { initNetworkService, networkState, onNetworkChange, cleanupNetworkService } from '@/services/networkService';
 import { App } from '@capacitor/app';
 import { Browser } from '@capacitor/browser';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { supabase } from './supabaseClient';
 import { useRouter } from 'vue-router';
 import { Capacitor } from '@capacitor/core';
@@ -30,6 +31,21 @@ export default defineComponent({
   },
   setup() {
     const router = useRouter();
+
+    // Function to configure StatusBar for device notches
+    const setupStatusBar = async () => {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          // Set StatusBar to be transparent and use light text (white icons)
+          await StatusBar.setOverlaysWebView({ overlay: true });
+          await StatusBar.setStyle({ style: Style.Light });
+          
+          console.log('StatusBar configured for notch support');
+        } catch (error) {
+          console.error('Error configuring StatusBar:', error);
+        }
+      }
+    };
 
     // Function to handle database initialization errors
     const handleDatabaseError = async (error: any) => {
@@ -106,6 +122,9 @@ export default defineComponent({
 
     onMounted(async () => {
       console.log('Setting up deep link handler in App.vue');
+      
+      // Configure StatusBar for notch support
+      await setupStatusBar();
       
       // Initialize network service
       console.log('Initializing network service...');
@@ -364,19 +383,46 @@ export default defineComponent({
   --ion-background-color: #E4EFE7;
 }
 
-ion-toolbar {
-  --padding-top: env(safe-area-inset-top);
-  --padding-end: env(safe-area-inset-right);
-  --padding-bottom: env(safe-area-inset-bottom);
-  --padding-start: env(safe-area-inset-left);
+/* Override safe area insets to fix large header margins - make extremely aggressive */
+:root {
+  --ion-safe-area-top: 0px !important; 
 }
 
 ion-header {
-  padding-top: env(safe-area-inset-top);
+  padding-top: 0px !important;
+  --ion-safe-area-top: 0 !important;
+  margin-top: 30px !important;
 }
 
+ion-toolbar {
+  --padding-top: 0 !important;
+  --ion-safe-area-top: 0 !important;
+  margin-top: 0 !important;
+}
 
+/* Completely disable the statusbar padding globally */
+* {
+  --ion-statusbar-padding: 0 !important;
+}
+
+/* Keep horizontal safe areas for side notches */
+ion-toolbar {
+  --padding-end: env(safe-area-inset-right);
+  --padding-start: env(safe-area-inset-left);
+}
+
+/* Add support for bottom safe area (notch/home indicator) */
+ion-footer {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Ensure content respects safe areas */
+ion-content {
+  --padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Make sure tabs respect the bottom safe area */
+ion-tabs ion-tab-bar {
+  padding-bottom: env(safe-area-inset-bottom);
+}
 </style>
-<!-- :root {
-  --ion-background-color: transparent;
-} -->

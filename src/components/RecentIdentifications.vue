@@ -213,7 +213,7 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
       try {
         const promise = supabase
           .from('inference_results')
-          .select('id, created_at, result, scientific_name, confidence, image')
+          .select('id, created_at, result, scientific_name, family_name, confidence, image')
           .order('created_at', { ascending: false })
           .limit(5);
         
@@ -225,11 +225,12 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
           created_at: item.created_at || new Date().toISOString(),
           formattedDate: formatRelativeDate(item.created_at),
           inference: { 
-            confidence: typeof item.confidence === 'number' ? item.confidence : 0
+            confidence: parseFloat(item.confidence) || 0
           },
           leafInfo: {
             name: item.result || 'Unknown Leaf',
             scientificName: item.scientific_name || 'Unknown Species',
+            familyName: item.family_name || 'Unknown Family',
             image: item.image || ''
           }
         }));
@@ -246,11 +247,12 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
           created_at: new Date(item.timestamp).toISOString(),
           formattedDate: formatRelativeDate(new Date(item.timestamp).toISOString()),
           inference: { 
-            confidence: typeof item.confidence === 'number' ? item.confidence : 0
+            confidence: parseFloat(item.confidence) || 0
           },
           leafInfo: {
             name: item.predicted_class || 'Unknown Leaf',
             scientificName: item.scientific_name || 'Unknown Species',
+            familyName: item.family_name || 'Unknown Family',
             image: item.image_path || ''
           }
         }));
@@ -263,11 +265,12 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
         created_at: new Date(item.timestamp).toISOString(),
         formattedDate: formatRelativeDate(new Date(item.timestamp).toISOString()),
         inference: { 
-          confidence: typeof item.confidence === 'number' ? item.confidence : 0
+          confidence: parseFloat(item.confidence) || 0
         },
         leafInfo: {
           name: item.predicted_class || 'Unknown Leaf',
           scientificName: item.scientific_name || 'Unknown Species',
+          familyName: item.family_name || 'Unknown Family',
           image: item.image_path || ''
         }
       }));
@@ -354,6 +357,8 @@ const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
       
       if (error) throw error;
       
+      console.log('Modal data fetched from Supabase:', data);
+      
       // Transform data to include plant_details fields
       if (data) {
         // Get plant details from the joined query
@@ -364,10 +369,17 @@ const { data: selectedLeafData, refetch: fetchLeafData } = useQuery({
         // Return a complete object with both inference and details data
         return {
           ...data,
+          // Ensure confidence is properly formatted as a number between 0-1
+          confidence: parseFloat(data.confidence) || 0, // Convert to number and default to 0 if null
+          // Add inference property for compatibility with LeafInfoModal
+          inference: {
+            confidence: parseFloat(data.confidence) || 0
+          },
           // Add leafInfo structure with all needed fields
           leafInfo: {
             name: data.result || 'Unknown Plant',
             scientificName: data.scientific_name || '',
+            familyName: data.family_name || 'Unknown Family',
             description: data.description || '',
             habitat: data.habitat || '',
             image: data.image || null,
@@ -445,7 +457,11 @@ const openLeafInfo = async (leaf: any) => {
           habitat: fullLeafData.habitat || '',
           image: fullLeafData.imagePath || '',
           created_at: new Date(fullLeafData.timestamp).toISOString(),
-          confidence: fullLeafData.confidence || 0.8,
+          confidence: parseFloat(fullLeafData.confidence) || 0,
+          // Add inference property for compatibility with LeafInfoModal
+          inference: {
+            confidence: parseFloat(fullLeafData.confidence) || 0
+          },
           synced: fullLeafData.synced || false,
           
           // Include all plant detail fields
@@ -520,7 +536,11 @@ const openLeafInfo = async (leaf: any) => {
       habitat: leaf.leafInfo?.habitat || leaf.habitat || '',
       image: leaf.leafInfo?.image || leaf.image || '',
       created_at: leaf.created_at || new Date().toISOString(),
-      confidence: leaf.inference?.confidence || leaf.confidence || 0.8,
+      confidence: parseFloat(leaf.inference?.confidence) || 0,
+      // Add inference property for direct compatibility
+      inference: {
+        confidence: parseFloat(leaf.inference?.confidence) || 0
+      },
       synced: false, // Assume unsynced in offline mode
       
       // Add color if available
