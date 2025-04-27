@@ -107,12 +107,15 @@ import LocationModal from '@/components/LocationModal.vue';
 import PlantDetails from '@/components/Plant details/PlantDetails.vue';
 import { useLeafData } from '@/composables/useLeafData';
 import { supabase } from '@/supabaseClient';
+import { Network } from '@capacitor/network';
+import { sqliteService } from '@/services/sqliteService';
 
 // State
 const showModal = ref(false);
 const geoStore = useGeoStore();
 const leafImage = ref<string | null>(null);
 const imageSrc = ref<string>('');
+const imageToSave = ref<string>('');
 const router = useRouter();
 const inferenceStore = useInferenceStore();
 const leafData = computed(() => inferenceStore.result);
@@ -208,124 +211,273 @@ const toast = await toastController.create({
 await toast.present();
 }
 
-// Save plant data
+  // Helper function to save in offline mode - improved to be more direct and reliable
+async function saveLeafInfoOffline() {
+  console.log("Executing offline save");
+  // Move the declaration outside the try block so it's accessible in finally
+  const localIsSaving = ref(true);
+  let saveSuccessful = false;
+  
+  try {
+    // Use more direct saving approach to avoid network checks
+    const result = await sqliteService.saveOfflineInference({
+      predicted_class: leafData.value?.inference?.predictedClass || 'Unknown Plant',
+      scientific_name: leafData.value?.leafInfo?.scientificName || '',
+      family_name: leafData.value?.leafInfo?.familyName || '',
+      description: leafData.value?.leafInfo?.description || '',
+      habitat: leafData.value?.leafInfo?.habitat || '',
+      confidence: leafData.value?.inference?.confidence || 0,
+      growth_habits: leafData.value?.leafInfo?.growthHabits || '',
+      image_path: imageToSave.value || '',
+      timestamp: Date.now()
+    }, {
+        aliases: Array.isArray(leafData.value?.leafInfo?.aliases) ? leafData.value?.leafInfo?.aliases : [],
+        color: leafData.value?.leafInfo?.color ?? '',
+        foliage: leafData.value?.leafInfo?.foliage ?? '',
+        bark: leafData.value?.leafInfo?.bark ?? '',
+        fruit: leafData.value?.leafInfo?.fruit ?? '',
+        crown: leafData.value?.leafInfo?.crown ?? '',
+        trunk: leafData.value?.leafInfo?.trunk ?? '',
+        leaves: leafData.value?.leafInfo?.leaves ?? '',
+        retention: leafData.value?.leafInfo?.retention ?? '',
+        texture: leafData.value?.leafInfo?.texture ?? '',
+        venation: leafData.value?.leafInfo?.foliarVenation ?? '',
+        behavior: leafData.value?.leafInfo?.uniqueBehavior ?? '',
+        edible_uses: leafData.value?.leafInfo?.edibleUses ?? '',
+        med_uses: leafData.value?.leafInfo?.medicinalUses ?? '',
+        timber_uses: leafData.value?.leafInfo?.timberUses ?? '',
+        other_uses: leafData.value?.leafInfo?.otherUses ?? '',
+        climate: leafData.value?.leafInfo?.climate ?? '',
+        lifespan: leafData.value?.leafInfo?.lifespan ?? '',
+        light_needs: leafData.value?.leafInfo?.lightNeeds ?? '',
+        water_needs: leafData.value?.leafInfo?.waterNeeds ?? '',
+        soil_req: leafData.value?.leafInfo?.soilRequirements ?? ''
+    });
+    
+    if (result) {
+      console.log("Leaf information saved successfully offline with ID:", result.id);
+      saveSuccessful = true;
+      await showToast('Leaf information saved offline. Will sync when online.');
+    } else {
+      console.error("Save operation returned null result");
+      await showToast('Failed to save data locally', true);
+    }
+  } catch (error) {
+    console.error("Offline save failed:", error);
+    // Always show error toast if we haven't marked saveSuccessful as true before the error
+    if (!saveSuccessful) {
+      await showToast('Failed to save data locally', true);
+    }
+  } finally {
+    localIsSaving.value = false;
+  }
+  
+  return saveSuccessful;
+}
+
 async function saveLeafInfo() {
-let saveSuccessful = false;
+  let saveSuccessful = false;
+  const saveTimeout = ref<number | null>(null);
+  const isSaving = ref(true);
 
-try {
-  // Validate required data
-  if (!leafData.value?.leafInfo || !leafData.value?.inference) {
-    await showToast('Missing plant data', true);
-    return;
-  }
-
-  console.log("Starting save process...");
-  
-  // Prepare image data - use leafImage directly to ensure we save what's displayed
-  let imageToSave = '';
-  if (leafImage.value) {
-    imageToSave = leafImage.value; // Use the actual image shown in the UI
-    console.log("Using leafImage.value for save");
-  } else if (leafData.value.leafInfo?.imageData) {
-    imageToSave = `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`;
-    console.log("Using leafData.value.leafInfo.imageData for save");
-  } else if (imageSrc.value) {
-    imageToSave = imageSrc.value;
-    console.log("Using imageSrc.value for save");
-  }
-
-  // Log image data being saved
-  console.log('Saving image data:', imageToSave ? 'Image data available' : 'No image available');
-
-  // Prepare inference data
-  const inferenceData = {
-    predictedClass: leafData.value.inference.predictedClass,
-    scientificName: leafData.value.leafInfo.scientificName,
-    familyName: leafData.value.leafInfo.familyName,
-    description: leafData.value.leafInfo.description,
-    habitat: leafData.value.leafInfo.habitat,
-    confidence: leafData.value.inference.confidence,
-    growthHabits: leafData.value.leafInfo.growthHabits
-  };
-
-  // Prepare plant details data
-  const aliases = computed(() => {
-    if (!leafData.value?.leafInfo?.aliases) return [];
-    
-    // If aliases is a string (from JSON), parse it
-    if (typeof leafData.value.leafInfo.aliases === 'string') {
-      try {
-        return JSON.parse(leafData.value.leafInfo.aliases);
-      } catch (e) {
-        console.error('Error parsing aliases:', e);
-        return [leafData.value.leafInfo.aliases]; // Return as single item if can't parse
+  try {
+    // Set a global timeout to prevent UI from getting stuck
+    saveTimeout.value = window.setTimeout(() => {
+      if (isSaving.value) {
+        console.log('Save operation timed out globally - forcing offline mode');
+        isSaving.value = false;
+        showToast('Network issue detected. Saving in offline mode...', false);
+        
+        // Continue in offline mode - capture the result and correct the toast if needed
+        saveLeafInfoOffline().then(success => {
+          if (success) {
+            showToast('Leaf information saved offline. Will sync when online.');
+            // Only navigate back if successful
+            setTimeout(() => {
+              if (success) router.back();
+            }, 1000);
+          }
+        }).catch(err => {
+          console.error('Emergency offline save failed:', err);
+          showToast('Failed to save data. Please try again.', true);
+          // Don't navigate back on error so user can try again
+        });
       }
-    }
-    
-    // If already an array, return it
-    if (Array.isArray(leafData.value.leafInfo.aliases)) {
-      return leafData.value.leafInfo.aliases;
-    }
-    
-    // If single value, wrap in array
-    return [leafData.value.leafInfo.aliases];
-  });
-    
-  const plantDetails = {
-    aliases: Array.isArray(aliases.value) ? aliases.value : [],
-    color: leafData.value.leafInfo?.color ?? '',
-    foliage: leafData.value.leafInfo?.foliage ?? '',
-    bark: leafData.value.leafInfo?.bark ?? '',
-    fruit: leafData.value.leafInfo?.fruit ?? '',
-    crown: leafData.value.leafInfo?.crown ?? '',
-    trunk: leafData.value.leafInfo?.trunk ?? '',
-    leaves: leafData.value.leafInfo?.leaves ?? '',
-    retention: leafData.value.leafInfo?.retention ?? '',
-    texture: leafData.value.leafInfo?.texture ?? '',
-    venation: leafData.value.leafInfo?.foliarVenation ?? '',
-    behavior: leafData.value.leafInfo?.uniqueBehavior ?? '',
-    edible_uses: leafData.value.leafInfo?.edibleUses ?? '',
-    med_uses: leafData.value.leafInfo?.medicinalUses ?? '',
-    timber_uses: leafData.value.leafInfo?.timberUses ?? '',
-    other_uses: leafData.value.leafInfo?.otherUses ?? '',
-    climate: leafData.value.leafInfo?.climate ?? '',
-    lifespan: leafData.value.leafInfo?.lifespan ?? '',
-    light_needs: leafData.value.leafInfo?.lightNeeds ?? '',
-    water_needs: leafData.value.leafInfo?.waterNeeds ?? '',
-    soil_req: leafData.value.leafInfo?.soilRequirements ?? ''
-  };
+    }, 5000); // 5 second timeout
 
-  // Check network status before saving
-  const isOnline = leafDataService.isOnline.value;
-  console.log("Network status before save:", isOnline ? "Online" : "Offline");
+    // Validate required data
+    if (!leafData.value?.leafInfo || !leafData.value?.inference) {
+      await showToast('Missing plant data', true);
+      clearTimeout(saveTimeout.value);
+      return; // Don't navigate back on error
+    }
+
+    console.log("Starting save process...");
+    // Prepare image data - use leafImage directly to ensure we save what's displayed
+    imageToSave.value = '';
+    
+    // Detailed logging of available image sources
+    console.log("Available image sources:",{
+      leafImage: leafImage.value ? 'Present' : 'Missing',
+      imageData: leafData.value?.leafInfo?.imageData ? 'Present' : 'Missing',
+      imageSrc: imageSrc.value ? 'Present' : 'Missing'
+    });
+    
+    if (leafImage.value) {
+      imageToSave.value = leafImage.value; // Use the actual image shown in the UI
+      console.log("Using leafImage.value for save:", imageToSave.value.substring(0, 50) + '...');
+    } else if (leafData.value?.leafInfo?.imageData) {
+      imageToSave.value = `data:image/${leafData.value.leafInfo.imageType || 'jpeg'};base64,${leafData.value.leafInfo.imageData}`;
+      console.log("Using leafData.value.leafInfo.imageData for save");
+    } else if (imageSrc.value) {
+      imageToSave.value = imageSrc.value;
+      console.log("Using imageSrc.value for save");
+    } else {
+      // If no image is available, use a placeholder or fallback image
+      // This is critical since image_path is NOT NULL in the database
+      console.log("No image data found, using fallback image");
+      imageToSave.value = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACv/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AH//Z"; // Tiny black 1x1 pixel
+    }
+    
+    // Log image data being saved and ensure it's not empty
+    if (!imageToSave.value) {
+      console.error('CRITICAL ERROR: No image data available for save');
+      await showToast('Missing image data, cannot save', true);
+      clearTimeout(saveTimeout.value);
+      return;
+    }
+    
+    console.log('Image data prepared for save:', imageToSave.value ? `${imageToSave.value.substring(0, 50)}... (${imageToSave.value.length} chars)` : 'MISSING');
+
+    // Immediately check if we're offline without network check - use offline mode if needed
+    if (!leafDataService.isOnline.value) {
+      console.log('Already known to be offline, using offline save mode directly');
+      const offlineSuccess = await saveLeafInfoOffline();
+      saveSuccessful = offlineSuccess;
+      // No need for additional toast since saveLeafInfoOffline already shows one
+      return;
+    }
+
+    // Try quick network check with short timeout
+    let isOnline = false;
+    try {
+      const networkCheckPromise = Promise.race([
+        Network.getStatus(),
+        new Promise<{connected: false}>((_, reject) => {
+          setTimeout(() => reject(new Error('Network check timeout')), 800); // Faster timeout
+        })
+      ]);
+      
+      const status = await networkCheckPromise;
+      isOnline = status.connected;
+    } catch (error) {
+      console.log('Network check failed or timed out, assuming offline:', error);
+      isOnline = false;
+    }
+    
+    // If we're online, try online save with fallback to offline
+    if (isOnline) {
+      try {
+        console.log('Attempting online save...');
+        // Set a timeout just for the online operation
+        const onlineSavePromise = Promise.race([
+          leafDataService.savePlantData({
+            imageData: imageToSave.value,
+            inferenceData: {
+              predictedClass: leafData.value.inference.predictedClass,
+              scientificName: leafData.value.leafInfo.scientificName,
+              familyName: leafData.value.leafInfo.familyName,
+              description: leafData.value.leafInfo.description,
+              habitat: leafData.value.leafInfo.habitat,
+              confidence: leafData.value.inference.confidence,
+              growthHabits: leafData.value.leafInfo.growthHabits
+            },
+            plantDetails: {
+              aliases: Array.isArray(leafData.value.leafInfo?.aliases) ? leafData.value.leafInfo?.aliases : [],
+              color: leafData.value.leafInfo?.color ?? '',
+              foliage: leafData.value.leafInfo?.foliage ?? '',
+              bark: leafData.value.leafInfo?.bark ?? '',
+              fruit: leafData.value.leafInfo?.fruit ?? '',
+              crown: leafData.value.leafInfo?.crown ?? '',
+              trunk: leafData.value.leafInfo?.trunk ?? '',
+              leaves: leafData.value.leafInfo?.leaves ?? '',
+              retention: leafData.value.leafInfo?.retention ?? '',
+              texture: leafData.value.leafInfo?.texture ?? '',
+              venation: leafData.value.leafInfo?.foliarVenation ?? '',
+              behavior: leafData.value.leafInfo?.uniqueBehavior ?? '',
+              edible_uses: leafData.value.leafInfo?.edibleUses ?? '',
+              med_uses: leafData.value.leafInfo?.medicinalUses ?? '',
+              timber_uses: leafData.value.leafInfo?.timberUses ?? '',
+              other_uses: leafData.value.leafInfo?.otherUses ?? '',
+              climate: leafData.value.leafInfo?.climate ?? '',
+              lifespan: leafData.value.leafInfo?.lifespan ?? '',
+              light_needs: leafData.value.leafInfo?.lightNeeds ?? '',
+              water_needs: leafData.value.leafInfo?.waterNeeds ?? '',
+              soil_req: leafData.value.leafInfo?.soilRequirements ?? ''
+            }
+          }),
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Online save timeout')), 3000);
+          })
+        ]);
+        
+        const result = await onlineSavePromise;
+        console.log('Online save successful:', result);
+        saveSuccessful = true;
+        await showToast('Leaf information saved successfully');
+        
+        // Handle location saving if applicable
+        if (geoStore.currentLocation?.isPinned) {
+          await handleLocationSave(result);
+        }
+      } catch (onlineError) {
+        console.error("Online save failed, switching to offline mode:", onlineError);
+        // Always try offline save if online fails
+        try {
+          console.log('Falling back to offline save...');
+          // Use direct offline save bypassing network checks
+          const offlineSuccess = await saveLeafInfoOffline();
+          saveSuccessful = offlineSuccess;
+          
+          // Change the toast message here - add success message for offline save
+          if (offlineSuccess) {
+            await showToast('Leaf information saved offline. Will sync when online.');
+          }
+        } catch (offlineError) {
+          console.error('Offline fallback save also failed:', offlineError);
+          // Don't throw, just show the error toast and allow the user to try again
+          await showToast('Failed to save data. Please try again.', true);
+        }
+      }
+    } else {
+      // We're definitely offline, go straight to offline save
+      console.log('Device is offline, saving locally...');
+      const offlineSuccess = await saveLeafInfoOffline();
+      saveSuccessful = offlineSuccess;
+      // No need for additional toast since saveLeafInfoOffline already shows one
+    }
+  } catch (error) {
+    console.error('Error in save process:', error);
+    await showToast('Failed to save data. Please try again.', true);
+    // Don't navigate back on error so user can try again
+  } finally {
+    // Always clear the timeout and reset saving state
+    if (saveTimeout.value) clearTimeout(saveTimeout.value);
+    isSaving.value = false;
+  }
   
-  // Log the detailed plant data being saved - helpful for debugging
-  console.log("Saving plant data:", {
-    inferenceData: {
-      ...inferenceData,
-      confidence: inferenceData.confidence
-    },
-    plantDetailsFields: Object.keys(plantDetails).map(key => {
-      // Use type assertion to fix TypeScript error with plantDetails[key]
-      const value = plantDetails[key as keyof typeof plantDetails];
-      return `${key}: ${value ? 'present' : 'empty'}`;
-    }),
-    imageAvailable: !!imageToSave
-  });
+  // Only navigate back if save was successful
+  if (saveSuccessful) {
+    // Give toast time to display before navigating
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    router.back();
+  }
+}
 
-  // Save the data
-  const result = await leafDataService.savePlantData({
-    imageData: imageToSave,
-    inferenceData,
-    plantDetails
-  });
-
-  console.log("Save result:", result);
-  saveSuccessful = true;
-
-  // Handle location data if needed (only in online mode)
+// Helper function to handle location saving
+async function handleLocationSave(result: any) {
   const pinnedLocation = geoStore.currentLocation;
-  if (result && isOnline && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
+  if (result && pinnedLocation?.isPinned && Array.isArray(result) && result.length > 0) {
     try {
       const { error } = await supabase
         .from('pinned_locations')
@@ -346,32 +498,8 @@ try {
       await showToast('Leaf saved but location failed', true);
     }
   }
-
-  // Show appropriate message based on network status
-  if (isOnline) {
-    await showToast('Leaf information saved successfully');
-  } else {
-    await showToast('Leaf information saved offline. Will sync when online.');
-  }
-
-  // Force UI update before navigating back - IMPORTANT: give toast time to display
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Only navigate back if save was successful
-  if (saveSuccessful) {
-    router.back();
-  }
-  
-} catch (error) {
-  console.error('Error saving leaf info:', error);
-  if (error instanceof Error) {
-    await showToast(`Error: ${error.message}`, true);
-  } else {
-    await showToast('Error saving leaf information', true);
-  }
-  // Don't navigate back on error - let user see the error message
 }
-}
+
 </script>
 
 <style scoped>

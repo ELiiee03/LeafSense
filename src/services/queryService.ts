@@ -556,10 +556,12 @@ export const useSyncAndCleanMutation = () => {
         console.log('Starting sync and clean process...');
         
         // We'll use the one in syncService which already has flags to prevent duplicate syncs
-        const { syncedCount, failureCount } = await import('@/services/syncService')
+        const result = await import('@/services/syncService')
           .then(module => module.syncService.syncInferenceResults());
+        const syncedCount = result.syncedCount;
+        const failureCount = 'failureCount' in result ? result.failureCount : 0;
         
-        console.log(`Sync completed: ${syncedCount} synced, ${failureCount || 0} failures`);
+        console.log(`Sync completed: ${syncedCount} synced, ${failureCount} failures`);
         
         // No need for explicit cleanup - syncService already handles this internally
         // But we'll return the result for display

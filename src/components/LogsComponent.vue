@@ -158,7 +158,7 @@ import FilterComponent from './FilterComponent.vue';
 import { useLogsQuery, useDeleteLogMutation, useSyncAndCleanMutation } from '@/services/queryService';
 import NetworkAwareComponent from './NetworkAwareComponent.vue';
 import { Network } from '@capacitor/network';
-import { useQueryClient } from '@tanstack/vue-query';
+import { useQueryClient, useQuery } from '@tanstack/vue-query';
 
 export default defineComponent({
   components: {
@@ -221,16 +221,62 @@ export default defineComponent({
     // Add cleanup state
     const cleanupLoading = ref(false);
     
+    // Add a dedicated network status query to have query-cached network state
+    const networkQuery = useQuery({
+      queryKey: ['networkStatus'],
+      queryFn: async () => {
+        const status = await Network.getStatus();
+        return status.connected;
+      },
+      // Check network status every 30s as background refresh
+      refetchInterval: 30000,
+      // Don't refetch on mount as we manage this manually
+      refetchOnMount: false,
+      // Use stale time of 0 to always consider network status stale (ready to refetch)
+      staleTime: 0,
+      // Always keep previous data when refetching
+      placeholderData: (previous) => previous
+    });
+    
+    // Watch for changes to the network status query data
+    watch(() => networkQuery.data.value, (connected) => {
+      if (connected !== undefined) {
+        networkState.isOnline.value = connected;
+      }
+    });
+    
     // Network handling methods
     const handleNetworkOnline = async () => {
       console.log('Network is online, reloading data from server');
       // Reset loading state immediately
       isLoading.value = false;
       
-      // Set up realtime subscription when we come online
-      setupRealtimeSubscription();
-      await syncPendingData();
-      refreshLogs();
+      try {
+        // First, manually refetch the network status to confirm we're online
+        const networkResult = await networkQuery.refetch();
+        
+        if (networkResult.isSuccess && networkResult.data) {
+          // Set up realtime subscription when we come online
+          setupRealtimeSubscription();
+          
+          // 1. Sync any pending data first
+          await syncPendingData();
+          
+          // 2. Refresh cached queries by invalidating them
+          queryClient.invalidateQueries({ queryKey: ['logs'] });
+          queryClient.invalidateQueries({ queryKey: ['offlineLogs'] });
+          
+          // 3. Use refetch to get fresh data (more efficient than full page reload)
+          const result = await refetch({ cancelRefetch: false });
+          
+          if (result.isSuccess && result.data) {
+            logs.value = [...result.data];
+            console.log('Logs refreshed successfully after coming online');
+          }
+        }
+      } catch (error) {
+        console.error('Error handling network online state:', error);
+      }
     };
     
     const handleNetworkOffline = () => {
@@ -250,7 +296,16 @@ export default defineComponent({
     
     const syncPendingData = async () => {
       try {
-        // Show syncing indicator if needed
+        // First check if there's anything to sync - skip if nothing to sync
+        const unsyncedCount = await sqliteService.getUnsyncedCount();
+        if (!unsyncedCount || unsyncedCount === 0) {
+          console.log('No unsynced data to sync - skipping sync toast and operation');
+          // Still refresh the logs in case other changes happened on the server
+          queryClient.invalidateQueries({ queryKey: ['logs'] });
+          return { nothingToSync: true };
+        }
+        
+        // Only show toast if there's something to sync
         const toast = await toastController.create({
           message: 'Syncing data...',
           duration: 2000,
@@ -260,25 +315,51 @@ export default defineComponent({
         });
         await toast.present();
         
-        // Sync data
-        const syncResult = await syncMutation.mutateAsync();
-        console.log('Pending data synced:', syncResult);
+        // Sync data with a timeout to prevent hanging
+        const syncPromise = syncMutation.mutateAsync();
+        const syncResult = await Promise.race([
+          syncPromise,
+          new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Sync timeout')), 10000); // 10 second timeout
+          })
+        ]).catch(err => {
+          console.error('Sync timeout or error:', err);
+          return { error: true, message: err.message };
+        });
+        
+        console.log('Pending data sync result:', syncResult);
         
         // If we synced some records, refresh the offline logs
-        if (syncResult && syncResult.syncedCount > 0) {
+        if (syncResult && typeof syncResult === 'object' && 
+            'error' in syncResult && !syncResult.error && 
+            'syncedCount' in syncResult && 
+            typeof (syncResult as { syncedCount: number }).syncedCount === 'number' && 
+            (syncResult as { syncedCount: number }).syncedCount > 0) {
           // Reload offline data to show updated list
           await loadOfflineData();
           
           // Show success toast
           const successToast = await toastController.create({
-            message: `Synced ${syncResult.syncedCount} records. Offline data cleaned up.`,
+            message: `Synced ${syncResult.syncedCount} records.`,
             duration: 2000,
             color: 'success',
             position: 'top',
             cssClass: 'no-shadow-toast'
           });
           await successToast.present();
+        } else if (syncResult && typeof syncResult === 'object' && 'error' in syncResult && syncResult.error) {
+          // Show error toast if there was a timeout or error
+          const errorToast = await toastController.create({
+            message: 'Sync timed out. You can try again later.',
+            duration: 3000,
+            color: 'warning',
+            position: 'top',
+            cssClass: 'no-shadow-toast'
+          });
+          await errorToast.present();
         }
+        
+        return syncResult;
       } catch (error) {
         console.error('Error syncing data:', error);
         
@@ -291,6 +372,7 @@ export default defineComponent({
           cssClass: 'no-shadow-toast'
         });
         await errorToast.present();
+        return { error: true };
       }
     };
     
@@ -389,28 +471,40 @@ export default defineComponent({
     
     const refreshLogs = async () => {
       try {
-        console.log('Refreshing logs data');
+        console.log('Refreshing logs data with TanStack Query');
         // Reset pagination
         page.value = 1;
         
-        // Invalidate the cache for logs
+        // Force logs query to be marked as stale so it will refetch
         queryClient.invalidateQueries({ queryKey: ['logs'] });
         
-        // Force refetch from the server if online
+        // Check current network status to determine refresh strategy
         if (isOnline.value) {
-          await refetch(); // Use the refetch method from the existing query
+          // Online mode: Use TanStack Query's built-in fetching with background loading
+          console.log('Online refresh: Using TanStack Query refetch');
           
-          // Update the local logs array
-          if (logsData.value) {
-            logs.value = [...logsData.value];
+          // Reset loading state immediately to prevent spinner during background refresh
+          isLoading.value = false;
+          
+          // Refetch with cancelRefetch:false to ensure it runs even if there's a pending request
+          const result = await refetch({ cancelRefetch: false });
+          
+          if (result.isSuccess && result.data) {
+            logs.value = [...result.data];
+            console.log('Logs refreshed successfully via TanStack Query');
           }
         } else {
+          // Offline mode: Load from local SQLite database
+          console.log('Offline refresh: Using SQLite');
           await loadOfflineData();
         }
-        
-        console.log('Logs data refreshed successfully');
       } catch (error) {
         console.error('Error refreshing logs:', error);
+        // Reset loading state on error
+        isLoading.value = false;
+      } finally {
+        // Ensure loading state is reset
+        isLoading.value = false;
       }
     };
 
@@ -711,24 +805,61 @@ export default defineComponent({
     const handleRefresh = async (event: CustomEvent) => {
       console.log('Pull to refresh triggered');
       try {
-        // Check network status
-        const networkStatus = await Network.getStatus();
-        networkState.isOnline.value = networkStatus.connected;
+        // First refetch the network status query
+        const networkResult = await networkQuery.refetch();
+        const isConnected = networkResult.isSuccess && networkResult.data;
         
-        if (networkStatus.connected) {
-          // Online - refresh logs from server
-          await syncPendingData();
-          await refreshLogs();
+        // Update network state
+        networkState.isOnline.value = isConnected;
+        
+        // Reset loading state to avoid spinner
+        isLoading.value = false;
+        
+        if (isConnected) {
+          // Online - use TanStack Query's efficient refetching
+          
+          // Step 1: Sync any pending offline data
+          await syncPendingData().catch(err => {
+            console.error('Error syncing pending data during refresh:', err);
+          });
+          
+          // Step 2: Invalidate queries to mark them as stale
+          queryClient.invalidateQueries({ queryKey: ['logs'] });
+          
+          // Step 3: Trigger refetch with background loading
+          const result = await refetch({ 
+            cancelRefetch: false, // Don't cancel any pending requests
+            throwOnError: false   // Don't throw on error (handle gracefully)
+          });
+          
+          if (result.isSuccess && result.data) {
+            console.log('Successfully refreshed logs data');
+            // Update the logs array with new data
+            logs.value = [...result.data];
+          } else if (result.isError) {
+            console.error('Error refreshing logs data:', result.error);
+            // Show toast for error
+            const errorToast = await toastController.create({
+              message: 'Unable to refresh data. Please try again.',
+              duration: 3000,
+              color: 'danger',
+              position: 'top',
+              cssClass: 'no-shadow-toast'
+            });
+            await errorToast.present();
+          }
         } else {
           // Offline - refresh logs from SQLite
+          console.log('Refreshing offline data from SQLite');
           await loadOfflineData();
         }
       } catch (error) {
         console.error('Error during refresh:', error);
+        // Reset loading state on error
+        isLoading.value = false;
       } finally {
-        // Always complete the refresher
+        // Always complete the refresher with a slight delay for better UX
         setTimeout(() => {
-          // Use type assertion for TypeScript
           const refresher = event.target as HTMLIonRefresherElement;
           if (refresher && refresher.complete) {
             refresher.complete();

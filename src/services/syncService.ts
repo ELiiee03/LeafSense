@@ -6,14 +6,19 @@ import { sqliteService } from './sqliteService';
 
 // Add a flag to prevent multiple syncs running at once
 let isSyncingInProgress = false;
+// Add last sync timestamp to prevent frequent syncs
+let lastSyncTimestamp = 0;
+const MIN_SYNC_INTERVAL = 30000; // 30 seconds minimum between syncs
 
 export const syncService = {
   isSyncing: ref(false),
+  lastSyncResult: ref<any>(null),
+  
   init() {
     // Listen for network status changes
     Network.addListener('networkStatusChange', async (status) => {
       if (status.connected) {
-        await this.syncInferenceResults();
+        await this.syncInferenceResults({showToasts: false});
       }
     });
 
@@ -24,11 +29,20 @@ export const syncService = {
   async checkAndSync() {
     const status = await Network.getStatus();
     if (status.connected) {
-      await this.syncInferenceResults();
+      await this.syncInferenceResults({showToasts: false});
     }
   },
 
-  async syncInferenceResults() {
+  async syncInferenceResults(options = {showToasts: true}) {
+    const {showToasts} = options;
+    
+    // Prevent syncing too frequently
+    const now = Date.now();
+    if (now - lastSyncTimestamp < MIN_SYNC_INTERVAL) {
+      console.log(`⚠️ Last sync was less than ${MIN_SYNC_INTERVAL / 1000} seconds ago. Skipping.`);
+      return { syncedCount: 0, tooSoon: true };
+    }
+
     // Prevent multiple syncs from running simultaneously
     if (isSyncingInProgress) {
       console.log("⚠️ A sync operation is already in progress. Skipping.");
@@ -36,8 +50,16 @@ export const syncService = {
     }
 
     try {
+      // Check if there's anything to sync before starting the sync process
+      const unsyncedCount = await this.getUnsyncedCount();
+      if (unsyncedCount === 0) {
+        console.log("✅ No unsynced results to sync - skipping sync operation");
+        return { syncedCount: 0, nothingToSync: true };
+      }
+      
       isSyncingInProgress = true;
       this.isSyncing.value = true;
+      lastSyncTimestamp = now; // Update last sync timestamp
 
       console.log("🔄 Starting inference results sync process");
 
@@ -95,10 +117,18 @@ export const syncService = {
       let successCount = 0;
       let failureCount = 0;
       let duplicateCount = 0;
+      let alreadySyncedCount = 0;
 
       // Process one record at a time
       for (const result of unsyncedResults) {
         try {
+          // Skip records that are already marked as synced but weren't cleaned up
+          if (result.synced === 1) {
+            console.log(`⏩ Skipping record ID ${result.id} as it's already marked as synced`);
+            alreadySyncedCount++;
+            continue;
+          }
+
           // Generate a unique identifier for this record to prevent duplicates
           // Use scientific_name + timestamp as they should be unique together
           const uniqueId = `${result.scientific_name}_${result.timestamp}`;
@@ -252,7 +282,7 @@ export const syncService = {
         }
       }
 
-      console.log(`🔄 Sync Summary: ${successCount} records synced, ${failureCount} failures, ${duplicateCount} duplicates skipped`);
+      console.log(`🔄 Sync Summary: ${successCount} records synced, ${failureCount} failures, ${duplicateCount} duplicates skipped, ${alreadySyncedCount} already synced`);
 
       // Clean up synced records without using transactions
       if (successCount > 0 || duplicateCount > 0) {
@@ -263,18 +293,38 @@ export const syncService = {
         }
       }
 
-      return {
+      const syncResult = {
         syncedCount: successCount,
         failureCount,
         duplicateCount,
-        totalProcessed: successCount + failureCount + duplicateCount
+        alreadySyncedCount,
+        totalProcessed: successCount + failureCount + duplicateCount + alreadySyncedCount
       };
+      
+      // Store the last sync result
+      this.lastSyncResult.value = syncResult;
+      
+      return syncResult;
     } catch (error) {
       console.error('❌ Error in syncInferenceResults:', error);
       throw error;
     } finally {
       this.isSyncing.value = false;
       isSyncingInProgress = false;
+    }
+  },
+  
+  // Add a helper method to check if there are any unsynced results
+  async getUnsyncedCount() {
+    try {
+      const { values } = await sqliteService.executeQuery(
+        `SELECT COUNT(*) as count FROM unsynced_inferences WHERE synced = 0`
+      );
+      
+      return values && values[0] ? values[0].count : 0;
+    } catch (error) {
+      console.error('Error checking unsynced count:', error);
+      return 0;
     }
   },
 
@@ -285,7 +335,7 @@ export const syncService = {
 
       // 1. Get all synced records
       const { values: syncedIds } = await sqliteService.executeQuery(
-        `SELECT id FROM unsynced_inferences WHERE synced = 1`
+        `SELECT id FROM unsynced_inferences WHERE synced = 1 LIMIT 50`
       );
 
       if (!syncedIds || syncedIds.length === 0) {
@@ -293,30 +343,22 @@ export const syncService = {
         return { success: true, count: 0 };
       }
 
-      console.log(`🧹 Found ${syncedIds.length} synced records to clean up`);
+      console.log(`🧹 Found ${syncedIds.length} synced records to clean up (processing in batches)`);
 
       // 2. Delete each record individually
       let totalDeleted = 0;
 
       for (const item of syncedIds) {
         try {
-          // Check if there are any other references to this record
-          const { values: references } = await sqliteService.executeQuery(
-            `SELECT name FROM sqlite_master WHERE type='table' AND name != 'offline_plant_details' AND name != 'unsynced_inferences'`
-          );
-          
-          // Log what tables we have for debugging
-          console.log(`ℹ️ Available tables:`, references.map(r => r.name).join(', '));
-          
           // Delete associated plant details first
-          const detailsResult = await sqliteService.executeQuery(
+          await sqliteService.executeQuery(
             `DELETE FROM offline_plant_details WHERE inference_result_id = ?`,
             [item.id]
           );
 
           // Then delete the inference record
           const inferenceResult = await sqliteService.executeQuery(
-            `DELETE FROM unsynced_inferences WHERE id = ?`,
+            `DELETE FROM unsynced_inferences WHERE id = ? AND synced = 1`,
             [item.id]
           );
 
@@ -324,46 +366,13 @@ export const syncService = {
             totalDeleted++;
           } else {
             console.warn(`⚠️ Record ID ${item.id} not deleted, no changes reported`);
-            
-            // Check if record still exists
-            const { values: stillExists } = await sqliteService.executeQuery(
-              `SELECT * FROM unsynced_inferences WHERE id = ?`,
-              [item.id]
-            );
-            
-            if (stillExists && stillExists.length > 0) {
-              console.warn(`⚠️ Record ID ${item.id} still exists in database after deletion attempt`);
-            } else {
-              console.log(`✅ Record ID ${item.id} verified as deleted`);
-            }
           }
         } catch (recordError) {
           console.error(`❌ Error deleting record ID ${item.id}:`, recordError);
-          // Add more detailed error information
-          if (recordError instanceof Error) {
-            console.error(`  Error message: ${recordError.message}`);
-            console.error(`  Error stack: ${recordError.stack}`);
-          }
-          
-          // Log the record data to help debugging
-          console.error(`  Record data:`, item);
-          
-          // Try to get more insight into what might be blocking deletion
-          try {
-            // Check for any foreign key constraints violations
-            const { values: foreignKeyCheck } = await sqliteService.executeQuery(
-              `PRAGMA foreign_key_check;`
-            );
-            if (foreignKeyCheck && foreignKeyCheck.length > 0) {
-              console.error(`  Foreign key constraint violations found:`, foreignKeyCheck);
-            }
-          } catch (fkError) {
-            console.error(`  Error checking foreign keys:`, fkError);
-          }
         }
       }
 
-      console.log(`�� Cleaned up ${totalDeleted} synced records`);
+      console.log(`🧹 Cleaned up ${totalDeleted} synced records`);
       return { success: true, count: totalDeleted };
     } catch (error) {
       console.error('❌ Error in cleanupSyncedRecords:', error);

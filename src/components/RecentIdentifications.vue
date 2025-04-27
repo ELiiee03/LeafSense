@@ -156,10 +156,22 @@ const generateRandomId = () => {
 const isNetworkConnected = ref(true);
 // Add a UI-specific network state that updates instantly for UI renders
 const uiNetworkState = ref(true);
+// Add throttle for network changes to prevent excessive UI updates
+const lastNetworkChangeTime = ref(0);
+const NETWORK_CHANGE_THROTTLE = 3000; // 3 seconds
 
 // Add network change handler
 const handleNetworkChange = async (status: { connected: boolean }) => {
   console.log('Network status changed:', status);
+  
+  const now = Date.now();
+  // Throttle network changes
+  if (now - lastNetworkChangeTime.value < NETWORK_CHANGE_THROTTLE) {
+    console.log('Throttling network status change to prevent UI flicker');
+    return;
+  }
+  
+  lastNetworkChangeTime.value = now;
   
   // Update UI state IMMEDIATELY for faster UI rendering
   uiNetworkState.value = status.connected;
@@ -199,7 +211,7 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
     const isOnline = isNetworkConnected.value;
     
     // Add a timeout wrapper for network operations
-    const withTimeout = <T>(promise: Promise<T> | PromiseLike<T>, ms = 5000): Promise<T> => { // Increase timeout to 5s from 2s
+    const withTimeout = <T>(promise: Promise<T> | PromiseLike<T>, ms = 5000): Promise<T> => { 
       let timeoutId: ReturnType<typeof setTimeout>;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error('Operation timed out')), ms);
@@ -582,6 +594,8 @@ onMounted(async () => {
     
     const initialStatus = await checkNetworkWithTimeout();
     isNetworkConnected.value = initialStatus?.connected ?? false;
+    uiNetworkState.value = isNetworkConnected.value;
+    lastNetworkChangeTime.value = Date.now(); // Initialize timestamp
     
     // Set up network change listener
     Network.addListener('networkStatusChange', handleNetworkChange);
@@ -600,6 +614,7 @@ onMounted(async () => {
   } catch (error) {
     console.error('Error during component initialization:', error);
     isNetworkConnected.value = false;
+    uiNetworkState.value = false;
   }
 });
 

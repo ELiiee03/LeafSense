@@ -133,7 +133,7 @@ export default defineComponent({
       // Initialize SQLite database
       try {
         console.log('Initializing SQLite database...');
-        await sqliteService.initializeDatabase();
+        await sqliteService.init();
         console.log('SQLite database initialized successfully');
 
         // Set up network listener for syncing when back online
