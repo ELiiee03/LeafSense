@@ -27,16 +27,38 @@ public class LeafInferencePlugin extends Plugin {
     private Interpreter tflite;
     private static final int NUM_CLASSES = 10;
     private static final String[] CLASS_NAMES = {
-        "Cacao", "Cassava", "Coconut", "Durian", "Jackfruit", 
-        "Kapok", "Oil Palm", "Paper Mulberry", "Poinsettia", "Saman Samanea"
+        "Jackfruit", "Paper Mulberry", "Coconut", "Kapok", "Coconut", 
+        "Durian", "African Oil Palm", "Poinsettia", "Cassava", "Rain tree"
     };
+    
+    // Flag to prevent concurrent inference calls
+    private boolean isProcessing = false;
+    // Counter to track number of inference calls
+    private int inferenceCount = 0;
 
     @Override
     public void load() {
         try {
+            initializeInterpreter();
+        } catch (Exception e) {
+            Log.e("LeafInference", "Error loading model", e);
+        }
+    }
+    
+    private synchronized void initializeInterpreter() {
+        try {
+            // Close the existing interpreter if it exists
+            if (tflite != null) {
+                tflite.close();
+                tflite = null;
+                System.gc(); // Suggest garbage collection
+            }
+            
             MappedByteBuffer model = loadModelFile();
             tflite = new Interpreter(model);
+            Log.d("LeafInference", "TFLite interpreter initialized successfully");
         } catch (Exception e) {
+            Log.e("LeafInference", "Failed to initialize interpreter", e);
             throw new RuntimeException("Error loading model", e);
         }
     }
@@ -44,40 +66,86 @@ public class LeafInferencePlugin extends Plugin {
     public LeafInferencePlugin() {}
 
     @PluginMethod
-    public void runInference(PluginCall call) {
+    public synchronized void runInference(PluginCall call) {
+        // Save call reference to use in callback
+        call.setKeepAlive(true);
+        
+        if (isProcessing) {
+            call.reject("Another inference is already in progress");
+            return;
+        }
+        
         try {
+            isProcessing = true;
+            inferenceCount++;
+            Log.d("LeafInference", "Starting inference #" + inferenceCount);
+            
+            // Check if the interpreter is initialized
+            if (tflite == null) {
+                try {
+                    initializeInterpreter();
+                } catch (Exception e) {
+                    call.reject("Failed to initialize TensorFlow Lite interpreter: " + e.getMessage());
+                    isProcessing = false;
+                    return;
+                }
+            }
+
             String imagePath = call.getString("imagePath");
             if (imagePath == null) {
                 call.reject("Image path is null");
+                isProcessing = false;
                 return;
             }
 
             Log.d("LeafInference", "Received image path: " + imagePath);
 
-            Bitmap bitmap;
-            if (imagePath.startsWith("content://")) {
-                bitmap = loadBitmapFromUri(imagePath);
-            } else {
-                bitmap = loadBitmapFromFile(imagePath);
-            }
-            
-            if (bitmap == null) {
-                call.reject("Failed to decode image from path: " + imagePath);
-                return;
-            }
+            Bitmap bitmap = null;
+            try {
+                if (imagePath.startsWith("content://")) {
+                    bitmap = loadBitmapFromUri(imagePath);
+                } else {
+                    bitmap = loadBitmapFromFile(imagePath);
+                }
+                
+                if (bitmap == null) {
+                    call.reject("Failed to decode image from path: " + imagePath);
+                    isProcessing = false;
+                    return;
+                }
 
-            processBitmap(bitmap, call);
+                processBitmap(bitmap, call);
+            } catch (Exception e) {
+                Log.e("LeafInference", "Error processing image: " + e.getMessage());
+                if (bitmap != null && !bitmap.isRecycled()) {
+                    bitmap.recycle();
+                }
+                call.reject("Error processing image: " + e.getMessage());
+                isProcessing = false;
+            }
 
         } catch (Exception e) {
             Log.e("LeafInference", "Inference failed: " + e.getMessage());
             call.reject("Inference failed: " + e.getMessage());
+            isProcessing = false;
         }
     }
 
     private Bitmap loadBitmapFromUri(String imagePath) throws Exception {
         Uri uri = Uri.parse(imagePath);
-        InputStream inputStream = getContext().getContentResolver().openInputStream(uri);
-        return BitmapFactory.decodeStream(inputStream);
+        InputStream inputStream = null;
+        try {
+            inputStream = getContext().getContentResolver().openInputStream(uri);
+            return BitmapFactory.decodeStream(inputStream);
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (Exception e) {
+                    Log.e("LeafInference", "Error closing input stream", e);
+                }
+            }
+        }
     }
 
     private Bitmap loadBitmapFromFile(String imagePath) {
@@ -114,16 +182,18 @@ public class LeafInferencePlugin extends Plugin {
         }
     }
 
-    private void processBitmap(Bitmap originalBitmap, PluginCall call) {
+    private void processBitmap(final Bitmap originalBitmap, final PluginCall call) {
         Bitmap resizedBitmap = null;
         try {
             Bitmap rgbBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
             if (rgbBitmap == null) {
                 call.reject("Failed to convert image to RGB format");
+                isProcessing = false;
                 return;
             }
 
             resizedBitmap = Bitmap.createScaledBitmap(rgbBitmap, 224, 224, true);
+            rgbBitmap.recycle(); // Recycle immediately after scaling
             
             float[][][][] input = new float[1][3][224][224]; // Fix input shape
             for (int y = 0; y < 224; y++) {
@@ -164,6 +234,7 @@ public class LeafInferencePlugin extends Plugin {
             // Validate confidence score range
             if (confidence < 0 || confidence > 1) {
                 call.reject("Invalid confidence score after softmax: " + confidence);
+                isProcessing = false;
                 return;
             }
 
@@ -188,8 +259,24 @@ public class LeafInferencePlugin extends Plugin {
             ret.put("allConfidences", confidenceList);  
             
             call.resolve(ret);
+            
+            // After 3 inferences, recreate the interpreter to avoid memory issues
+            if (inferenceCount % 3 == 0) {
+                Log.d("LeafInference", "Reinitializing interpreter after " + inferenceCount + " inferences");
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            initializeInterpreter();
+                        } catch (Exception e) {
+                            Log.e("LeafInference", "Error reinitializing interpreter", e);
+                        }
+                    }
+                }).start();
+            }
 
         } catch (Exception e) {
+            Log.e("LeafInference", "Processing failed: " + e.getMessage(), e);
             call.reject("Processing failed: " + e.getMessage());
         } finally {
             if (originalBitmap != null && !originalBitmap.isRecycled()) {
@@ -198,6 +285,14 @@ public class LeafInferencePlugin extends Plugin {
             if (resizedBitmap != null && !resizedBitmap.isRecycled()) {
                 resizedBitmap.recycle();
             }
+            
+            // Trigger GC if needed
+            if (inferenceCount % 3 == 0) {
+                System.gc();
+            }
+            
+            isProcessing = false;
+            Log.d("LeafInference", "Inference #" + inferenceCount + " completed");
         }
     }
 
@@ -252,10 +347,34 @@ public class LeafInferencePlugin extends Plugin {
 
     private MappedByteBuffer loadModelFile() throws Exception {
         String modelPath = "model.tflite";
-        try (AssetFileDescriptor fileDescriptor = getActivity().getAssets().openFd(modelPath);
-             FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
-             FileChannel fileChannel = inputStream.getChannel()) {
+        AssetFileDescriptor fileDescriptor = null;
+        FileInputStream inputStream = null;
+        FileChannel fileChannel = null;
+        
+        try {
+            fileDescriptor = getActivity().getAssets().openFd(modelPath);
+            inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+            fileChannel = inputStream.getChannel();
             return fileChannel.map(FileChannel.MapMode.READ_ONLY, fileDescriptor.getStartOffset(), fileDescriptor.getDeclaredLength());
+        } finally {
+            if (fileChannel != null) {
+                try { fileChannel.close(); } catch (Exception e) { Log.e("LeafInference", "Error closing file channel", e); }
+            }
+            if (inputStream != null) {
+                try { inputStream.close(); } catch (Exception e) { Log.e("LeafInference", "Error closing input stream", e); }
+            }
+            if (fileDescriptor != null) {
+                try { fileDescriptor.close(); } catch (Exception e) { Log.e("LeafInference", "Error closing file descriptor", e); }
+            }
         }
+    }
+    
+    @Override
+    protected void handleOnDestroy() {
+        if (tflite != null) {
+            tflite.close();
+            tflite = null;
+        }
+        super.handleOnDestroy();
     }
 }

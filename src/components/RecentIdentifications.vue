@@ -199,7 +199,7 @@ const { data: recentLeaves, isLoading, error, refetch: fetchRecentIdentification
     const isOnline = isNetworkConnected.value;
     
     // Add a timeout wrapper for network operations
-    const withTimeout = <T>(promise: Promise<T> | PromiseLike<T>, ms = 2000): Promise<T> => { // Reduce timeout to 2s from 3s
+    const withTimeout = <T>(promise: Promise<T> | PromiseLike<T>, ms = 5000): Promise<T> => { // Increase timeout to 5s from 2s
       let timeoutId: ReturnType<typeof setTimeout>;
       const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error('Operation timed out')), ms);

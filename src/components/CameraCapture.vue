@@ -94,7 +94,7 @@
 
 <script setup lang="ts">
   import { IonModal, IonButton, IonContent, IonHeader, IonTitle, IonFab, IonFabButton, IonToolbar, IonPage, IonGrid, IonRow, IonCol, toastController } from '@ionic/vue';
-  import { onMounted, ref } from 'vue';
+  import { onMounted, ref, nextTick } from 'vue';
   import { Capacitor } from '@capacitor/core';
   import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
   import { aperture, arrowForwardOutline, chevronBackOutline } from 'ionicons/icons';
@@ -154,11 +154,25 @@ interface InferenceResult {
 
 // Update the ref to use the new interface
 const inferenceResult = ref<InferenceResult | null>(null);
-
+// Add flag to track if inference is in progress
+const isInferenceProcessing = ref(false);
 
 // In the takePhoto function:
 const takePhoto = async () => {
+  // Check if already processing an inference
+  if (isInferenceProcessing.value || inferenceService.isProcessing) {
+    console.log('Another inference is already in progress, please wait...');
+    await showToast('Please wait for the current processing to complete', true);
+    return;
+  }
+
   try {
+    // Reset state for new capture
+    isInferenceProcessing.value = true;
+    inferenceResult.value = null;
+    // Ensure modal is closed at the start of a new capture
+    setOpen(false);
+    
     const networkStatus = await Network.getStatus();
     
     const image = await Camera.getPhoto({
@@ -167,6 +181,13 @@ const takePhoto = async () => {
       resultType: networkStatus.connected ? CameraResultType.DataUrl : CameraResultType.Uri,
       source: CameraSource.Prompt
     });
+
+    // Handle Cancel button press
+    if (!image || (!image.dataUrl && !image.path)) {
+      console.log('User cancelled image capture');
+      isInferenceProcessing.value = false;
+      return;
+    }
 
     // Show loading spinner AFTER photo is selected, before processing
     isLoading.value = true;
@@ -180,38 +201,71 @@ const takePhoto = async () => {
       imageSrc.value = finalImagePath;
     }
 
-    // Use path instead of webPath for native operations
-    const result = await inferenceService.performInference(
-      networkStatus.connected ? image.dataUrl! : finalImagePath
-    );
-    
-    // Ensure all required fields are present
-    const completeResult = {
-      ...result,
-      leafInfo: {
-        ...result.leafInfo,
-        // Add missing properties with default values if they don't exist
-        color: result.leafInfo && 'color' in (result.leafInfo as any) ? (result.leafInfo as any).color : '',
-        shape: result.leafInfo && 'shape' in (result.leafInfo as any) ? (result.leafInfo as any).shape : '',
-        margin: result.leafInfo && 'margin' in (result.leafInfo as any) ? (result.leafInfo as any).margin : '',
-        growthHabits: result.leafInfo && 'growthHabits' in (result.leafInfo as any) ? (result.leafInfo as any).growthHabits : '',
-        imageData: result.leafInfo && 'imageData' in (result.leafInfo as any) ? (result.leafInfo as any).imageData : null,
-        imageType: result.leafInfo && 'imageType' in (result.leafInfo as any) ? (result.leafInfo as any).imageType : null
-      }
-    };
-    
-    inferenceStore.setInferenceResult(completeResult);
-    inferenceResult.value = completeResult;
-    
-    // Hide loading spinner right before opening modal
-    isLoading.value = false;
-    setOpen(true);
+    // Use try-catch within the inference call
+    try {
+      console.log('🔄 Starting inference process...');
+      // Use path instead of webPath for native operations
+      const result = await inferenceService.performInference(
+        networkStatus.connected ? image.dataUrl! : finalImagePath
+      );
+      
+      console.log('✅ Inference complete, processing results...');
+      
+      // Ensure all required fields are present
+      const completeResult = {
+        ...result,
+        leafInfo: {
+          ...result.leafInfo,
+          // Add missing properties with default values if they don't exist
+          color: result.leafInfo && 'color' in (result.leafInfo as any) ? (result.leafInfo as any).color : '',
+          shape: result.leafInfo && 'shape' in (result.leafInfo as any) ? (result.leafInfo as any).shape : '',
+          margin: result.leafInfo && 'margin' in (result.leafInfo as any) ? (result.leafInfo as any).margin : '',
+          growthHabits: result.leafInfo && 'growthHabits' in (result.leafInfo as any) ? (result.leafInfo as any).growthHabits : '',
+          imageData: result.leafInfo && 'imageData' in (result.leafInfo as any) ? (result.leafInfo as any).imageData : null,
+          imageType: result.leafInfo && 'imageType' in (result.leafInfo as any) ? (result.leafInfo as any).imageType : null
+        }
+      };
+      
+      console.log('🌿 Setting inference result in store and component...');
+      inferenceStore.setInferenceResult(completeResult);
+      inferenceResult.value = completeResult;
+      
+      // Hide loading spinner
+      isLoading.value = false;
+      
+      console.log('🖼️ Opening result modal...');
+      // Force Vue to update before opening modal
+      await nextTick();
+      setOpen(true);
+      console.log('Modal state:', isOpen.value ? 'open' : 'closed');
+      
+    } catch (inferenceError) {
+      console.error('Inference failed:', inferenceError);
+      await showToast(`Inference error: ${(inferenceError as Error).message}`, true);
+      
+      // Force reset the inference service if needed
+      inferenceService.reset();
+      isLoading.value = false;
+    }
 
   } catch (error) {
-    console.error('Error:', error);
-    showToast(`Error: ${error}`, true);
+    console.error('Error in takePhoto:', error);
+    await showToast(`Error: ${(error as Error).message}`, true);
     isLoading.value = false;
+  } finally {
+    // Always reset the processing flag when done, whether successful or not
+    setTimeout(() => {
+      isInferenceProcessing.value = false;
+    }, 1500); // Small delay to ensure all processes have completed
   }
+};
+
+// Add a reset function to recover from stalled state
+const resetCamera = () => {
+  isInferenceProcessing.value = false;
+  isLoading.value = false;
+  inferenceService.reset();
+  console.log('Camera capture reset');
 };
 
 const navigateToLeafInfo = () => {

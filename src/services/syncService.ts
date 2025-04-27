@@ -300,6 +300,14 @@ export const syncService = {
 
       for (const item of syncedIds) {
         try {
+          // Check if there are any other references to this record
+          const { values: references } = await sqliteService.executeQuery(
+            `SELECT name FROM sqlite_master WHERE type='table' AND name != 'offline_plant_details' AND name != 'unsynced_inferences'`
+          );
+          
+          // Log what tables we have for debugging
+          console.log(`ℹ️ Available tables:`, references.map(r => r.name).join(', '));
+          
           // Delete associated plant details first
           const detailsResult = await sqliteService.executeQuery(
             `DELETE FROM offline_plant_details WHERE inference_result_id = ?`,
@@ -314,13 +322,48 @@ export const syncService = {
 
           if (inferenceResult.changes && inferenceResult.changes > 0) {
             totalDeleted++;
+          } else {
+            console.warn(`⚠️ Record ID ${item.id} not deleted, no changes reported`);
+            
+            // Check if record still exists
+            const { values: stillExists } = await sqliteService.executeQuery(
+              `SELECT * FROM unsynced_inferences WHERE id = ?`,
+              [item.id]
+            );
+            
+            if (stillExists && stillExists.length > 0) {
+              console.warn(`⚠️ Record ID ${item.id} still exists in database after deletion attempt`);
+            } else {
+              console.log(`✅ Record ID ${item.id} verified as deleted`);
+            }
           }
         } catch (recordError) {
           console.error(`❌ Error deleting record ID ${item.id}:`, recordError);
+          // Add more detailed error information
+          if (recordError instanceof Error) {
+            console.error(`  Error message: ${recordError.message}`);
+            console.error(`  Error stack: ${recordError.stack}`);
+          }
+          
+          // Log the record data to help debugging
+          console.error(`  Record data:`, item);
+          
+          // Try to get more insight into what might be blocking deletion
+          try {
+            // Check for any foreign key constraints violations
+            const { values: foreignKeyCheck } = await sqliteService.executeQuery(
+              `PRAGMA foreign_key_check;`
+            );
+            if (foreignKeyCheck && foreignKeyCheck.length > 0) {
+              console.error(`  Foreign key constraint violations found:`, foreignKeyCheck);
+            }
+          } catch (fkError) {
+            console.error(`  Error checking foreign keys:`, fkError);
+          }
         }
       }
 
-      console.log(`🧹 Successfully cleaned up ${totalDeleted} synced records`);
+      console.log(`�� Cleaned up ${totalDeleted} synced records`);
       return { success: true, count: totalDeleted };
     } catch (error) {
       console.error('❌ Error in cleanupSyncedRecords:', error);
