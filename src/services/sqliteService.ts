@@ -160,6 +160,8 @@ export const sqliteService = {
   // Offline-specific methods
   async initializeOfflineTable() {
     try {
+      console.log("📊 Initializing offline database tables...");
+      
       // Check if tables exist
       const tableInfoUnsynced = await this.executeQuery(`
         SELECT name FROM sqlite_master WHERE type='table' AND name='unsynced_inferences';
@@ -172,9 +174,11 @@ export const sqliteService = {
       const hasUnsyncedTable = tableInfoUnsynced.values && tableInfoUnsynced.values.length > 0;
       const hasDetailsTable = tableInfoDetails.values && tableInfoDetails.values.length > 0;
       
+      console.log(`📊 Table check: unsynced_inferences exists: ${hasUnsyncedTable}, offline_plant_details exists: ${hasDetailsTable}`);
+      
       // If both tables exist, we don't need to recreate them
       if (hasUnsyncedTable && hasDetailsTable) {
-        console.log("Offline tables already exist, checking for sync_origin column");
+        console.log("📊 Offline tables already exist, checking for sync_origin column");
         
         // Check if sync_origin column exists in unsynced_inferences
         const columnInfo = await this.executeQuery(`PRAGMA table_info(unsynced_inferences);`);
@@ -183,27 +187,42 @@ export const sqliteService = {
         
         // Add sync_origin column if it doesn't exist
         if (!hasOriginColumn) {
-          console.log("Adding sync_origin column to unsynced_inferences table");
+          console.log("📊 Adding sync_origin column to unsynced_inferences table");
           await this.executeQuery(`ALTER TABLE unsynced_inferences ADD COLUMN sync_origin TEXT DEFAULT 'offline';`);
         }
+        
+        // Check column structure of offline_plant_details
+        console.log("📊 Verifying offline_plant_details table structure");
+        const detailsColumnInfo = await this.executeQuery(`PRAGMA table_info(offline_plant_details);`);
+        console.log(`📊 offline_plant_details columns:`, JSON.stringify(detailsColumnInfo.values, null, 2));
+        
+        // Make sure foreign key is set up properly
+        await this.executeQuery("PRAGMA foreign_keys = ON;");
+        console.log("📊 Foreign keys enabled");
         
         return;
       }
       
       // If only one exists, we need to drop both to maintain consistency
+      console.log("📊 Need to recreate tables for consistency");
+      
       // Drop child table first to avoid foreign key issues
       if (hasDetailsTable) {
+        console.log("📊 Dropping existing offline_plant_details table");
         await this.executeQuery(`DROP TABLE IF EXISTS offline_plant_details;`);
       }
       
       if (hasUnsyncedTable) {
+        console.log("📊 Dropping existing unsynced_inferences table");
         await this.executeQuery(`DROP TABLE IF EXISTS unsynced_inferences;`);
       }
       
       // Explicitly enable foreign key support
       await this.executeQuery("PRAGMA foreign_keys = ON;");
+      console.log("📊 Foreign keys enabled for new tables");
 
       // Create the parent table first
+      console.log("📊 Creating unsynced_inferences table");
       await this.executeQuery(`
         CREATE TABLE IF NOT EXISTS unsynced_inferences (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -223,6 +242,7 @@ export const sqliteService = {
       `);
       
       // Now create the child table with the foreign key
+      console.log("📊 Creating offline_plant_details table with foreign key constraint");
       await this.executeQuery(`
         CREATE TABLE IF NOT EXISTS offline_plant_details (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -252,9 +272,29 @@ export const sqliteService = {
         );
       `);
       
-      console.log("Offline tables initialized successfully with sync_origin field");
+      // Verify the tables were created properly
+      const verifyUnsynced = await this.executeQuery(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='unsynced_inferences';
+      `);
+      
+      const verifyDetails = await this.executeQuery(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='offline_plant_details';
+      `);
+      
+      if (verifyUnsynced.values && verifyUnsynced.values.length > 0 && 
+          verifyDetails.values && verifyDetails.values.length > 0) {
+        console.log("✅ Offline tables initialized successfully with sync_origin field");
+      } else {
+        console.error("❌ Failed to verify table creation:", {
+          unsynced: verifyUnsynced.values && verifyUnsynced.values.length > 0,
+          details: verifyDetails.values && verifyDetails.values.length > 0
+        });
+      }
     } catch (error) {
-      console.error("Error initializing offline tables:", error);
+      console.error("❌ Error initializing offline tables:", error);
+      if (error instanceof Error) {
+        console.error("Error stack:", error.stack);
+      }
       throw error;
     }
   },
@@ -461,20 +501,61 @@ export const sqliteService = {
     }
 
     try {
+      // First verify that the parent inference record exists
+      const checkInference = await this.executeQuery(
+        `SELECT id FROM unsynced_inferences WHERE id = ?`,
+        [data.inferenceResultId]
+      );
+      
+      if (!checkInference.values || checkInference.values.length === 0) {
+        console.error(`❌ ERROR: Cannot save plant details - parent inference record ${data.inferenceResultId} does not exist`);
+        return null;
+      }
+      
+      console.log(`✅ Parent inference record ${data.inferenceResultId} exists, proceeding with plant details save`);
+      
       // Check if we already have details for this inference
       const existingResult = await this.executeQuery(
         `SELECT id FROM offline_plant_details WHERE inference_result_id = ?`,
         [data.inferenceResultId]
       );
       
+      // Handle aliases formatting
+      let aliases: string | string[] | undefined = data.aliases;
+      if (aliases && Array.isArray(aliases)) {
+        aliases = JSON.stringify(aliases);
+      }
+      
+      // Prepare a debug object with all values for logging
+      const debugValues = {
+        inferenceResultId: data.inferenceResultId,
+        aliases: aliases,
+        color: data.color || null,
+        foliage: data.foliage || null,
+        bark: data.bark || null,
+        fruit: data.fruit || null,
+        crown: data.crown || null,
+        trunk: data.trunk || null,
+        leaves: data.leaves || null,
+        retention: data.retention || null,
+        texture: data.texture || null,
+        venation: data.venation || null,
+        behavior: data.behavior || null,
+        edibleUses: data.edibleUses || null,
+        medUses: data.medUses || null,
+        timberUses: data.timberUses || null,
+        otherUses: data.otherUses || null,
+        climate: data.climate || null,
+        lifespan: data.lifespan || null,
+        lightNeeds: data.lightNeeds || null,
+        waterNeeds: data.waterNeeds || null,
+        soilReq: data.soilReq || null
+      };
+      
+      console.log(`📊 DIAGNOSTIC: Plant details values to save:`, JSON.stringify(debugValues, null, 2));
+      
       if (existingResult.values && existingResult.values.length > 0) {
         console.log(`ℹ️ Plant details already exist for inference ID ${data.inferenceResultId}, updating...`);
-        
-        // Handle aliases formatting
-        let aliases: string | string[] | undefined = data.aliases;
-        if (aliases && Array.isArray(aliases)) {
-          aliases = JSON.stringify(aliases);
-        }
         
         // Prepare and log the update fields for debugging
         const updates = [];
@@ -571,6 +652,11 @@ export const sqliteService = {
         // Log the updates we're making
         console.log(`📊 DIAGNOSTIC: Updating fields: ${updates.join(', ')}`);
         
+        if (updates.length === 0) {
+          console.log(`ℹ️ No fields to update for inference ID ${data.inferenceResultId}`);
+          return existingResult.values[0].id;
+        }
+        
         const updateQuery = `
           UPDATE offline_plant_details 
           SET ${updates.join(', ')} 
@@ -595,12 +681,6 @@ export const sqliteService = {
         return existingResult.values[0].id;
       } else {
         console.log(`🆕 Creating new plant details record for inference ID ${data.inferenceResultId}`);
-        
-        // Handle aliases formatting
-        let aliases: string | string[] | undefined = data.aliases;
-        if (aliases && Array.isArray(aliases)) {
-          aliases = JSON.stringify(aliases);
-        }
         
         // Insert new record - be explicit about column names to avoid schema issues
         const insertQuery = `
@@ -636,34 +716,47 @@ export const sqliteService = {
           data.soilReq || null
         ];
         
-        // Log the data being inserted
-        console.log(`📊 DIAGNOSTIC: Inserting new plant details with parameters:`, JSON.stringify(params.map((p, i) => 
-          `Param ${i}: ${typeof p === 'string' && p && p.length > 20 ? p.substring(0, 20) + '...' : p}`
-        ), null, 2));
-        
-        const result = await this.executeQuery(insertQuery, params);
-        console.log(`✅ Inserted plant details. Changes: ${result.changes}`);
-        
-        // Get the last inserted ID
-        const idResult = await this.executeQuery('SELECT last_insert_rowid() as id');
-        const lastId = idResult.values?.[0]?.id;
-        
-        // Verify the insertion by retrieving the record
-        const verifyResult = await this.executeQuery(
-          `SELECT * FROM offline_plant_details WHERE id = ?`,
-          [lastId]
-        );
-        
-        if (verifyResult.values && verifyResult.values.length > 0) {
-          console.log(`📊 DIAGNOSTIC: Inserted plant details record:`, JSON.stringify(verifyResult.values[0], null, 2));
-        } else {
-          console.warn(`⚠️ WARNING: Failed to verify inserted plant details record`);
+        // Execute the insert
+        try {
+          const result = await this.executeQuery(insertQuery, params);
+          console.log(`✅ Inserted new plant details record for inference ID ${data.inferenceResultId}`);
+          
+          // Get the inserted record ID
+          const getIdResult = await this.executeQuery(
+            `SELECT id FROM offline_plant_details WHERE inference_result_id = ? ORDER BY id DESC LIMIT 1`,
+            [data.inferenceResultId]
+          );
+          
+          // Verify the insert by retrieving the record
+          const verifyResult = await this.executeQuery(
+            `SELECT * FROM offline_plant_details WHERE inference_result_id = ?`,
+            [data.inferenceResultId]
+          );
+          
+          if (verifyResult.values && verifyResult.values.length > 0) {
+            console.log(`📊 DIAGNOSTIC: Inserted plant details record:`, JSON.stringify(verifyResult.values[0], null, 2));
+            return verifyResult.values[0].id;
+          } else {
+            console.warn(`⚠️ WARNING: Failed to verify inserted plant details record`);
+            return null;
+          }
+        } catch (insertError) {
+          console.error(`❌ Error inserting plant details for inference ID ${data.inferenceResultId}:`, insertError);
+          console.error('Query:', insertQuery);
+          console.error('Params:', JSON.stringify(params, null, 2));
+          
+          if (insertError instanceof Error) {
+            console.error('Error details:', insertError.message);
+          }
+          
+          throw insertError;
         }
-        
-        return lastId;
       }
     } catch (error) {
-      console.error('❌ Error saving plant details:', error);
+      console.error(`❌ Error in saveOfflinePlantDetails for inference ID ${data.inferenceResultId}:`, error);
+      if (error instanceof Error) {
+        console.error('Error stack:', error.stack);
+      }
       throw error;
     }
   },

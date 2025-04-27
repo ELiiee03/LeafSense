@@ -173,15 +173,45 @@ export const syncService = {
 
           // 2. Look for and insert plant details
           try {
+            console.log(`🔍 Looking for plant details for local inference ID ${result.id}`);
+            
+            // Use a more explicit query with specific column selection
             const plantDetailsResult = await sqliteService.executeQuery(
-              `SELECT * FROM offline_plant_details WHERE inference_result_id = ?`,
+              `SELECT 
+                id,
+                inference_result_id,
+                aliases,
+                color,
+                foliage, 
+                bark,
+                fruit,
+                crown,
+                trunk,
+                leaves,
+                retention,
+                texture,
+                venation,
+                behavior,
+                edible_uses,
+                med_uses,
+                timber_uses,
+                other_uses,
+                climate,
+                lifespan,
+                light_needs,
+                water_needs,
+                soil_req
+              FROM offline_plant_details 
+              WHERE inference_result_id = ?`,
               [result.id]
             );
 
+            console.log(`📊 Plant details query results: ${JSON.stringify(plantDetailsResult)}`);
+            
             const plantDetails = plantDetailsResult.values?.[0];
 
             if (plantDetails) {
-              console.log(`🔄 Found plant details for inference ID ${result.id}`);
+              console.log(`🔄 Found plant details for inference ID ${result.id}:`, JSON.stringify(plantDetails, null, 2));
 
               // Parse aliases if needed
               let parsedAliases = plantDetails.aliases;
@@ -194,39 +224,45 @@ export const syncService = {
                   }
                 } catch (e) {
                   console.error('Error parsing aliases:', e);
-                  parsedAliases = [parsedAliases];
+                  parsedAliases = parsedAliases ? [parsedAliases] : [];
                 }
               }
 
               console.log(`🔄 Inserting plant details for Supabase inference ID: ${inferenceData[0].id}`);
 
+              // Create a clean details object that removes any undefined/null values
+              const cleanedDetails = {
+                inference_result_id: inferenceData[0].id,
+                aliases: Array.isArray(parsedAliases) ? parsedAliases : [],
+                color: plantDetails.color || null,
+                foliage: plantDetails.foliage || null,
+                bark: plantDetails.bark || null,
+                fruit: plantDetails.fruit || null,
+                crown: plantDetails.crown || null,
+                trunk: plantDetails.trunk || null,
+                leaves: plantDetails.leaves || null,
+                retention: plantDetails.retention || null,
+                texture: plantDetails.texture || null,
+                venation: plantDetails.venation || null,
+                behavior: plantDetails.behavior || null,
+                edible_uses: plantDetails.edible_uses || null,
+                med_uses: plantDetails.med_uses || null,
+                timber_uses: plantDetails.timber_uses || null,
+                other_uses: plantDetails.other_uses || null,
+                climate: plantDetails.climate || null,
+                lifespan: plantDetails.lifespan || null,
+                light_needs: plantDetails.light_needs || null,
+                water_needs: plantDetails.water_needs || null,
+                soil_req: plantDetails.soil_req || null
+              };
+
+              // Log the exact data being sent to Supabase
+              console.log(`📤 Sending plant details to Supabase:`, JSON.stringify(cleanedDetails, null, 2));
+
               // Insert plant details with all fields
               const { data: plantData, error: plantError } = await supabase
                 .from('plant_details')
-                .insert({
-                  inference_result_id: inferenceData[0].id,
-                  aliases: parsedAliases || [],
-                  color: plantDetails.color || null,
-                  foliage: plantDetails.foliage || null,
-                  bark: plantDetails.bark || null,
-                  fruit: plantDetails.fruit || null,
-                  crown: plantDetails.crown || null,
-                  trunk: plantDetails.trunk || null,
-                  leaves: plantDetails.leaves || null,
-                  retention: plantDetails.retention || null,
-                  texture: plantDetails.texture || null,
-                  venation: plantDetails.venation || null,
-                  behavior: plantDetails.behavior || null,
-                  edible_uses: plantDetails.edible_uses || null,
-                  med_uses: plantDetails.med_uses || null,
-                  timber_uses: plantDetails.timber_uses || null,
-                  other_uses: plantDetails.other_uses || null,
-                  climate: plantDetails.climate || null,
-                  lifespan: plantDetails.lifespan || null,
-                  light_needs: plantDetails.light_needs || null,
-                  water_needs: plantDetails.water_needs || null,
-                  soil_req: plantDetails.soil_req || null
-                })
+                .insert(cleanedDetails)
                 .select();
 
               if (plantError) {
@@ -240,6 +276,9 @@ export const syncService = {
             }
           } catch (detailsError) {
             console.error(`❌ Error processing plant details for inference ID ${result.id}:`, detailsError);
+            if (detailsError instanceof Error) {
+              console.error(`Error stack:`, detailsError.stack);
+            }
           }
 
           // 3. Mark as synced regardless of plant details results
@@ -301,7 +340,7 @@ export const syncService = {
       for (const item of syncedIds) {
         try {
           // Check if there are any other references to this record
-          const { values: references } = await sqliteService.executeQuery(
+          const { values: references = [] } = await sqliteService.executeQuery(
             `SELECT name FROM sqlite_master WHERE type='table' AND name != 'offline_plant_details' AND name != 'unsynced_inferences'`
           );
           
@@ -363,7 +402,7 @@ export const syncService = {
         }
       }
 
-      console.log(`�� Cleaned up ${totalDeleted} synced records`);
+      console.log(`🧹 Cleaned up ${totalDeleted} synced records`);
       return { success: true, count: totalDeleted };
     } catch (error) {
       console.error('❌ Error in cleanupSyncedRecords:', error);
