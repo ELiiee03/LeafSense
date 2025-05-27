@@ -27,8 +27,8 @@ public class LeafInferencePlugin extends Plugin {
     private Interpreter tflite;
     private static final int NUM_CLASSES = 10;
     private static final String[] CLASS_NAMES = {
-        "Jackfruit", "Paper Mulberry", "Coconut", "Kapok", "Coconut", 
-        "Durian", "African Oil Palm", "Poinsettia", "Cassava", "Rain tree"
+        "Jackfruit", "Paper Mulberry", "Kapok", "Coconut", 
+        "Durian", "African Oil Palm", "Poinsettia", "Cassava", "Rain tree", "Cacao"
     };
     
     // Flag to prevent concurrent inference calls
@@ -199,9 +199,14 @@ public class LeafInferencePlugin extends Plugin {
             for (int y = 0; y < 224; y++) {
                 for (int x = 0; x < 224; x++) {
                     int pixel = resizedBitmap.getPixel(x, y);
-                    input[0][0][y][x] = ((pixel >> 16) & 0xFF) / 255.0f; // Red
-                    input[0][1][y][x] = ((pixel >> 8) & 0xFF) / 255.0f;  // Green
-                    input[0][2][y][x] = (pixel & 0xFF) / 255.0f;         // Blue
+                    // input[0][0][y][x] = ((pixel >> 16) & 0xFF) / 255.0f; // Red
+                    // input[0][1][y][x] = ((pixel >> 8) & 0xFF) / 255.0f;  // Green
+                    // input[0][2][y][x] = (pixel & 0xFF) / 255.0f;         // Blue
+
+                    // With this normalized version (ImageNet normalization)
+                    input[0][0][y][x] = (((pixel >> 16) & 0xFF) / 255.0f - 0.485f) / 0.229f; // R
+                    input[0][1][y][x] = (((pixel >> 8) & 0xFF) / 255.0f - 0.456f) / 0.224f;  // G
+                    input[0][2][y][x] = ((pixel & 0xFF) / 255.0f - 0.406f) / 0.225f;         // B
                 }
             }
 
@@ -332,18 +337,33 @@ public class LeafInferencePlugin extends Plugin {
         return maxIndex;
     }
 
-    private float[][][][] convertBitmapToInputTensor(Bitmap bitmap) {
-        float[][][][] input = new float[1][3][224][224]; 
-        for (int y = 0; y < 224; y++) {
-            for (int x = 0; x < 224; x++) {
-                int pixel = bitmap.getPixel(x, y);
-                input[0][y][x][0] = ((pixel >> 16) & 0xFF) / 255.0f;
-                input[0][y][x][1] = ((pixel >> 8) & 0xFF) / 255.0f;
-                input[0][y][x][2] = (pixel & 0xFF) / 255.0f;
-            }
-        }
-        return input;
-    }
+    // private float[][][][] convertBitmapToInputTensor(Bitmap bitmap) {
+    //     float[][][][] input = new float[1][3][224][224]; 
+    //     for (int y = 0; y < 224; y++) {
+    //         for (int x = 0; x < 224; x++) {
+    //             int pixel = bitmap.getPixel(x, y);
+    //             input[0][y][x][0] = ((pixel >> 16) & 0xFF) / 255.0f;
+    //             input[0][y][x][1] = ((pixel >> 8) & 0xFF) / 255.0f;
+    //             input[0][y][x][2] = (pixel & 0xFF) / 255.0f;
+    //         }
+    //     }
+    //     return input;
+    // }
+
+        // private float[][][][] convertBitmapToInputTensor(Bitmap bitmap) {
+        //     float[][][][] input = new float[1][3][224][224]; 
+        //     for (int y = 0; y < 224; y++) {
+        //         for (int x = 0; x < 224; x++) {
+        //             int pixel = bitmap.getPixel(x, y);
+        //             // Apply proper normalization to match PyTorch
+        //             input[0][0][y][x] = (((pixel >> 16) & 0xFF) / 255.0f - 0.485f) / 0.229f; // Red
+        //             input[0][1][y][x] = (((pixel >> 8) & 0xFF) / 255.0f - 0.456f) / 0.224f;  // Green
+        //             input[0][2][y][x] = ((pixel & 0xFF) / 255.0f - 0.406f) / 0.225f;         // Blue
+        //         }
+        //     }
+        //     return input;
+        // }
+
 
     private MappedByteBuffer loadModelFile() throws Exception {
         String modelPath = "model.tflite";

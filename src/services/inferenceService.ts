@@ -96,7 +96,7 @@ export const inferenceService = {
                     console.log('🔄 Sending image to API...');
                     const apiStartTime = performance.now();
                     
-                    const result = await axios.post('https://1917-143-44-193-52.ngrok-free.app/predict', {
+                    const result = await axios.post('https://5504-143-44-193-12.ngrok-free.app/predict', {
                         image: base64Data.split(',')[1] // Remove data URL prefix
                     }, {
                         headers: {
